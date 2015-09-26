@@ -4,9 +4,12 @@
 package main
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io/ioutil"
+	"log"
 	"os"
-	"unicode"
 
 	"github.com/codegangsta/cli"
 	"github.com/google/gxui"
@@ -16,18 +19,18 @@ import (
 	"github.com/google/gxui/themes/dark"
 )
 
-type identifierType int
+type context int
 
 const (
-	invalid identifierType = iota
-	builtin
-	operator
-	keyword
+	standard context = iota
 	function
 	method
-	typeDef
-	typeName
-	constructor
+	quoteString
+	backtickString
+	character
+	comment
+	blockComment
+	variable
 )
 
 var (
@@ -90,6 +93,25 @@ var (
 		B: 0.8,
 		A: 1.0,
 	}
+	functionColor = gxui.Color{
+		R: 0.3,
+		G: 0.6,
+		B: 0,
+		A: 1.0,
+	}
+	typeColor = gxui.Color{
+		R: 0.3,
+		G: 0.6,
+		B: 0.3,
+		A: 1.0,
+	}
+	stringColor = gxui.Color{
+		R: 0,
+		G: 0.8,
+		B: 0,
+		A: 1.0,
+	}
+	commentColor = gxui.Gray60
 
 	app *cli.App
 	ctx *cli.Context
@@ -130,11 +152,14 @@ func uiMain(driver gxui.Driver) {
 	editor.SetText(string(b))
 	editor.SetDesiredWidth(math.MaxSize.W)
 
-	editor.SetSyntaxLayers(layers(editor.Text()))
+	filename := ctx.String("file")
+	editor.SetSyntaxLayers(layers(filename, editor.Text()))
 	editor.SetTabWidth(8)
+	suggester := &codeSuggestionProvider{path: filename, editor: editor}
+	editor.SetSuggestionProvider(suggester)
 	editor.OnTextChanged(func(changes []gxui.TextBoxEdit) {
 		// TODO: only update layers that changed.
-		editor.SetSyntaxLayers(layers(editor.Text()))
+		editor.SetSyntaxLayers(layers(filename, editor.Text()))
 	})
 	window.AddChild(editor)
 
@@ -142,52 +167,152 @@ func uiMain(driver gxui.Driver) {
 	window.SetPadding(math.Spacing{L: 10, T: 10, R: 10, B: 10})
 }
 
-func layers(text string) gxui.CodeSyntaxLayers {
-	var (
-		start int
-	)
-	syntaxes := make(gxui.CodeSyntaxLayers, 0, 100)
-	for i, r := range text {
-		if isSeparator(r) {
-			word := text[start:i]
-			syntax := gxui.CreateCodeSyntaxLayer()
-			syntax.Add(start, len(word))
-			start = i + 1
-			if len(word) == 0 {
-				continue
-			}
-			if isBuiltin(word) {
-				syntax.SetColor(builtinColor)
-			} else if isKeyword(word) {
-				syntax.SetColor(keywordColor)
-			}
-			syntaxes = append(syntaxes, syntax)
+func layers(filename, text string) gxui.CodeSyntaxLayers {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, filename, text, 0)
+	if err != nil {
+		panic(err)
+	}
+	layers := make(gxui.CodeSyntaxLayers, 0, 100)
+	if f.Doc != nil {
+		layer := gxui.CreateCodeSyntaxLayer()
+		layer.Add(int(f.Doc.Pos()), len(f.Doc.Text()))
+		layer.SetColor(commentColor)
+		layers = append(layers, layer)
+	}
+	for _, comment := range f.Comments {
+		layer := gxui.CreateCodeSyntaxLayer()
+		layer.Add(int(comment.Pos()), len(comment.Text()))
+		layer.SetColor(commentColor)
+		layers = append(layers, layer)
+	}
+	for _, decl := range f.Decls {
+		var newLayers gxui.CodeSyntaxLayers
+		switch src := decl.(type) {
+		case *ast.GenDecl:
+			newLayers = handleGenDecl(src)
+		case *ast.FuncDecl:
+			newLayers = handleFuncDecl(src)
+		default:
+			panic("Unexpected declaration type")
+		}
+		layers = append(layers, newLayers...)
+	}
+	for _, something := range f.Unresolved {
+		log.Printf("Found unresolved declaration %s at position %d", something.String(), something.Pos())
+	}
+	return layers
+}
+
+func handleFuncDecl(decl *ast.FuncDecl) gxui.CodeSyntaxLayers {
+	layerLen := 3 // doc, func keyword, and function name
+	if decl.Recv != nil {
+		layerLen += decl.Recv.NumFields()
+	}
+	if decl.Type.Params != nil {
+		layerLen += decl.Type.Params.NumFields()
+	}
+	if decl.Type.Results != nil {
+		layerLen += decl.Type.Results.NumFields()
+	}
+	layers := make(gxui.CodeSyntaxLayers, 0, layerLen)
+	if decl.Doc != nil {
+		doc := gxui.CreateCodeSyntaxLayer()
+		doc.Add(int(decl.Doc.Pos()), int(decl.Doc.End()-decl.Doc.Pos()))
+		doc.SetColor(commentColor)
+		layers = append(layers, doc)
+	}
+	funcKeyword := gxui.CreateCodeSyntaxLayer()
+	funcKeyword.Add(int(decl.Pos()-1), len("func"))
+	funcKeyword.SetColor(keywordColor)
+	layers = append(layers, funcKeyword)
+	if decl.Recv != nil {
+		for _, block := range decl.Recv.List {
+			recvType := gxui.CreateCodeSyntaxLayer()
+			recvType.Add(int(block.Type.Pos()-1), int(block.Type.End()-block.Type.Pos()))
+			recvType.SetColor(typeColor)
+			layers = append(layers, recvType)
 		}
 	}
-	return syntaxes
-}
-
-func isSeparator(r rune) bool {
-	switch r {
-	case '_', '"', '\'', '`':
-		return false
-	}
-	return !(unicode.IsLetter(r) || unicode.IsNumber(r))
-}
-
-func inSlice(identifier string, slice []string) bool {
-	for _, value := range slice {
-		if identifier == value {
-			return true
+	funcName := gxui.CreateCodeSyntaxLayer()
+	funcName.Add(int(decl.Name.Pos()-1), len(decl.Name.String()))
+	funcName.SetColor(functionColor)
+	layers = append(layers, funcName)
+	if decl.Type.Params != nil {
+		for _, block := range decl.Type.Params.List {
+			recvType := gxui.CreateCodeSyntaxLayer()
+			recvType.Add(int(block.Type.Pos()-1), int(block.Type.End()-block.Type.Pos()))
+			recvType.SetColor(typeColor)
+			layers = append(layers, recvType)
 		}
 	}
-	return false
+	if decl.Type.Results != nil {
+		for _, block := range decl.Type.Results.List {
+			recvType := gxui.CreateCodeSyntaxLayer()
+			recvType.Add(int(block.Type.Pos()-1), int(block.Type.End()-block.Type.Pos()))
+			recvType.SetColor(typeColor)
+			layers = append(layers, recvType)
+		}
+	}
+	return layers
 }
 
-func isBuiltin(identifier string) bool {
-	return inSlice(identifier, builtins)
+func handleGenDecl(decl *ast.GenDecl) gxui.CodeSyntaxLayers {
+	layers := make(gxui.CodeSyntaxLayers, 0, len(decl.Specs)+2)
+	if decl.Doc != nil {
+		doc := gxui.CreateCodeSyntaxLayer()
+		doc.Add(int(decl.Doc.Pos()), int(decl.Doc.End()-decl.Doc.Pos()))
+		doc.SetColor(commentColor)
+		layers = append(layers, doc)
+	}
+	tok := gxui.CreateCodeSyntaxLayer()
+	tok.Add(int(decl.TokPos-1), len(decl.Tok.String()))
+	tok.SetColor(keywordColor)
+	layers = append(layers, tok)
+	for _, spec := range decl.Specs {
+		var newLayers gxui.CodeSyntaxLayers
+		switch src := spec.(type) {
+		case *ast.ValueSpec:
+			newLayers = handleValue(src)
+		case *ast.ImportSpec:
+			newLayers = handleImport(src)
+		case *ast.TypeSpec:
+			newLayers = handleType(src)
+		default:
+			panic("Unknown type")
+		}
+		layers = append(layers, newLayers...)
+	}
+	return layers
 }
 
-func isKeyword(identifier string) bool {
-	return inSlice(identifier, keywords)
+func handleValue(val *ast.ValueSpec) gxui.CodeSyntaxLayers {
+	layers := make(gxui.CodeSyntaxLayers, 0, len(val.Names)+len(val.Values)+3)
+	if val.Doc != nil {
+		doc := gxui.CreateCodeSyntaxLayer()
+		doc.Add(int(val.Doc.Pos()-1), int(val.Doc.End()-val.Doc.Pos()))
+		doc.SetColor(commentColor)
+		layers = append(layers, doc)
+	}
+	if val.Type != nil {
+		typ := gxui.CreateCodeSyntaxLayer()
+		typ.Add(int(val.Type.Pos()-1), int(val.Type.End()-val.Type.Pos()))
+		typ.SetColor(typeColor)
+		layers = append(layers, typ)
+	}
+	if val.Comment != nil {
+		doc := gxui.CreateCodeSyntaxLayer()
+		doc.Add(int(val.Comment.Pos()-1), int(val.Comment.End()-val.Comment.Pos()))
+		doc.SetColor(commentColor)
+		layers = append(layers, doc)
+	}
+	return layers
+}
+
+func handleImport(*ast.ImportSpec) gxui.CodeSyntaxLayers {
+	return nil
+}
+
+func handleType(*ast.TypeSpec) gxui.CodeSyntaxLayers {
+	return nil
 }
