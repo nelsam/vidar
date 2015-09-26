@@ -6,6 +6,7 @@ package main
 import (
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/codegangsta/cli"
@@ -45,25 +46,30 @@ func uiMain(driver gxui.Driver) {
 
 	editor := theme.CreateCodeEditor()
 
-	filename := ctx.String("file")
-	f, err := os.Open(filename)
-	if err != nil && !os.IsNotExist(err) {
-		panic(err)
-	}
 	lastMod := time.Time{}
-	text := ""
-	if err == nil {
-		finfo, err := f.Stat()
-		if err != nil {
+	text := `// Scratch
+// This buffer is for jotting down quick notes, but is not saved to disk.
+// Use at your own risk!`
+	filename := ctx.String("file")
+	if filename != "" {
+		text = ""
+		f, err := os.Open(filename)
+		if err != nil && !os.IsNotExist(err) {
 			panic(err)
 		}
-		lastMod = finfo.ModTime()
-		b, err := ioutil.ReadAll(f)
-		if err != nil {
-			panic(err)
+		if err == nil {
+			finfo, err := f.Stat()
+			if err != nil {
+				panic(err)
+			}
+			lastMod = finfo.ModTime()
+			b, err := ioutil.ReadAll(f)
+			if err != nil {
+				panic(err)
+			}
+			f.Close()
+			text = string(b)
 		}
-		f.Close()
-		text = string(b)
 	}
 	editor.SetText(text)
 	editor.SetDesiredWidth(math.MaxSize.W)
@@ -102,6 +108,9 @@ func uiMain(driver gxui.Driver) {
 				if err != nil {
 					panic(err)
 				}
+				if !strings.HasSuffix(editor.Text(), "\n") {
+					editor.SetText(editor.Text() + "\n")
+				}
 				if _, err := f.WriteString(editor.Text()); err != nil {
 					panic(err)
 				}
@@ -115,6 +124,7 @@ func uiMain(driver gxui.Driver) {
 		}
 	})
 	window.AddChild(editor)
+	gxui.SetFocus(editor)
 
 	window.OnClose(driver.Terminate)
 	window.SetPadding(math.Spacing{L: 10, T: 10, R: 10, B: 10})
