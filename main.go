@@ -16,6 +16,14 @@ import (
 	"github.com/google/gxui/math"
 	"github.com/google/gxui/themes/basic"
 	"github.com/google/gxui/themes/dark"
+	"github.com/nelsam/gxui_playground/syntax"
+)
+
+var (
+	background = gxui.Gray10
+
+	app *cli.App
+	ctx *cli.Context
 )
 
 func init() {
@@ -99,7 +107,7 @@ func uiMain(driver gxui.Driver) {
 	}
 	editor.SetDesiredWidth(math.MaxSize.W)
 
-	newLayers, err := layers(editor.filepath, editor.Text())
+	newLayers, err := syntax.Layers(editor.filepath, editor.Text())
 	editor.SetSyntaxLayers(newLayers)
 	// TODO: display the error in some pane of the editor
 	_ = err
@@ -110,7 +118,7 @@ func uiMain(driver gxui.Driver) {
 	editor.OnTextChanged(func(changes []gxui.TextBoxEdit) {
 		editor.hasChanges = true
 		// TODO: only update layers that changed.
-		newLayers, err := layers(editor.filepath, editor.Text())
+		newLayers, err := syntax.Layers(editor.filepath, editor.Text())
 		editor.SetSyntaxLayers(newLayers)
 		// TODO: display the error in some pane of the editor
 		_ = err
