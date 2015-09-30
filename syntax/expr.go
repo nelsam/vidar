@@ -36,6 +36,8 @@ func handleExpr(expr ast.Expr) gxui.CodeSyntaxLayers {
 		return nil
 	case *ast.Ident:
 		return nil
+	case *ast.CompositeLit:
+		return nil
 	default:
 		panic(fmt.Errorf("Unknown expression type: %T", expr))
 	}

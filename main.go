@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,8 +24,9 @@ import (
 var (
 	background = gxui.Gray10
 
-	app *cli.App
-	ctx *cli.Context
+	workingDir string
+	app        *cli.App
+	ctx        *cli.Context
 )
 
 func init() {
@@ -39,6 +42,11 @@ func init() {
 		ctx = context
 		gl.StartDriver(uiMain)
 	}
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		log.Fatal(err)
+	}
+	workingDir = dir
 }
 
 func main() {
@@ -79,6 +87,7 @@ func uiMain(driver gxui.Driver) {
 	editor := &statefulEditor{
 		CodeEditor: theme.CreateCodeEditor(),
 	}
+	suggester := &codeSuggestionProvider{editor: editor}
 
 	window.OnKeyDown(func(event gxui.KeyboardEvent) {
 		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {
@@ -93,6 +102,7 @@ func uiMain(driver gxui.Driver) {
 	cmdBox.OnKeyPress(func(event gxui.KeyboardEvent) {
 		if event.Key == gxui.KeyEnter {
 			setFile(editor, cmdBox.Text())
+			suggester.path = path.Join(workingDir, editor.filepath)
 			cmdBox.SetText("")
 			gxui.SetFocus(editor)
 		}
@@ -104,6 +114,7 @@ func uiMain(driver gxui.Driver) {
 	filepath := ctx.String("file")
 	if filepath != "" {
 		setFile(editor, filepath)
+		suggester.path = path.Join(workingDir, editor.filepath)
 	}
 	editor.SetDesiredWidth(math.MaxSize.W)
 
@@ -113,7 +124,6 @@ func uiMain(driver gxui.Driver) {
 	_ = err
 
 	editor.SetTabWidth(8)
-	suggester := &codeSuggestionProvider{path: editor.filepath, editor: editor}
 	editor.SetSuggestionProvider(suggester)
 	editor.OnTextChanged(func(changes []gxui.TextBoxEdit) {
 		editor.hasChanges = true

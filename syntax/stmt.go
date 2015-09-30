@@ -6,6 +6,7 @@ package syntax
 import (
 	"fmt"
 	"go/ast"
+	"log"
 
 	"github.com/google/gxui"
 )
@@ -15,6 +16,9 @@ func handleStmt(stmt ast.Stmt) gxui.CodeSyntaxLayers {
 		return nil
 	}
 	switch src := stmt.(type) {
+	case *ast.BadStmt:
+		log.Printf("Bad statement: %v", stmt)
+		return nil
 	case *ast.AssignStmt:
 		return nil
 	case *ast.SwitchStmt:
