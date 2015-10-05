@@ -13,11 +13,13 @@ import (
 	"time"
 
 	"github.com/codegangsta/cli"
-	"github.com/google/gxui"
-	"github.com/google/gxui/drivers/gl"
-	"github.com/google/gxui/math"
-	"github.com/google/gxui/themes/basic"
-	"github.com/google/gxui/themes/dark"
+	"github.com/nelsam/gxui"
+	"github.com/nelsam/gxui/drivers/gl"
+	"github.com/nelsam/gxui/math"
+	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/gxui/themes/dark"
+	"github.com/nelsam/gxui_playground/editors"
+	"github.com/nelsam/gxui_playground/suggestions"
 	"github.com/nelsam/gxui_playground/syntax"
 )
 
@@ -53,9 +55,9 @@ func main() {
 	app.Run(os.Args)
 }
 
-func setFile(editor *statefulEditor, filepath string) {
-	editor.filepath = filepath
-	editor.lastModified = time.Time{}
+func setFile(editor *editors.Editor, filepath string) {
+	editor.Filepath = filepath
+	editor.LastModified = time.Time{}
 
 	f, err := os.Open(filepath)
 	if os.IsNotExist(err) {
@@ -69,7 +71,7 @@ func setFile(editor *statefulEditor, filepath string) {
 	if err != nil {
 		panic(err)
 	}
-	editor.lastModified = finfo.ModTime()
+	editor.LastModified = finfo.ModTime()
 	b, err := ioutil.ReadAll(f)
 	if err != nil {
 		panic(err)
@@ -79,15 +81,13 @@ func setFile(editor *statefulEditor, filepath string) {
 }
 
 func uiMain(driver gxui.Driver) {
-	theme := dark.CreateTheme(driver)
-	theme.(*basic.Theme).WindowBackground = background
+	theme := dark.CreateTheme(driver).(*basic.Theme)
+	theme.WindowBackground = background
 
 	window := theme.CreateWindow(1600, 800, "GXUI Test Editor")
 	cmdBox := theme.CreateTextBox()
-	editor := &statefulEditor{
-		CodeEditor: theme.CreateCodeEditor(),
-	}
-	suggester := &codeSuggestionProvider{editor: editor}
+	editor := editors.New(driver, theme, theme.DefaultMonospaceFont()).(*editors.Editor)
+	suggester := suggestions.NewGoCodeProvider(editor).(*suggestions.GoCodeProvider)
 
 	window.OnKeyDown(func(event gxui.KeyboardEvent) {
 		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {
@@ -102,7 +102,7 @@ func uiMain(driver gxui.Driver) {
 	cmdBox.OnKeyPress(func(event gxui.KeyboardEvent) {
 		if event.Key == gxui.KeyEnter {
 			setFile(editor, cmdBox.Text())
-			suggester.path = path.Join(workingDir, editor.filepath)
+			suggester.Path = path.Join(workingDir, editor.Filepath)
 			cmdBox.SetText("")
 			gxui.SetFocus(editor)
 		}
@@ -114,11 +114,11 @@ func uiMain(driver gxui.Driver) {
 	filepath := ctx.String("file")
 	if filepath != "" {
 		setFile(editor, filepath)
-		suggester.path = path.Join(workingDir, editor.filepath)
+		suggester.Path = path.Join(workingDir, editor.Filepath)
 	}
 	editor.SetDesiredWidth(math.MaxSize.W)
 
-	newLayers, err := syntax.Layers(editor.filepath, editor.Text())
+	newLayers, err := syntax.Layers(editor.Filepath, editor.Text())
 	editor.SetSyntaxLayers(newLayers)
 	// TODO: display the error in some pane of the editor
 	_ = err
@@ -126,9 +126,9 @@ func uiMain(driver gxui.Driver) {
 	editor.SetTabWidth(8)
 	editor.SetSuggestionProvider(suggester)
 	editor.OnTextChanged(func(changes []gxui.TextBoxEdit) {
-		editor.hasChanges = true
+		editor.HasChanges = true
 		// TODO: only update layers that changed.
-		newLayers, err := syntax.Layers(editor.filepath, editor.Text())
+		newLayers, err := syntax.Layers(editor.Filepath, editor.Text())
 		editor.SetSyntaxLayers(newLayers)
 		// TODO: display the error in some pane of the editor
 		_ = err
@@ -137,16 +137,16 @@ func uiMain(driver gxui.Driver) {
 		if event.Modifier.Control() || event.Modifier.Super() {
 			switch event.Key {
 			case gxui.KeyS:
-				if !editor.lastModified.IsZero() {
-					finfo, err := os.Stat(editor.filepath)
+				if !editor.LastModified.IsZero() {
+					finfo, err := os.Stat(editor.Filepath)
 					if err != nil {
 						panic(err)
 					}
-					if finfo.ModTime().After(editor.lastModified) {
+					if finfo.ModTime().After(editor.LastModified) {
 						panic("Cannot save file: written since last open")
 					}
 				}
-				f, err := os.Create(editor.filepath)
+				f, err := os.Create(editor.Filepath)
 				if err != nil {
 					panic(err)
 				}
@@ -160,11 +160,11 @@ func uiMain(driver gxui.Driver) {
 				if err != nil {
 					panic(err)
 				}
-				editor.lastModified = finfo.ModTime()
+				editor.LastModified = finfo.ModTime()
 				f.Close()
-				editor.hasChanges = false
+				editor.HasChanges = false
 			case gxui.KeyO:
-				if editor.hasChanges {
+				if editor.HasChanges {
 					log.Printf("WARNING: Opening new file without saving changes")
 				}
 				gxui.SetFocus(cmdBox)

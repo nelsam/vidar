@@ -3,7 +3,7 @@
 // accompanying UNLICENSE file.
 package syntax
 
-import "github.com/google/gxui"
+import "github.com/nelsam/gxui"
 
 var (
 	builtinColor = gxui.Color{

@@ -5,9 +5,8 @@ package syntax
 
 import (
 	"go/ast"
-	"log"
 
-	"github.com/google/gxui"
+	"github.com/nelsam/gxui"
 )
 
 func handleUnresolved(unresolved *ast.Ident) gxui.CodeSyntaxLayers {
@@ -20,8 +19,6 @@ func handleUnresolved(unresolved *ast.Ident) gxui.CodeSyntaxLayers {
 		layers = append(layers, nodeLayer(unresolved, builtinColor))
 	case "nil":
 		layers = append(layers, nodeLayer(unresolved, nilColor))
-	default:
-		log.Printf("Found unresolved declaration %s at position %d", unresolved.String(), unresolved.Pos())
 	}
 	return layers
 }

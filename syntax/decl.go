@@ -9,7 +9,7 @@ import (
 	"go/token"
 	"log"
 
-	"github.com/google/gxui"
+	"github.com/nelsam/gxui"
 )
 
 func handleDecl(decl ast.Decl) gxui.CodeSyntaxLayers {

@@ -8,7 +8,7 @@ import (
 	"go/parser"
 	"go/token"
 
-	"github.com/google/gxui"
+	"github.com/nelsam/gxui"
 )
 
 func nodeLayer(node ast.Node, color gxui.Color) *gxui.CodeSyntaxLayer {

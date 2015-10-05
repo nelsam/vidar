@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/google/gxui"
+	"github.com/nelsam/gxui"
 )
 
 func handleExpr(expr ast.Expr) gxui.CodeSyntaxLayers {
+	if expr == nil {
+		return nil
+	}
 	switch expr.(type) {
 	case *ast.BadExpr:
 		return nil

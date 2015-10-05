@@ -8,7 +8,7 @@ import (
 	"go/ast"
 	"log"
 
-	"github.com/google/gxui"
+	"github.com/nelsam/gxui"
 )
 
 func handleStmt(stmt ast.Stmt) gxui.CodeSyntaxLayers {

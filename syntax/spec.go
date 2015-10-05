@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/google/gxui"
+	"github.com/nelsam/gxui"
 )
 
 func handleSpec(spec ast.Spec) gxui.CodeSyntaxLayers {
