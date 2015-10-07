@@ -30,6 +30,12 @@ func Layers(filename, text string) (gxui.CodeSyntaxLayers, error) {
 	if f.Doc != nil {
 		layers = append(layers, nodeLayer(f.Doc, commentColor))
 	}
+	if f.Package.IsValid() {
+		layers = append(layers, layer(f.Package, len("package"), keywordColor))
+	}
+	for _, importSpec := range f.Imports {
+		layers = append(layers, nodeLayer(importSpec, stringColor))
+	}
 	for _, comment := range f.Comments {
 		layers = append(layers, nodeLayer(comment, commentColor))
 	}

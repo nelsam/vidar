@@ -42,5 +42,11 @@ var (
 		B: 0,
 		A: 1.0,
 	}
+	numColor = gxui.Color{
+		R: 0.6,
+		G: 0,
+		B: 0.1,
+		A: 1.0,
+	}
 	commentColor = gxui.Gray60
 )

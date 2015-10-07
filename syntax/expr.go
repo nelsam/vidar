@@ -6,6 +6,7 @@ package syntax
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 
 	"github.com/nelsam/gxui"
 )
@@ -14,12 +15,16 @@ func handleExpr(expr ast.Expr) gxui.CodeSyntaxLayers {
 	if expr == nil {
 		return nil
 	}
-	switch expr.(type) {
+	switch src := expr.(type) {
 	case *ast.BadExpr:
 		return nil
+	case *ast.BasicLit:
+		return handleBasicLitExpr(src)
 	case *ast.BinaryExpr:
 		return nil
 	case *ast.CallExpr:
+		return handleCallExpr(src)
+	case *ast.FuncLit:
 		return nil
 	case *ast.IndexExpr:
 		return nil
@@ -28,7 +33,7 @@ func handleExpr(expr ast.Expr) gxui.CodeSyntaxLayers {
 	case *ast.ParenExpr:
 		return nil
 	case *ast.SelectorExpr:
-		return nil
+		return handleSelectorExpr(src)
 	case *ast.SliceExpr:
 		return nil
 	case *ast.StarExpr:
@@ -44,4 +49,30 @@ func handleExpr(expr ast.Expr) gxui.CodeSyntaxLayers {
 	default:
 		panic(fmt.Errorf("Unknown expression type: %T", expr))
 	}
+}
+
+func handleBasicLitExpr(src *ast.BasicLit) gxui.CodeSyntaxLayers {
+	var color gxui.Color
+	switch src.Kind {
+	case token.INT, token.FLOAT:
+		color = numColor
+	case token.CHAR, token.STRING:
+		color = stringColor
+	default:
+		return nil
+	}
+	return gxui.CodeSyntaxLayers{nodeLayer(src, color)}
+}
+
+func handleCallExpr(src *ast.CallExpr) gxui.CodeSyntaxLayers {
+	layers := make(gxui.CodeSyntaxLayers, 0, len(src.Args)+1)
+	layers = append(layers, handleExpr(src.Fun)...)
+	for _, arg := range src.Args {
+		layers = append(layers, handleExpr(arg)...)
+	}
+	return layers
+}
+
+func handleSelectorExpr(src *ast.SelectorExpr) gxui.CodeSyntaxLayers {
+	return gxui.CodeSyntaxLayers{nodeLayer(src.Sel, functionColor)}
 }

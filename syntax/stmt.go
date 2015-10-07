@@ -20,7 +20,7 @@ func handleStmt(stmt ast.Stmt) gxui.CodeSyntaxLayers {
 		log.Printf("Bad statement: %v", stmt)
 		return nil
 	case *ast.AssignStmt:
-		return nil
+		return handleAssignStmt(src)
 	case *ast.SwitchStmt:
 		return handleSwitchStmt(src)
 	case *ast.TypeSwitchStmt:
@@ -58,6 +58,17 @@ func handleStmt(stmt ast.Stmt) gxui.CodeSyntaxLayers {
 	default:
 		panic(fmt.Errorf("Unknown stmt type: %T", stmt))
 	}
+}
+
+func handleAssignStmt(stmt *ast.AssignStmt) gxui.CodeSyntaxLayers {
+	layers := make(gxui.CodeSyntaxLayers, len(stmt.Lhs)+len(stmt.Rhs))
+	for _, expr := range stmt.Lhs {
+		layers = append(layers, handleExpr(expr)...)
+	}
+	for _, expr := range stmt.Rhs {
+		layers = append(layers, handleExpr(expr)...)
+	}
+	return layers
 }
 
 func handleSwitchStmt(stmt *ast.SwitchStmt) gxui.CodeSyntaxLayers {
