@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/gxui_playground/scoring"
 )
 
 // Adapter is an adapter that is based on gxui's
@@ -32,7 +33,7 @@ func (a *Adapter) Sort(partial string) {
 	partialLower := strings.ToLower(partial)
 	a.scores = make([]int, len(a.suggestions))
 	for i, suggestion := range a.suggestions {
-		a.scores[i] = score(suggestion.Name(), strings.ToLower(suggestion.Name()), partial, partialLower)
+		a.scores[i] = scoring.Score(suggestion.Name(), strings.ToLower(suggestion.Name()), partial, partialLower)
 	}
 	sort.Sort(a)
 	a.DefaultAdapter.SetItems(a.suggestions)
@@ -49,19 +50,4 @@ func (a *Adapter) Less(i, j int) bool {
 func (a *Adapter) Swap(i, j int) {
 	a.suggestions[i], a.suggestions[j] = a.suggestions[j], a.suggestions[i]
 	a.scores[i], a.scores[j] = a.scores[j], a.scores[i]
-}
-
-func score(suggestion, suggestionLower, partial, partialLower string) int {
-	for i := len(partial); i > 0; i-- {
-		c := 0
-		if strings.Contains(suggestion, partial[:i]) {
-			c = i*i + 1
-		} else if strings.Contains(suggestionLower, partialLower[:i]) {
-			c = i * i
-		}
-		if c > 0 {
-			return c + score(suggestion, suggestionLower, partial[i:], partialLower[i:])
-		}
-	}
-	return 0
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/gxui/themes/dark"
+	"github.com/nelsam/gxui_playground/commander"
 	"github.com/nelsam/gxui_playground/editors"
 	"github.com/nelsam/gxui_playground/suggestions"
 	"github.com/nelsam/gxui_playground/syntax"
@@ -85,7 +86,7 @@ func uiMain(driver gxui.Driver) {
 	theme.WindowBackground = background
 
 	window := theme.CreateWindow(1600, 800, "GXUI Test Editor")
-	cmdBox := theme.CreateTextBox()
+	cmdBox := commander.New(theme)
 	editor := editors.New(driver, theme, theme.DefaultMonospaceFont()).(*editors.Editor)
 	suggester := suggestions.NewGoCodeProvider(editor).(*suggestions.GoCodeProvider)
 
@@ -97,23 +98,13 @@ func uiMain(driver gxui.Driver) {
 	// TODO: Check the system's DPI settings for this value
 	window.SetScale(1)
 
-	cmdBox.SetDesiredWidth(math.MaxSize.W)
-	cmdBox.SetMultiline(false)
-	cmdBox.OnKeyPress(func(event gxui.KeyboardEvent) {
-		if event.Key == gxui.KeyEnter {
-			setFile(editor, cmdBox.Text())
-			suggester.Path = path.Join(workingDir, editor.Filepath)
-			cmdBox.SetText("")
-			gxui.SetFocus(editor)
-		}
-	})
-
 	editor.SetText(`// Scratch
 // This buffer is for jotting down quick notes, but is not saved to disk.
 // Use at your own risk!`)
 	filepath := ctx.String("file")
 	if filepath != "" {
 		setFile(editor, filepath)
+		cmdBox.CurrentFile(filepath)
 		suggester.Path = path.Join(workingDir, editor.Filepath)
 	}
 	editor.SetDesiredWidth(math.MaxSize.W)
@@ -167,14 +158,17 @@ func uiMain(driver gxui.Driver) {
 				if editor.HasChanges {
 					log.Printf("WARNING: Opening new file without saving changes")
 				}
-				gxui.SetFocus(cmdBox)
+				cmdBox.PromptOpenFile(func(file string) {
+					setFile(editor, file)
+					gxui.SetFocus(editor)
+				})
 			}
 		}
 	})
 	layout := theme.CreateLinearLayout()
 	layout.SetDirection(gxui.BottomToTop)
 	layout.SetHorizontalAlignment(gxui.AlignLeft)
-	layout.AddChild(cmdBox)
+	layout.AddChild(cmdBox.LinearLayout)
 	layout.AddChild(editor)
 
 	window.AddChild(layout)
