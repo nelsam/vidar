@@ -48,6 +48,7 @@ func (c *Commander) PromptOpenFile(callback func(file string)) {
 	file.SetDesiredWidth(math.MaxSize.W)
 	file.SetMultiline(false)
 	file.SetText(c.file)
+	file.Controller().SetCaret(len(file.Text()))
 	file.OnKeyPress(func(event gxui.KeyboardEvent) {
 		if event.Key == gxui.KeyEnter {
 			callback(file.Text())
