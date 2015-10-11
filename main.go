@@ -4,13 +4,10 @@
 package main
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
-	"time"
 
 	"github.com/codegangsta/cli"
 	"github.com/nelsam/gxui"
@@ -20,8 +17,6 @@ import (
 	"github.com/nelsam/gxui/themes/dark"
 	"github.com/nelsam/gxui_playground/commander"
 	"github.com/nelsam/gxui_playground/editors"
-	"github.com/nelsam/gxui_playground/suggestions"
-	"github.com/nelsam/gxui_playground/syntax"
 )
 
 var (
@@ -56,39 +51,26 @@ func main() {
 	app.Run(os.Args)
 }
 
-func setFile(editor *editors.Editor, filepath string) {
-	editor.Filepath = filepath
-	editor.LastModified = time.Time{}
-
-	f, err := os.Open(filepath)
-	if os.IsNotExist(err) {
-		editor.SetText("")
-		return
-	}
-	if err != nil {
-		panic(err)
-	}
-	finfo, err := f.Stat()
-	if err != nil {
-		panic(err)
-	}
-	editor.LastModified = finfo.ModTime()
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		panic(err)
-	}
-	f.Close()
-	editor.SetText(string(b))
+func setFile(editor editors.Editor, filepath string) {
+	editor.Open(filepath)
 }
 
 func uiMain(driver gxui.Driver) {
+	filepath := ctx.String("file")
+	if filepath != "" {
+		workingDir, err := os.Getwd()
+		if err != nil {
+			panic(err)
+		}
+		filepath = path.Join(workingDir, filepath)
+	}
+
 	theme := dark.CreateTheme(driver).(*basic.Theme)
 	theme.WindowBackground = background
 
 	window := theme.CreateWindow(1600, 800, "GXUI Test Editor")
 	cmdBox := commander.New(driver, theme)
-	editor := editors.New(driver, theme, theme.DefaultMonospaceFont()).(*editors.Editor)
-	suggester := suggestions.NewGoCodeProvider(editor).(*suggestions.GoCodeProvider)
+	editor := editors.New(driver, theme, theme.DefaultMonospaceFont(), cmdBox.PromptOpenFile)
 
 	window.OnKeyDown(func(event gxui.KeyboardEvent) {
 		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {
@@ -98,78 +80,8 @@ func uiMain(driver gxui.Driver) {
 	// TODO: Check the system's DPI settings for this value
 	window.SetScale(1)
 
-	editor.SetText(`// Scratch
-// This buffer is for jotting down quick notes, but is not saved to disk.
-// Use at your own risk!`)
-	filepath := ctx.String("file")
-	if filepath != "" {
-		workingDir, err := os.Getwd()
-		if err != nil {
-			panic(err)
-		}
-		filepath = path.Join(workingDir, filepath)
-		setFile(editor, filepath)
-		cmdBox.CurrentFile(filepath)
-		suggester.Path = path.Join(workingDir, editor.Filepath)
-	}
-	editor.SetDesiredWidth(math.MaxSize.W)
+	cmdBox.CurrentFile(filepath)
 
-	newLayers, err := syntax.Layers(editor.Filepath, editor.Text())
-	editor.SetSyntaxLayers(newLayers)
-	// TODO: display the error in some pane of the editor
-	_ = err
-
-	editor.SetTabWidth(8)
-	editor.SetSuggestionProvider(suggester)
-	editor.OnTextChanged(func(changes []gxui.TextBoxEdit) {
-		editor.HasChanges = true
-		// TODO: only update layers that changed.
-		newLayers, err := syntax.Layers(editor.Filepath, editor.Text())
-		editor.SetSyntaxLayers(newLayers)
-		// TODO: display the error in some pane of the editor
-		_ = err
-	})
-	editor.OnKeyPress(func(event gxui.KeyboardEvent) {
-		if event.Modifier.Control() || event.Modifier.Super() {
-			switch event.Key {
-			case gxui.KeyS:
-				if !editor.LastModified.IsZero() {
-					finfo, err := os.Stat(editor.Filepath)
-					if err != nil {
-						panic(err)
-					}
-					if finfo.ModTime().After(editor.LastModified) {
-						panic("Cannot save file: written since last open")
-					}
-				}
-				f, err := os.Create(editor.Filepath)
-				if err != nil {
-					panic(err)
-				}
-				if !strings.HasSuffix(editor.Text(), "\n") {
-					editor.SetText(editor.Text() + "\n")
-				}
-				if _, err := f.WriteString(editor.Text()); err != nil {
-					panic(err)
-				}
-				finfo, err := f.Stat()
-				if err != nil {
-					panic(err)
-				}
-				editor.LastModified = finfo.ModTime()
-				f.Close()
-				editor.HasChanges = false
-			case gxui.KeyO:
-				if editor.HasChanges {
-					log.Printf("WARNING: Opening new file without saving changes")
-				}
-				cmdBox.PromptOpenFile(func(file string) {
-					setFile(editor, file)
-					gxui.SetFocus(editor)
-				})
-			}
-		}
-	})
 	layout := theme.CreateLinearLayout()
 	layout.SetDirection(gxui.BottomToTop)
 	layout.SetHorizontalAlignment(gxui.AlignLeft)
@@ -177,7 +89,7 @@ func uiMain(driver gxui.Driver) {
 	layout.AddChild(editor)
 
 	window.AddChild(layout)
-	gxui.SetFocus(editor)
+	editor.Open(filepath)
 
 	window.OnClose(driver.Terminate)
 	window.SetPadding(math.Spacing{L: 10, T: 10, R: 10, B: 10})

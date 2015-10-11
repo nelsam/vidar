@@ -5,6 +5,9 @@ package editors
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/nelsam/gxui"
@@ -12,29 +15,108 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/gxui_playground/suggestions"
+	"github.com/nelsam/gxui_playground/syntax"
 )
 
-// Editor is an implementation of gxui.CodeEditor, based on
-// gxui/mixins.CodeEditor.
 type Editor struct {
+	mixins.PanelHolder
+
+	editors map[string]*editor
+
+	driver  gxui.Driver
+	theme   *basic.Theme
+	font    gxui.Font
+	openCmd func(callback func(file string))
+}
+
+func New(driver gxui.Driver, theme *basic.Theme, font gxui.Font, openCmd func(callback func(file string))) *Editor {
+	e := &Editor{
+		editors: make(map[string]*editor),
+		driver:  driver,
+		theme:   theme,
+		font:    font,
+	}
+	e.Init(e, theme)
+	e.SetMargin(math.Spacing{L: 0, T: 2, R: 0, B: 0})
+	e.openCmd = openCmd
+	return e
+}
+
+func (e *Editor) Open(file string) {
+	if _, ok := e.editors[file]; ok {
+		return
+	}
+	editor := new(editor)
+	editor.Init(editor, e.driver, e.theme, e.font, file)
+	editor.SetTabWidth(8)
+	suggester := suggestions.NewGoCodeProvider(editor).(*suggestions.GoCodeProvider)
+	editor.SetSuggestionProvider(suggester)
+
+	e.editors[file] = editor
+	e.AddPanel(editor, file)
+	e.Select(e.PanelIndex(editor))
+
+	gxui.SetFocus(editor)
+}
+
+func (e *Editor) Files() []string {
+	files := make([]string, 0, len(e.editors))
+	for file := range e.editors {
+		files = append(files, file)
+	}
+	return files
+}
+
+func (e *Editor) CreatePanelTab() mixins.PanelTab {
+	return basic.CreatePanelTab(e.theme)
+}
+
+func (e *Editor) KeyPress(event gxui.KeyboardEvent) bool {
+	if event.Modifier.Control() || event.Modifier.Super() {
+		switch event.Key {
+		case gxui.KeyO:
+			e.openCmd(func(file string) {
+				e.Open(file)
+			})
+			return true
+		case gxui.KeyTab:
+			panels := e.PanelCount()
+			if panels < 2 {
+				return true
+			}
+			current := e.PanelIndex(e.SelectedPanel())
+			next := current + 1
+			if event.Modifier.Shift() {
+				next = current - 1
+			}
+			if next >= panels {
+				next = 0
+			}
+			if next < 0 {
+				next = panels - 1
+			}
+			e.Select(next)
+			return true
+		}
+	}
+	return e.PanelHolder.KeyPress(event)
+}
+
+// editor is an implementation of gxui.CodeEditor, based on
+// gxui/mixins.CodeEditor.
+type editor struct {
 	mixins.CodeEditor
 	adapter     *suggestions.Adapter
 	suggestions gxui.List
 	theme       *basic.Theme
 	outer       mixins.CodeEditorOuter
 
-	LastModified time.Time
-	HasChanges   bool
-	Filepath     string
+	lastModified time.Time
+	hasChanges   bool
+	filepath     string
 }
 
-func New(driver gxui.Driver, theme *basic.Theme, font gxui.Font) gxui.CodeEditor {
-	e := new(Editor)
-	e.Init(e, driver, theme, font)
-	return e
-}
-
-func (e *Editor) Init(outer mixins.CodeEditorOuter, driver gxui.Driver, theme *basic.Theme, font gxui.Font) {
+func (e *editor) Init(outer mixins.CodeEditorOuter, driver gxui.Driver, theme *basic.Theme, font gxui.Font, file string) {
 	e.outer = outer
 	e.theme = theme
 
@@ -43,6 +125,17 @@ func (e *Editor) Init(outer mixins.CodeEditorOuter, driver gxui.Driver, theme *b
 	e.suggestions.SetAdapter(e.adapter)
 
 	e.CodeEditor.Init(outer, driver, theme, font)
+	e.SetDesiredWidth(math.MaxSize.W)
+
+	e.OnTextChanged(func(changes []gxui.TextBoxEdit) {
+		e.hasChanges = true
+		// TODO: only update layers that changed.
+		newLayers, err := syntax.Layers(e.filepath, e.Text())
+		e.SetSyntaxLayers(newLayers)
+		// TODO: display the error in some pane of the editor
+		_ = err
+	})
+	e.open(file)
 
 	e.SetTextColor(theme.TextBoxDefaultStyle.FontColor)
 	e.SetMargin(math.Spacing{L: 3, T: 3, R: 3, B: 3})
@@ -50,8 +143,36 @@ func (e *Editor) Init(outer mixins.CodeEditorOuter, driver gxui.Driver, theme *b
 	e.SetBorderPen(gxui.TransparentPen)
 }
 
+func (e *editor) open(file string) {
+	if file == "" {
+		e.SetText(`// Scratch
+// This buffer is for jotting down quick notes, but is not saved to disk.
+// Use at your own risk!`)
+		return
+	}
+	f, err := os.Open(file)
+	if os.IsNotExist(err) {
+		e.SetText("")
+		return
+	}
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	finfo, err := f.Stat()
+	if err != nil {
+		panic(err)
+	}
+	e.lastModified = finfo.ModTime()
+	b, err := ioutil.ReadAll(f)
+	if err != nil {
+		panic(err)
+	}
+	e.SetText(string(b))
+}
+
 // mixins.CodeEditor overrides
-func (e *Editor) Paint(c gxui.Canvas) {
+func (e *editor) Paint(c gxui.Canvas) {
 	e.CodeEditor.Paint(c)
 
 	if e.HasFocus() {
@@ -60,14 +181,14 @@ func (e *Editor) Paint(c gxui.Canvas) {
 	}
 }
 
-func (e *Editor) CreateSuggestionList() gxui.List {
+func (e *editor) CreateSuggestionList() gxui.List {
 	l := e.theme.CreateList()
 	l.SetBackgroundBrush(e.theme.CodeSuggestionListStyle.Brush)
 	l.SetBorderPen(e.theme.CodeSuggestionListStyle.Pen)
 	return l
 }
 
-func (e *Editor) SetSuggestionProvider(provider gxui.CodeSuggestionProvider) {
+func (e *editor) SetSuggestionProvider(provider gxui.CodeSuggestionProvider) {
 	if e.SuggestionProvider() != provider {
 		e.CodeEditor.SetSuggestionProvider(provider)
 		if e.IsSuggestionListShowing() {
@@ -76,24 +197,24 @@ func (e *Editor) SetSuggestionProvider(provider gxui.CodeSuggestionProvider) {
 	}
 }
 
-func (e *Editor) IsSuggestionListShowing() bool {
+func (e *editor) IsSuggestionListShowing() bool {
 	return e.outer.Children().Find(e.suggestions) != nil
 }
 
-func (e *Editor) SortSuggestionList() {
+func (e *editor) SortSuggestionList() {
 	caret := e.Controller().LastCaret()
 	partial := e.WordAt(caret)
 	e.adapter.Sort(partial)
 }
 
-func (e *Editor) ShowSuggestionList() {
+func (e *editor) ShowSuggestionList() {
 	if e.SuggestionProvider() == nil || e.IsSuggestionListShowing() {
 		return
 	}
 	e.updateSuggestionList()
 }
 
-func (e *Editor) updateSuggestionList() {
+func (e *editor) updateSuggestionList() {
 	caret := e.Controller().LastCaret()
 
 	suggestions := e.SuggestionProvider().SuggestionsAt(caret)
@@ -131,21 +252,60 @@ func (e *Editor) updateSuggestionList() {
 	child.Layout(cs.Rect().Offset(target).Intersect(bounds))
 }
 
-func (e *Editor) HideSuggestionList() {
+func (e *editor) HideSuggestionList() {
 	if e.IsSuggestionListShowing() {
 		e.RemoveChild(e.suggestions)
 	}
 }
 
-func (e *Editor) KeyPress(event gxui.KeyboardEvent) bool {
-	switch event.Key {
-	case gxui.KeyTab:
-		// TODO: implement emacs-style indent.
-	case gxui.KeySpace:
-		if event.Modifier.Control() {
+func (e *editor) KeyPress(event gxui.KeyboardEvent) bool {
+	if event.Modifier.Control() || event.Modifier.Super() {
+		switch event.Key {
+		case gxui.KeySpace:
 			e.ShowSuggestionList()
 			return true
+		case gxui.KeyS:
+			if !e.lastModified.IsZero() {
+				finfo, err := os.Stat(e.filepath)
+				if err != nil {
+					panic(err)
+				}
+				if finfo.ModTime().After(e.lastModified) {
+					panic("Cannot save file: written since last open")
+				}
+			}
+			f, err := os.Create(e.filepath)
+			if err != nil {
+				panic(err)
+			}
+			if !strings.HasSuffix(e.Text(), "\n") {
+				e.SetText(e.Text() + "\n")
+			}
+			if _, err := f.WriteString(e.Text()); err != nil {
+				panic(err)
+			}
+			finfo, err := f.Stat()
+			if err != nil {
+				panic(err)
+			}
+			e.lastModified = finfo.ModTime()
+			f.Close()
+			e.hasChanges = false
+			return true
+		case gxui.KeyTab:
+			return false
 		}
+	}
+	switch event.Key {
+	case gxui.KeyTab:
+		// TODO: Gain knowledge about scope, so we know how much to indent.
+		switch {
+		case event.Modifier.Shift():
+			e.Controller().UnindentSelection(e.TabWidth())
+		default:
+			e.Controller().IndentSelection(e.TabWidth())
+		}
+		return true
 	case gxui.KeyUp:
 		fallthrough
 	case gxui.KeyDown:
@@ -181,7 +341,7 @@ func (e *Editor) KeyPress(event gxui.KeyboardEvent) bool {
 	return e.CodeEditor.KeyPress(event)
 }
 
-func (e *Editor) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
+func (e *editor) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
 	consume = e.CodeEditor.KeyStroke(event)
 	if e.IsSuggestionListShowing() {
 		e.SortSuggestionList()
@@ -189,7 +349,7 @@ func (e *Editor) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
 	return
 }
 
-func (e *Editor) CreateLine(theme gxui.Theme, index int) (mixins.TextBoxLine, gxui.Control) {
+func (e *editor) CreateLine(theme gxui.Theme, index int) (mixins.TextBoxLine, gxui.Control) {
 	lineNumber := theme.CreateLabel()
 	lineNumber.SetText(fmt.Sprintf("%4d", index+1))
 
