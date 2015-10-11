@@ -86,7 +86,7 @@ func uiMain(driver gxui.Driver) {
 	theme.WindowBackground = background
 
 	window := theme.CreateWindow(1600, 800, "GXUI Test Editor")
-	cmdBox := commander.New(theme)
+	cmdBox := commander.New(driver, theme)
 	editor := editors.New(driver, theme, theme.DefaultMonospaceFont()).(*editors.Editor)
 	suggester := suggestions.NewGoCodeProvider(editor).(*suggestions.GoCodeProvider)
 
@@ -103,6 +103,11 @@ func uiMain(driver gxui.Driver) {
 // Use at your own risk!`)
 	filepath := ctx.String("file")
 	if filepath != "" {
+		workingDir, err := os.Getwd()
+		if err != nil {
+			panic(err)
+		}
+		filepath = path.Join(workingDir, filepath)
 		setFile(editor, filepath)
 		cmdBox.CurrentFile(filepath)
 		suggester.Path = path.Join(workingDir, editor.Filepath)
@@ -168,7 +173,7 @@ func uiMain(driver gxui.Driver) {
 	layout := theme.CreateLinearLayout()
 	layout.SetDirection(gxui.BottomToTop)
 	layout.SetHorizontalAlignment(gxui.AlignLeft)
-	layout.AddChild(cmdBox.LinearLayout)
+	layout.AddChild(cmdBox)
 	layout.AddChild(editor)
 
 	window.AddChild(layout)

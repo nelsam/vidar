@@ -3,25 +3,29 @@ package commander
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
+	"github.com/nelsam/gxui/mixins"
+	"github.com/nelsam/gxui/themes/basic"
 )
 
 type Commander struct {
-	gxui.LinearLayout
+	mixins.LinearLayout
 
-	theme gxui.Theme
-	file  string
+	driver gxui.Driver
+	theme  *basic.Theme
+	file   string
 }
 
-func New(theme gxui.Theme) *Commander {
-	layout := theme.CreateLinearLayout()
-	layout.SetDirection(gxui.LeftToRight)
+func New(driver gxui.Driver, theme *basic.Theme) *Commander {
+	commander := &Commander{
+		driver: driver,
+		theme:  theme,
+	}
+	commander.LinearLayout.Init(commander, theme)
+	commander.SetDirection(gxui.LeftToRight)
 	size := theme.DefaultMonospaceFont().GlyphMaxSize()
 	size.W = math.MaxSize.W
-	layout.SetSize(size)
-	return &Commander{
-		LinearLayout: layout,
-		theme:        theme,
-	}
+	commander.SetSize(size)
+	return commander
 }
 
 func (c *Commander) Clear() {
@@ -44,18 +48,11 @@ func (c *Commander) PromptOpenFile(callback func(file string)) {
 	label.SetText("Open File:")
 	c.AddChild(label)
 
-	file := c.theme.CreateTextBox()
-	file.SetDesiredWidth(math.MaxSize.W)
-	file.SetMultiline(false)
-	file.SetText(c.file)
-	file.Controller().SetCaret(len(file.Text()))
-	file.OnKeyPress(func(event gxui.KeyboardEvent) {
-		if event.Key == gxui.KeyEnter {
-			callback(file.Text())
-			c.CurrentFile(file.Text())
-		}
-	})
+	commanderCallback := func(file string) {
+		c.CurrentFile(file)
+		callback(file)
+	}
+	file := NewFSLocator(c.driver, c.theme, c.file, commanderCallback)
 	c.AddChild(file)
-
 	gxui.SetFocus(file)
 }
