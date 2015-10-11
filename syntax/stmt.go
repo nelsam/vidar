@@ -27,6 +27,8 @@ func handleStmt(stmt ast.Stmt) gxui.CodeSyntaxLayers {
 		return handleTypeSwitchStmt(src)
 	case *ast.CaseClause:
 		return handleCaseStmt(src)
+	case *ast.DeclStmt:
+		return handleDecl(src.Decl)
 	case *ast.SendStmt:
 		return nil
 	case *ast.SelectStmt:
