@@ -30,7 +30,7 @@ func (f *FileOpener) Name() string {
 
 func (f *FileOpener) Start(control gxui.Control) gxui.Control {
 	f.file.loadEditorDir(control)
-	input := make(chan gxui.Focusable)
+	input := make(chan gxui.Focusable, 1)
 	f.input = input
 	input <- f.file
 	close(input)
