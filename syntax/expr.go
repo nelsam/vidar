@@ -24,6 +24,8 @@ func handleExpr(expr ast.Expr) gxui.CodeSyntaxLayers {
 		return nil
 	case *ast.CallExpr:
 		return handleCallExpr(src)
+	case *ast.ChanType:
+		return nil
 	case *ast.FuncLit:
 		return nil
 	case *ast.IndexExpr:
