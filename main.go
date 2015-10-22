@@ -12,8 +12,8 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/gxui/themes/dark"
-	"github.com/nelsam/gxui_playground/commander"
-	"github.com/nelsam/gxui_playground/settings"
+	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/settings"
 	"github.com/spf13/cobra"
 )
 

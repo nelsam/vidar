@@ -12,7 +12,7 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/gxui_playground/controller"
+	"github.com/nelsam/vidar/controller"
 )
 
 type FSLocator struct {

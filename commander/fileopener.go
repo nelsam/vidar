@@ -6,12 +6,12 @@ package commander
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/gxui_playground/controller"
+	"github.com/nelsam/vidar/controller"
 )
 
 type FileOpener struct {
-	file *FSLocator
-	done bool
+	file  *FSLocator
+	input <-chan gxui.Focusable
 }
 
 func NewFileOpener(driver gxui.Driver, theme *basic.Theme) controller.Command {
@@ -30,15 +30,15 @@ func (f *FileOpener) Name() string {
 
 func (f *FileOpener) Start(control gxui.Control) gxui.Control {
 	f.file.loadEditorDir(control)
-	f.done = false
+	input := make(chan gxui.Focusable)
+	f.input = input
+	input <- f.file
+	close(input)
 	return nil
 }
 
 func (f *FileOpener) Next() gxui.Focusable {
-	if f.done {
-		return nil
-	}
-	return f.file
+	return <-f.input
 }
 
 func (f *FileOpener) Exec(element interface{}) (consume bool) {

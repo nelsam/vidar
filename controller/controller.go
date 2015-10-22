@@ -7,8 +7,8 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/gxui_playground/controller/editor"
-	"github.com/nelsam/gxui_playground/controller/navigator"
+	"github.com/nelsam/vidar/controller/editor"
+	"github.com/nelsam/vidar/controller/navigator"
 )
 
 // Command is a command that executes against the Controller or one of
@@ -100,7 +100,7 @@ func (c *Controller) Editor() Editor {
 }
 
 // Execute implements
-// "github.com/nelsam/gxui_playground/commander".Controller.
+// "github.com/nelsam/vidar/commander".Controller.
 func (c *Controller) Execute(command Command) {
 	execRecursively(command, c)
 	c.Editor().Focus()

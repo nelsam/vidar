@@ -7,7 +7,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/gxui_playground/settings"
+	"github.com/nelsam/vidar/settings"
 )
 
 // Pane is a type that has a button and a window frame.

@@ -6,8 +6,8 @@ package commander
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/gxui_playground/controller"
-	"github.com/nelsam/gxui_playground/settings"
+	"github.com/nelsam/vidar/controller"
+	"github.com/nelsam/vidar/settings"
 )
 
 type projectPane interface {
@@ -17,7 +17,7 @@ type projectPane interface {
 type ProjectAdder struct {
 	path  *FSLocator
 	name  gxui.TextBox
-	items <-chan gxui.Focusable
+	input <-chan gxui.Focusable
 }
 
 func NewProjectAdder(driver gxui.Driver, theme *basic.Theme) controller.Command {
@@ -38,17 +38,17 @@ func (p *ProjectAdder) Name() string {
 func (p *ProjectAdder) Start(control gxui.Control) gxui.Control {
 	p.path.loadEditorDir(control)
 
-	items := make(chan gxui.Focusable, 2)
-	items <- p.path
-	items <- p.name
-	close(items)
-	p.items = items
+	input := make(chan gxui.Focusable, 2)
+	p.input = input
+	input <- p.path
+	input <- p.name
+	close(input)
 
 	return nil
 }
 
 func (p *ProjectAdder) Next() gxui.Focusable {
-	return <-p.items
+	return <-p.input
 }
 
 func (p *ProjectAdder) Project() settings.Project {

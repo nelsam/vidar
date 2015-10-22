@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/gxui_playground/scoring"
+	"github.com/nelsam/vidar/scoring"
 )
 
 // Adapter is an adapter that is based on gxui's

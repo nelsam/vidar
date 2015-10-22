@@ -14,8 +14,8 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/gxui_playground/suggestions"
-	"github.com/nelsam/gxui_playground/syntax"
+	"github.com/nelsam/vidar/suggestions"
+	"github.com/nelsam/vidar/syntax"
 )
 
 type Editor struct {
