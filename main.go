@@ -4,73 +4,51 @@
 package main
 
 import (
-	"log"
 	"os"
 	"path"
-	"path/filepath"
 
-	"github.com/codegangsta/cli"
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/drivers/gl"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/gxui/themes/dark"
 	"github.com/nelsam/gxui_playground/commander"
-	"github.com/nelsam/gxui_playground/editors"
+	"github.com/nelsam/gxui_playground/settings"
+	"github.com/spf13/cobra"
 )
 
 var (
 	background = gxui.Gray10
 
 	workingDir string
-	app        *cli.App
-	ctx        *cli.Context
+	cmd        *cobra.Command
+	files      []string
 )
 
 func init() {
-	app = cli.NewApp()
-	app.Name = "Experimental Go Editor"
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:  "file",
-			Usage: "The file to open on startup",
+	cmd = &cobra.Command{
+		Use:   "vidar [files...]",
+		Short: "An experimental Go editor",
+		Long:  "An editor for Go code, still in its infancy.  Basic editing of Go code is mostly complete, but there's still a high potential for data loss.",
+		Run: func(cmd *cobra.Command, args []string) {
+			files = args
+			gl.StartDriver(uiMain)
 		},
 	}
-	app.Action = func(context *cli.Context) {
-		ctx = context
-		gl.StartDriver(uiMain)
-	}
-	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	if err != nil {
-		log.Fatal(err)
-	}
-	workingDir = dir
+	cmd.PersistentFlags().StringVarP(&settings.AssetsDir, "assets", "a", "", "The directory where assets (i.e. images and such) live.")
 }
 
 func main() {
-	app.Run(os.Args)
-}
-
-func setFile(editor editors.Editor, filepath string) {
-	editor.Open(filepath)
+	cmd.Execute()
 }
 
 func uiMain(driver gxui.Driver) {
-	filepath := ctx.String("file")
-	if filepath != "" {
-		workingDir, err := os.Getwd()
-		if err != nil {
-			panic(err)
-		}
-		filepath = path.Join(workingDir, filepath)
-	}
-
 	theme := dark.CreateTheme(driver).(*basic.Theme)
 	theme.WindowBackground = background
 
-	window := theme.CreateWindow(1600, 800, "GXUI Test Editor")
-	cmdBox := commander.New(driver, theme)
-	editor := editors.New(driver, theme, theme.DefaultMonospaceFont(), cmdBox.PromptOpenFile)
+	// TODO: figure out a better way to get this resolution
+	window := theme.CreateWindow(1600, 800, "Vidar - GXUI Go Editor")
+	commander := commander.New(driver, theme, theme.DefaultMonospaceFont())
 
 	window.OnKeyDown(func(event gxui.KeyboardEvent) {
 		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {
@@ -80,16 +58,15 @@ func uiMain(driver gxui.Driver) {
 	// TODO: Check the system's DPI settings for this value
 	window.SetScale(1)
 
-	cmdBox.CurrentFile(filepath)
-
-	layout := theme.CreateLinearLayout()
-	layout.SetDirection(gxui.BottomToTop)
-	layout.SetHorizontalAlignment(gxui.AlignLeft)
-	layout.AddChild(cmdBox)
-	layout.AddChild(editor)
-
-	window.AddChild(layout)
-	editor.Open(filepath)
+	window.AddChild(commander)
+	workingDir, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	for _, file := range files {
+		filepath := path.Join(workingDir, file)
+		commander.Controller().Editor().Open(filepath)
+	}
 
 	window.OnClose(driver.Terminate)
 	window.SetPadding(math.Spacing{L: 10, T: 10, R: 10, B: 10})

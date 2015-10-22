@@ -1,7 +1,7 @@
 // This is free and unencumbered software released into the public
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
-package editors
+package editor
 
 import (
 	"fmt"
@@ -23,13 +23,12 @@ type Editor struct {
 
 	editors map[string]*editor
 
-	driver  gxui.Driver
-	theme   *basic.Theme
-	font    gxui.Font
-	openCmd func(callback func(file string))
+	driver gxui.Driver
+	theme  *basic.Theme
+	font   gxui.Font
 }
 
-func New(driver gxui.Driver, theme *basic.Theme, font gxui.Font, openCmd func(callback func(file string))) *Editor {
+func New(driver gxui.Driver, theme *basic.Theme, font gxui.Font) *Editor {
 	e := &Editor{
 		editors: make(map[string]*editor),
 		driver:  driver,
@@ -38,16 +37,17 @@ func New(driver gxui.Driver, theme *basic.Theme, font gxui.Font, openCmd func(ca
 	}
 	e.Init(e, theme)
 	e.SetMargin(math.Spacing{L: 0, T: 2, R: 0, B: 0})
-	e.openCmd = openCmd
 	return e
 }
 
 func (e *Editor) Open(file string) {
-	if _, ok := e.editors[file]; ok {
+	if editor, ok := e.editors[file]; ok {
+		e.Select(e.PanelIndex(editor))
+		e.Focus()
 		return
 	}
 	editor := new(editor)
-	editor.Init(editor, e.driver, e.theme, e.font, file)
+	editor.Init(e.driver, e.theme, e.font, file)
 	editor.SetTabWidth(8)
 	suggester := suggestions.NewGoCodeProvider(editor).(*suggestions.GoCodeProvider)
 	editor.SetSuggestionProvider(suggester)
@@ -55,8 +55,11 @@ func (e *Editor) Open(file string) {
 	e.editors[file] = editor
 	e.AddPanel(editor, file)
 	e.Select(e.PanelIndex(editor))
+	e.Focus()
+}
 
-	gxui.SetFocus(editor)
+func (e *Editor) Focus() {
+	gxui.SetFocus(e.SelectedPanel().(gxui.Focusable))
 }
 
 func (e *Editor) Files() []string {
@@ -74,11 +77,6 @@ func (e *Editor) CreatePanelTab() mixins.PanelTab {
 func (e *Editor) KeyPress(event gxui.KeyboardEvent) bool {
 	if event.Modifier.Control() || event.Modifier.Super() {
 		switch event.Key {
-		case gxui.KeyO:
-			e.openCmd(func(file string) {
-				e.Open(file)
-			})
-			return true
 		case gxui.KeyTab:
 			panels := e.PanelCount()
 			if panels < 2 {
@@ -102,6 +100,10 @@ func (e *Editor) KeyPress(event gxui.KeyboardEvent) bool {
 	return e.PanelHolder.KeyPress(event)
 }
 
+func (e *Editor) CurrentFile() string {
+	return e.SelectedPanel().(*editor).filepath
+}
+
 // editor is an implementation of gxui.CodeEditor, based on
 // gxui/mixins.CodeEditor.
 type editor struct {
@@ -109,22 +111,20 @@ type editor struct {
 	adapter     *suggestions.Adapter
 	suggestions gxui.List
 	theme       *basic.Theme
-	outer       mixins.CodeEditorOuter
 
 	lastModified time.Time
 	hasChanges   bool
 	filepath     string
 }
 
-func (e *editor) Init(outer mixins.CodeEditorOuter, driver gxui.Driver, theme *basic.Theme, font gxui.Font, file string) {
-	e.outer = outer
+func (e *editor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, file string) {
 	e.theme = theme
 
 	e.adapter = &suggestions.Adapter{}
-	e.suggestions = e.outer.CreateSuggestionList()
+	e.suggestions = e.CreateSuggestionList()
 	e.suggestions.SetAdapter(e.adapter)
 
-	e.CodeEditor.Init(outer, driver, theme, font)
+	e.CodeEditor.Init(e, driver, theme, font)
 	e.SetDesiredWidth(math.MaxSize.W)
 
 	e.OnTextChanged(func(changes []gxui.TextBoxEdit) {
@@ -135,7 +135,8 @@ func (e *editor) Init(outer mixins.CodeEditorOuter, driver gxui.Driver, theme *b
 		// TODO: display the error in some pane of the editor
 		_ = err
 	})
-	e.open(file)
+	e.filepath = file
+	e.open()
 
 	e.SetTextColor(theme.TextBoxDefaultStyle.FontColor)
 	e.SetMargin(math.Spacing{L: 3, T: 3, R: 3, B: 3})
@@ -143,14 +144,14 @@ func (e *editor) Init(outer mixins.CodeEditorOuter, driver gxui.Driver, theme *b
 	e.SetBorderPen(gxui.TransparentPen)
 }
 
-func (e *editor) open(file string) {
-	if file == "" {
+func (e *editor) open() {
+	if e.filepath == "" {
 		e.SetText(`// Scratch
 // This buffer is for jotting down quick notes, but is not saved to disk.
 // Use at your own risk!`)
 		return
 	}
-	f, err := os.Open(file)
+	f, err := os.Open(e.filepath)
 	if os.IsNotExist(err) {
 		e.SetText("")
 		return
@@ -198,7 +199,7 @@ func (e *editor) SetSuggestionProvider(provider gxui.CodeSuggestionProvider) {
 }
 
 func (e *editor) IsSuggestionListShowing() bool {
-	return e.outer.Children().Find(e.suggestions) != nil
+	return e.Children().Find(e.suggestions) != nil
 }
 
 func (e *editor) SortSuggestionList() {
@@ -244,7 +245,7 @@ func (e *editor) updateSuggestionList() {
 	// TODO: What if the last caret is not visible?
 	bounds := e.Size().Rect().Contract(e.Padding())
 	line := e.Line(lineIdx)
-	lineOffset := gxui.ChildToParent(math.ZeroPoint, line, e.outer)
+	lineOffset := gxui.ChildToParent(math.ZeroPoint, line, e)
 	target := line.PositionAt(caret).Add(lineOffset)
 	cs := e.suggestions.DesiredSize(math.ZeroSize, bounds.Size())
 	e.suggestions.Select(e.suggestions.Adapter().ItemAt(0))

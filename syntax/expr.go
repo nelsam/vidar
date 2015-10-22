@@ -30,6 +30,8 @@ func handleExpr(expr ast.Expr) gxui.CodeSyntaxLayers {
 		return nil
 	case *ast.KeyValueExpr:
 		return nil
+	case *ast.MapType:
+		return nil
 	case *ast.ParenExpr:
 		return nil
 	case *ast.SelectorExpr:
