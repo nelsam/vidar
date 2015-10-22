@@ -16,6 +16,8 @@ func handleExpr(expr ast.Expr) gxui.CodeSyntaxLayers {
 		return nil
 	}
 	switch src := expr.(type) {
+	case *ast.ArrayType:
+		return nil
 	case *ast.BadExpr:
 		return nil
 	case *ast.BasicLit:
