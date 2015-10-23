@@ -12,6 +12,7 @@ import (
 	_ "image/png"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/nelsam/gxui"
@@ -21,64 +22,84 @@ import (
 	"github.com/nfnt/resize"
 )
 
-type fakeNode struct {
-	gxui.AdapterBase
-	path     string
-	subPaths []string
-}
-
-func (f fakeNode) Count() int {
-	return len(f.subPaths)
-}
-
-func (f fakeNode) NodeAt(index int) gxui.TreeNode {
-	return fakeNode{
-		path: path.Join(f.path, f.subPaths[index]),
+var (
+	dirColor = gxui.Color{
+		R: 0.8,
+		G: 1,
+		B: 0.7,
+		A: 1.0,
 	}
+)
+
+type directory struct {
+	gxui.AdapterBase
+	path    string
+	subDirs []string
 }
 
-func (f fakeNode) ItemIndex(item gxui.AdapterItem) int {
+func directories(dirPath string) *directory {
+	dir := &directory{
+		path: dirPath,
+	}
+	filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err == nil && path != dirPath && info.IsDir() {
+			if !strings.HasPrefix(info.Name(), ".") {
+				dir.subDirs = append(dir.subDirs, path)
+			}
+			return filepath.SkipDir
+		}
+		return nil
+	})
+	return dir
+}
+
+func (d *directory) Count() int {
+	return len(d.subDirs)
+}
+
+func (d *directory) NodeAt(index int) gxui.TreeNode {
+	return directories(d.subDirs[index])
+}
+
+func (d *directory) ItemIndex(item gxui.AdapterItem) int {
 	path := item.(string)
-	for i, subPath := range f.subPaths {
-		if strings.HasPrefix(path, subPath) {
+	for i, subDir := range d.subDirs {
+		if strings.HasPrefix(path, subDir) {
 			return i
 		}
 	}
 	return -1
 }
 
-func (f fakeNode) Item() gxui.AdapterItem {
-	return f.path
+func (d *directory) Item() gxui.AdapterItem {
+	return d.path
 }
 
-func (f fakeNode) Size(theme gxui.Theme) math.Size {
+func (d *directory) Size(theme gxui.Theme) math.Size {
 	return math.Size{
 		W: 20 * theme.DefaultMonospaceFont().GlyphMaxSize().W,
-		H: math.MaxSize.H,
+		H: theme.DefaultMonospaceFont().GlyphMaxSize().H,
 	}
 }
 
-func (f fakeNode) Create(theme gxui.Theme) gxui.Control {
+func (d *directory) Create(theme gxui.Theme) gxui.Control {
 	label := theme.CreateLabel()
-	label.SetText(f.path)
+	label.SetText(path.Base(d.path))
+	label.SetColor(dirColor)
 	return label
 }
 
 type Directories struct {
-	button gxui.Button
-	tree   gxui.Tree
+	button  gxui.Button
+	tree    gxui.Tree
+	dirTree *directory
 }
 
 func (d *Directories) Init(driver gxui.Driver, theme *basic.Theme, assetsDir string) {
 	d.button = createIconButton(driver, theme, path.Join(assetsDir, "folder.png"))
 	d.tree = theme.CreateTree()
-	d.tree.SetAdapter(&fakeNode{
-		path: "foo",
-		subPaths: []string{
-			"bar",
-			"baz",
-		},
-	})
+	d.dirTree = directories(os.Getenv("HOME"))
+	d.tree.SetAdapter(d.dirTree)
 }
 
 func (d *Directories) Button() gxui.Button {

@@ -58,7 +58,9 @@ func handleFuncDecl(decl *ast.FuncDecl) gxui.CodeSyntaxLayers {
 			layers = append(layers, nodeLayer(block.Type, typeColor))
 		}
 	}
-	layers = append(layers, handleBlockStmt(decl.Body)...)
+	if decl.Body != nil {
+		layers = append(layers, handleBlockStmt(decl.Body)...)
+	}
 	return layers
 }
 
