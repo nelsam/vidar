@@ -4,12 +4,9 @@
 package navigator
 
 import (
-	// Supported image types
+	"bytes"
 	"image"
 	"image/draw"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
 	"os"
 	"path"
 	"path/filepath"
@@ -18,8 +15,14 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/assets"
 	"github.com/nelsam/vidar/settings"
 	"github.com/nfnt/resize"
+
+	// Supported image types
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 )
 
 var (
@@ -95,8 +98,8 @@ type Directories struct {
 	dirTree *directory
 }
 
-func (d *Directories) Init(driver gxui.Driver, theme *basic.Theme, assetsDir string) {
-	d.button = createIconButton(driver, theme, path.Join(assetsDir, "folder.png"))
+func (d *Directories) Init(driver gxui.Driver, theme *basic.Theme) {
+	d.button = createIconButton(driver, theme, "folder.png")
 	d.tree = theme.CreateTree()
 	d.dirTree = directories(os.Getenv("HOME"))
 	d.tree.SetAdapter(d.dirTree)
@@ -116,8 +119,8 @@ type Projects struct {
 	projectsAdapter *gxui.DefaultAdapter
 }
 
-func (p *Projects) Init(driver gxui.Driver, theme *basic.Theme, assetsDir string) {
-	p.button = createIconButton(driver, theme, path.Join(assetsDir, "projects.png"))
+func (p *Projects) Init(driver gxui.Driver, theme *basic.Theme) {
+	p.button = createIconButton(driver, theme, "projects.png")
 	p.projects = theme.CreateList()
 	p.projectsAdapter = gxui.CreateDefaultAdapter()
 
@@ -142,10 +145,11 @@ func createIconButton(driver gxui.Driver, theme *basic.Theme, iconPath string) g
 	button := theme.CreateButton()
 	button.SetType(gxui.PushButton)
 
-	f, err := os.Open(iconPath)
+	fileBytes, err := assets.Asset(iconPath)
 	if err != nil {
 		panic(err)
 	}
+	f := bytes.NewBuffer(fileBytes)
 	src, _, err := image.Decode(f)
 	if err != nil {
 		panic(err)

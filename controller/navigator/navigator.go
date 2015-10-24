@@ -7,7 +7,6 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/settings"
 )
 
 // Pane is a type that has a button and a window frame.
@@ -47,11 +46,11 @@ func (n *Navigator) Init(driver gxui.Driver, theme *basic.Theme) {
 	n.AddChild(n.buttons)
 
 	projects := new(Projects)
-	projects.Init(driver, theme, settings.AssetsDir)
+	projects.Init(driver, theme)
 	n.Add(projects)
 
 	dirs := new(Directories)
-	dirs.Init(driver, theme, settings.AssetsDir)
+	dirs.Init(driver, theme)
 	n.Add(dirs)
 }
 
