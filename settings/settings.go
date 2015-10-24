@@ -14,11 +14,6 @@ import (
 var (
 	settingsDir  = path.Join(os.Getenv("HOME"), ".config", "vidar")
 	projectsFile = path.Join(settingsDir, "projects")
-
-	// AssetsDir is the directory where assets (images and the like)
-	// are stored.  It should be set either at compile time or via
-	// command line flags.
-	AssetsDir string
 )
 
 type Project struct {

@@ -7,6 +7,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commands"
 )
 
 // Pane is a type that has a button and a window frame.
@@ -17,7 +18,11 @@ type Pane interface {
 
 	// Frame returns the frame that is displayed when the Pane's
 	// Button is clicked.
-	Frame() gxui.Focusable
+	Frame() gxui.Control
+
+	// OnComplete takes a function which takes a command, and runs
+	// that function when the Pane's action is complete.
+	OnComplete(func(commands.Command))
 }
 
 type Navigator struct {
@@ -25,19 +30,22 @@ type Navigator struct {
 
 	theme   *basic.Theme
 	buttons gxui.LinearLayout
-	frame   gxui.Focusable
+	frame   gxui.Control
 
 	panes []Pane
+
+	cmdExecutor func(command commands.Command)
 }
 
-func New(driver gxui.Driver, theme *basic.Theme, font gxui.Font) *Navigator {
+func New(driver gxui.Driver, theme *basic.Theme, cmdExecutor func(command commands.Command)) *Navigator {
 	nav := new(Navigator)
-	nav.Init(driver, theme)
+	nav.Init(driver, theme, cmdExecutor)
 	return nav
 }
 
-func (n *Navigator) Init(driver gxui.Driver, theme *basic.Theme) {
+func (n *Navigator) Init(driver gxui.Driver, theme *basic.Theme, cmdExecutor func(command commands.Command)) {
 	n.LinearLayout.Init(n, theme)
+	n.cmdExecutor = cmdExecutor
 	n.theme = theme
 	n.SetDirection(gxui.LeftToRight)
 
@@ -49,7 +57,7 @@ func (n *Navigator) Init(driver gxui.Driver, theme *basic.Theme) {
 	projects.Init(driver, theme)
 	n.Add(projects)
 
-	dirs := new(Directories)
+	dirs := new(ProjectTree)
 	dirs.Init(driver, theme)
 	n.Add(dirs)
 }
@@ -67,6 +75,7 @@ func (n *Navigator) Buttons() gxui.LinearLayout {
 }
 
 func (n *Navigator) Add(pane Pane) {
+	pane.OnComplete(n.cmdExecutor)
 	n.panes = append(n.panes, pane)
 	button := pane.Button()
 	button.OnClick(func(event gxui.MouseEvent) {
@@ -81,7 +90,7 @@ func (n *Navigator) Add(pane Pane) {
 		n.frame = pane.Frame()
 		if n.frame != nil {
 			n.AddChild(n.frame)
-			gxui.SetFocus(n.frame)
+			//gxui.SetFocus(n.frame)
 		}
 	})
 	n.buttons.AddChild(button)

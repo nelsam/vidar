@@ -8,7 +8,7 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/controller"
+	"github.com/nelsam/vidar/commands"
 )
 
 type commandBox struct {
@@ -19,7 +19,7 @@ type commandBox struct {
 	controller Controller
 
 	label   gxui.Label
-	current controller.Command
+	current commands.Command
 	display gxui.Control
 	input   gxui.Focusable
 }
@@ -49,7 +49,7 @@ func (b *commandBox) Clear() {
 	b.current = nil
 }
 
-func (b *commandBox) Run(command controller.Command) (needsInput bool) {
+func (b *commandBox) Run(command commands.Command) (needsInput bool) {
 	b.current = command
 
 	b.label.SetText(b.current.Name())
@@ -60,7 +60,7 @@ func (b *commandBox) Run(command controller.Command) (needsInput bool) {
 	return b.nextInput()
 }
 
-func (b *commandBox) Current() controller.Command {
+func (b *commandBox) Current() commands.Command {
 	return b.current
 }
 

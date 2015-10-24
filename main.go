@@ -13,7 +13,6 @@ import (
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/gxui/themes/dark"
 	"github.com/nelsam/vidar/commander"
-	"github.com/nelsam/vidar/settings"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +34,6 @@ func init() {
 			gl.StartDriver(uiMain)
 		},
 	}
-	cmd.PersistentFlags().StringVarP(&settings.AssetsDir, "assets", "a", "", "The directory where assets (i.e. images and such) live.")
 }
 
 func main() {

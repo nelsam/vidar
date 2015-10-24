@@ -1,20 +1,23 @@
 // This is free and unencumbered software released into the public
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
-package commander
+package commands
 
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/controller"
 )
+
+type opener interface {
+	Open(string)
+}
 
 type FileOpener struct {
 	file  *FSLocator
 	input <-chan gxui.Focusable
 }
 
-func NewFileOpener(driver gxui.Driver, theme *basic.Theme) controller.Command {
+func NewFileOpener(driver gxui.Driver, theme *basic.Theme) *FileOpener {
 	fileOpener := new(FileOpener)
 	fileOpener.Init(driver, theme)
 	return fileOpener
@@ -22,6 +25,10 @@ func NewFileOpener(driver gxui.Driver, theme *basic.Theme) controller.Command {
 
 func (f *FileOpener) Init(driver gxui.Driver, theme *basic.Theme) {
 	f.file = NewFSLocator(driver, theme)
+}
+
+func (f *FileOpener) SetPath(filepath string) {
+	f.file.SetPath(filepath)
 }
 
 func (f *FileOpener) Name() string {
@@ -41,10 +48,10 @@ func (f *FileOpener) Next() gxui.Focusable {
 	return <-f.input
 }
 
-func (f *FileOpener) Exec(element interface{}) (consume bool) {
-	if editor, ok := element.(controller.Editor); ok {
-		editor.Open(f.file.Path())
-		return true
+func (f *FileOpener) Exec(element interface{}) (executed, consume bool) {
+	if opener, ok := element.(opener); ok {
+		opener.Open(f.file.Path())
+		return true, false
 	}
-	return false
+	return false, false
 }

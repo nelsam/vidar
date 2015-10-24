@@ -1,7 +1,7 @@
 // This is free and unencumbered software released into the public
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
-package commander
+package commands
 
 import (
 	"os"
@@ -12,7 +12,6 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/controller"
 )
 
 type FSLocator struct {
@@ -41,8 +40,7 @@ func (f *FSLocator) Init(driver gxui.Driver, theme *basic.Theme) {
 }
 
 func (f *FSLocator) loadEditorDir(control gxui.Control) {
-	editor := findEditor(control)
-	startingPath := editor.CurrentFile()
+	startingPath := findCurrentFile(control)
 	dirname := filepath.Dir(startingPath)
 
 	f.dir.SetText(dirname)
@@ -51,6 +49,12 @@ func (f *FSLocator) loadEditorDir(control gxui.Control) {
 
 func (f *FSLocator) Path() string {
 	return filepath.Join(f.dir.Text(), f.file.Text())
+}
+
+func (f *FSLocator) SetPath(filePath string) {
+	dir, file := filepath.Split(filePath)
+	f.dir.SetText(dir)
+	f.file.SetText(file)
 }
 
 func (f *FSLocator) KeyPress(event gxui.KeyboardEvent) bool {
@@ -178,16 +182,20 @@ func (f *fileBox) setFile(file string) {
 	f.Controller().SetCaret(len(file))
 }
 
-func findEditor(control gxui.Control) controller.Editor {
+type currentFiler interface {
+	CurrentFile() string
+}
+
+func findCurrentFile(control gxui.Control) string {
 	switch src := control.(type) {
-	case controller.Editor:
-		return src
+	case currentFiler:
+		return src.CurrentFile()
 	case gxui.Parent:
 		for _, child := range src.Children() {
-			if editor := findEditor(child.Control); editor != nil {
-				return editor
+			if file := findCurrentFile(child.Control); file != "" {
+				return file
 			}
 		}
 	}
-	return nil
+	return ""
 }

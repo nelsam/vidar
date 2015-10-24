@@ -1,12 +1,11 @@
 // This is free and unencumbered software released into the public
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
-package commander
+package commands
 
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/settings"
 )
 
@@ -20,7 +19,7 @@ type ProjectAdder struct {
 	input <-chan gxui.Focusable
 }
 
-func NewProjectAdder(driver gxui.Driver, theme *basic.Theme) controller.Command {
+func NewProjectAdder(driver gxui.Driver, theme *basic.Theme) *ProjectAdder {
 	projectAdder := new(ProjectAdder)
 	projectAdder.Init(driver, theme)
 	return projectAdder
@@ -58,12 +57,12 @@ func (p *ProjectAdder) Project() settings.Project {
 	}
 }
 
-func (p *ProjectAdder) Exec(element interface{}) (consume bool) {
+func (p *ProjectAdder) Exec(element interface{}) (executed, consume bool) {
 	if projects, ok := element.(projectPane); ok {
 		project := p.Project()
 		settings.AddProject(project)
 		projects.Add(project)
-		return true
+		return true, true
 	}
-	return false
+	return false, false
 }

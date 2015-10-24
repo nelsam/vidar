@@ -8,6 +8,7 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commands"
 	"github.com/nelsam/vidar/controller"
 )
 
@@ -21,28 +22,31 @@ type CommandBox interface {
 
 	// Run takes a command and runs it.  Returns true if user input is
 	// required before executing the command.
-	Run(controller.Command) (requiresInput bool)
+	Run(commands.Command) (requiresInput bool)
 
-	// Current returns the controller.Command that is currently
+	// Current returns the commands.Command that is currently
 	// running in the CommandBox.  If no command is currently running,
 	// Current returns nil.
-	Current() controller.Command
+	Current() commands.Command
 
 	// Clear clears the CommandBox's current command context.
 	Clear()
 }
 
-// Completer is a type that defines when a gxui.KeyboardEvent
-// completes an action.
+// Completer is a type which defines when a gxui.KeyboardEvent
+// completes an action.  Types returned from
+// "../commands".Command.Next() may implement this if they don't want
+// to immediately complete when the "enter" key is pressed.
 type Completer interface {
 	// Complete returns whether or not the key signals a completion of
 	// the input.
 	Complete(gxui.KeyboardEvent) bool
 }
 
+// Controller is a type which controls the main editor UI.
 type Controller interface {
 	gxui.Control
-	Execute(controller.Command)
+	Execute(commands.Command)
 	Editor() controller.Editor
 	Navigator() controller.Navigator
 }
@@ -60,19 +64,21 @@ type Commander struct {
 	controller Controller
 	box        CommandBox
 
-	commands []controller.Command
-	bindings map[gxui.KeyboardEvent]controller.Command
+	commands []commands.Command
+	bindings map[gxui.KeyboardEvent]commands.Command
 }
 
+// New creates and initializes a *Commander, then returns it.
 func New(driver gxui.Driver, theme *basic.Theme, font gxui.Font) *Commander {
 	commander := new(Commander)
 	commander.Init(driver, theme, font)
 	return commander
 }
 
+// Init resets c's state.
 func (c *Commander) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font) {
 	c.LinearLayout.Init(c, theme)
-	c.bindings = make(map[gxui.KeyboardEvent]controller.Command)
+	c.bindings = make(map[gxui.KeyboardEvent]commands.Command)
 	c.driver = driver
 	c.theme = theme
 	c.font = font
@@ -86,7 +92,7 @@ func (c *Commander) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font)
 	c.AddChild(c.controller)
 
 	// TODO: Store these in a config file or something
-	openFile := NewFileOpener(c.driver, c.theme)
+	openFile := commands.NewFileOpener(c.driver, c.theme)
 	c.commands = append(c.commands, openFile)
 	ctrlO := gxui.KeyboardEvent{
 		Key:      gxui.KeyO,
@@ -99,7 +105,7 @@ func (c *Commander) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font)
 	c.bindings[ctrlO] = openFile
 	c.bindings[supO] = openFile
 
-	addProject := NewProjectAdder(c.driver, c.theme)
+	addProject := commands.NewProjectAdder(c.driver, c.theme)
 	c.commands = append(c.commands, addProject)
 	ctrlShiftN := gxui.KeyboardEvent{
 		Key:      gxui.KeyN,
@@ -113,10 +119,12 @@ func (c *Commander) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font)
 	c.bindings[supShiftN] = addProject
 }
 
+// Controller returns c's controller.
 func (c *Commander) Controller() Controller {
 	return c.controller
 }
 
+// KeyPress handles key bindings for c.
 func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 	cmdDone := c.box.HasFocus() && event.Modifier == 0 && event.Key == gxui.KeyEnter
 	if command, ok := c.bindings[event]; ok {

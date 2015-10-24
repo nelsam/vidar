@@ -4,45 +4,15 @@
 package controller
 
 import (
+	"fmt"
+
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commands"
 	"github.com/nelsam/vidar/controller/editor"
 	"github.com/nelsam/vidar/controller/navigator"
 )
-
-// Command is a command that executes against the Controller or one of
-// its children.
-type Command interface {
-	// Start starts the command.  The returned gxui.Control can be
-	// used to display the status of the command.  The elements
-	// returned by Next() should have OnUnfocus() triggers to update
-	// this element.
-	//
-	// If no display element is necessary, or if display will be taken
-	// care of by the input elements, Start should return nil.
-	Start(gxui.Control) gxui.Control
-
-	// Name returns the name of the command
-	Name() string
-
-	// Next returns the next control element for reading user input.
-	// By default, this is called every time the commander receives a
-	// gxui.KeyEnter event in KeyPress.  If there are situations where
-	// this is not the desired behavior, the gxui.Control should
-	// consume the event.  If more keys are required to signal the end
-	// of input, the control should implement Completer.
-	//
-	// When no more user input is required, Next should return nil.
-	Next() gxui.Focusable
-
-	// Exec executes the command on the provided element.  It should
-	// return true when it no longer needs to descend into nested
-	// elements.  For example, if the command needs to execute against
-	// a gxui.Editor, it should return false until it is passed a
-	// gxui.Editor, then perform its action and return true.
-	Exec(interface{}) (consume bool)
-}
 
 type Navigator interface {
 	gxui.Control
@@ -83,7 +53,7 @@ func (c *Controller) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 	c.font = font
 
 	c.SetDirection(gxui.LeftToRight)
-	c.navigator = navigator.New(driver, theme, font)
+	c.navigator = navigator.New(driver, theme, c.Execute)
 	c.AddChild(c.navigator)
 	c.editor = editor.New(driver, theme, font)
 	c.AddChild(c.editor)
@@ -99,18 +69,22 @@ func (c *Controller) Editor() Editor {
 	return c.editor
 }
 
-// Execute implements
-// "github.com/nelsam/vidar/commander".Controller.
-func (c *Controller) Execute(command Command) {
-	execRecursively(command, c)
+// Execute implements "../commander".Controller.
+func (c *Controller) Execute(command commands.Command) {
+	executed, _ := execRecursively(command, c)
+	if !executed {
+		panic(fmt.Errorf("Command %s ran without executing", command.Name()))
+	}
 	c.Editor().Focus()
 }
 
-func execRecursively(command Command, element interface{}) (consume bool) {
-	consume = command.Exec(element)
+func execRecursively(command commands.Command, element interface{}) (executed, consume bool) {
+	executed, consume = command.Exec(element)
+	var childExecuted bool
 	if parent, ok := element.(gxui.Parent); ok && !consume {
 		for _, child := range parent.Children() {
-			consume = execRecursively(command, child.Control)
+			childExecuted, consume = execRecursively(command, child.Control)
+			executed = executed || childExecuted
 			if consume {
 				return
 			}
@@ -118,7 +92,8 @@ func execRecursively(command Command, element interface{}) (consume bool) {
 	}
 	if elementer, ok := element.(Elementer); ok {
 		for _, element := range elementer.Elements() {
-			consume = execRecursively(command, element)
+			childExecuted, consume = execRecursively(command, element)
+			executed = executed || childExecuted
 			if consume {
 				return
 			}
