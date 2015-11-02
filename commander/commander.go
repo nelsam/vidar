@@ -126,6 +126,11 @@ func (c *Commander) Controller() Controller {
 
 // KeyPress handles key bindings for c.
 func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
+	if event.Modifier == 0 && event.Key == gxui.KeyEscape {
+		c.box.Clear()
+		c.controller.Editor().Focus()
+		return true
+	}
 	cmdDone := c.box.HasFocus() && event.Modifier == 0 && event.Key == gxui.KeyEnter
 	if command, ok := c.bindings[event]; ok {
 		if c.box.Run(command) {

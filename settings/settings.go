@@ -5,10 +5,11 @@ package settings
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
+
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -17,11 +18,9 @@ var (
 )
 
 type Project struct {
-	Name, Path string
-}
-
-func (p Project) Line() []byte {
-	return []byte(fmt.Sprintf("%s: %s", p.Name, p.Path))
+	Name   string
+	Path   string
+	Gopath string
 }
 
 func (p Project) String() string {
@@ -49,29 +48,28 @@ func Projects() []Project {
 		panic(err)
 	}
 	var projects []Project
-	for _, line := range bytes.Split(projectsBytes, []byte{'\n'}) {
-		if len(line) > 0 {
-			projects = append(projects, fromLine(line))
-		}
+	if err := yaml.Unmarshal(projectsBytes, &projects); err != nil {
+		panic(err)
 	}
 	return projects
 }
 
 func AddProject(project Project) {
-	projects, err := os.OpenFile(projectsFile, os.O_APPEND, os.ModeAppend)
+	projects, err := os.Create(projectsFile)
 	if os.IsNotExist(err) {
-		projects, err = os.Create(projectsFile)
-		if os.IsNotExist(err) {
-			err = os.MkdirAll(path.Dir(projectsFile), 0777)
-			if err != nil {
-				panic(err)
-			}
-			projects, err = os.Create(projectsFile)
+		err = os.MkdirAll(path.Dir(projectsFile), 0777)
+		if err != nil {
+			panic(err)
 		}
+		projects, err = os.Create(projectsFile)
 	}
 	if err != nil {
 		panic(err)
 	}
 	defer projects.Close()
-	projects.Write(project.Line())
+	bytes, err := yaml.Marshal(append(Projects(), project))
+	if err != nil {
+		panic(err)
+	}
+	projects.Write(bytes)
 }

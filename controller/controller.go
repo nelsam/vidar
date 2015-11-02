@@ -20,7 +20,7 @@ type Navigator interface {
 }
 
 type Editor interface {
-	gxui.PanelHolder
+	gxui.Control
 	Focus()
 	CurrentFile() string
 	Open(file string)

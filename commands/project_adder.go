@@ -4,6 +4,9 @@
 package commands
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/settings"
@@ -14,9 +17,12 @@ type projectPane interface {
 }
 
 type ProjectAdder struct {
-	path  *FSLocator
-	name  gxui.TextBox
-	input <-chan gxui.Focusable
+	status gxui.Label
+
+	path   *FSLocator
+	name   gxui.TextBox
+	gopath *FSLocator
+	input  <-chan gxui.Focusable
 }
 
 func NewProjectAdder(driver gxui.Driver, theme *basic.Theme) *ProjectAdder {
@@ -26,8 +32,10 @@ func NewProjectAdder(driver gxui.Driver, theme *basic.Theme) *ProjectAdder {
 }
 
 func (p *ProjectAdder) Init(driver gxui.Driver, theme *basic.Theme) {
+	p.status = theme.CreateLabel()
 	p.path = NewFSLocator(driver, theme)
 	p.name = theme.CreateTextBox()
+	p.gopath = NewFSLocator(driver, theme)
 }
 
 func (p *ProjectAdder) Name() string {
@@ -37,23 +45,40 @@ func (p *ProjectAdder) Name() string {
 func (p *ProjectAdder) Start(control gxui.Control) gxui.Control {
 	p.path.loadEditorDir(control)
 
-	input := make(chan gxui.Focusable, 2)
+	input := make(chan gxui.Focusable, 3)
 	p.input = input
 	input <- p.path
 	input <- p.name
+	input <- p.gopath
 	close(input)
 
-	return nil
+	return p.status
 }
 
 func (p *ProjectAdder) Next() gxui.Focusable {
-	return <-p.input
+	next := <-p.input
+	switch next {
+	case p.path:
+		p.status.SetText("Project Path:")
+	case p.name:
+		p.status.SetText(fmt.Sprintf("Name for %s", p.path.Path()))
+	case p.gopath:
+		startPath := p.path.Path()
+		lastSrc := strings.LastIndex(startPath, "/src/")
+		if lastSrc != -1 {
+			startPath = startPath[:lastSrc] + "/"
+		}
+		p.gopath.SetPath(startPath)
+		p.status.SetText(fmt.Sprintf("GOPATH for %s", p.name.Text()))
+	}
+	return next
 }
 
 func (p *ProjectAdder) Project() settings.Project {
 	return settings.Project{
-		Name: p.name.Text(),
-		Path: p.path.Path(),
+		Name:   p.name.Text(),
+		Path:   p.path.Path(),
+		Gopath: p.gopath.Path(),
 	}
 }
 

@@ -50,7 +50,7 @@ func (p *Projects) Projects() []settings.Project {
 func (p *Projects) OnComplete(onComplete func(commands.Command)) {
 	opener := commands.NewProjectOpener(p.driver, p.theme)
 	p.projects.OnSelectionChanged(func(selected gxui.AdapterItem) {
-		opener.SetProject(selected.(settings.Project).Name)
+		opener.SetProject(selected.(settings.Project))
 		onComplete(opener)
 	})
 }

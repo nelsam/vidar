@@ -6,10 +6,11 @@ package commands
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/settings"
 )
 
 type projectSetter interface {
-	SetProject(string)
+	SetProject(settings.Project)
 }
 
 type ProjectOpener struct {
@@ -43,8 +44,8 @@ func (p *ProjectOpener) Next() gxui.Focusable {
 	return <-p.input
 }
 
-func (p *ProjectOpener) SetProject(projName string) {
-	p.name.SetText(projName)
+func (p *ProjectOpener) SetProject(proj settings.Project) {
+	p.name.SetText(proj.Name)
 }
 
 func (p *ProjectOpener) Exec(element interface{}) (executed, consume bool) {
@@ -52,6 +53,15 @@ func (p *ProjectOpener) Exec(element interface{}) (executed, consume bool) {
 	if !ok {
 		return false, false
 	}
-	setter.SetProject(p.name.Text())
+	var proj settings.Project
+	for _, proj = range settings.Projects() {
+		if proj.Name == p.name.Text() {
+			break
+		}
+	}
+	if proj.Name != p.name.Text() {
+		return false, false
+	}
+	setter.SetProject(proj)
 	return true, false
 }

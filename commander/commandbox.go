@@ -5,11 +5,29 @@ package commander
 
 import (
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commands"
 )
+
+var (
+	cmdColor = gxui.Color{
+		R: 0.3,
+		G: 0.3,
+		B: 0.6,
+		A: 1,
+	}
+	displayColor = gxui.Color{
+		R: 0.3,
+		G: 1,
+		B: 0.6,
+		A: 1,
+	}
+)
+
+type colorSetter interface {
+	SetColor(gxui.Color)
+}
 
 type commandBox struct {
 	mixins.LinearLayout
@@ -34,12 +52,12 @@ func (b *commandBox) Init(theme *basic.Theme, controller Controller) {
 	b.theme = theme
 	b.controller = controller
 	b.label = b.theme.CreateLabel()
+	b.label.SetColor(cmdColor)
 
 	b.LinearLayout.Init(b, b.theme)
 	b.SetDirection(gxui.LeftToRight)
-	size := b.theme.DefaultMonospaceFont().GlyphMaxSize()
-	size.W = math.MaxSize.W
-	b.SetSize(size)
+	b.AddChild(b.label)
+	b.Clear()
 }
 
 func (b *commandBox) Clear() {
@@ -55,6 +73,9 @@ func (b *commandBox) Run(command commands.Command) (needsInput bool) {
 	b.label.SetText(b.current.Name())
 	b.display = b.current.Start(b.controller)
 	if b.display != nil {
+		if colorSetter, ok := b.display.(colorSetter); ok {
+			colorSetter.SetColor(displayColor)
+		}
 		b.AddChild(b.display)
 	}
 	return b.nextInput()
@@ -64,7 +85,10 @@ func (b *commandBox) Current() commands.Command {
 	return b.current
 }
 
-func (b *commandBox) KeyPress(event gxui.KeyboardEvent) bool {
+func (b *commandBox) KeyPress(event gxui.KeyboardEvent) (consume bool) {
+	if event.Modifier == 0 && event.Key == gxui.KeyEscape {
+		return false
+	}
 	isEnter := event.Modifier == 0 && event.Key == gxui.KeyEnter
 	complete := isEnter
 	if completer, ok := b.input.(Completer); ok {

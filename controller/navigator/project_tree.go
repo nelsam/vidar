@@ -1,7 +1,6 @@
 package navigator
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,7 +48,7 @@ type ProjectTree struct {
 	files        gxui.List
 	filesAdapter *fileListAdapter
 
-	layout *splitterLayout
+	layout gxui.LinearLayout
 }
 
 func (d *ProjectTree) Init(driver gxui.Driver, theme *basic.Theme) {
@@ -57,16 +56,16 @@ func (d *ProjectTree) Init(driver gxui.Driver, theme *basic.Theme) {
 	d.theme = theme
 
 	d.button = createIconButton(driver, theme, "folder.png")
-	d.dirs = theme.CreateTree()
-	d.dirsAdapter = dirTree(os.Getenv("HOME"))
+	d.dirs = newDirTree(theme)
+	d.dirsAdapter = loadDirTreeAdapter(os.Getenv("HOME"))
 	d.dirs.SetAdapter(d.dirsAdapter)
 
 	d.files = theme.CreateList()
 	d.filesAdapter = fileList(os.Getenv("HOME"))
 	d.files.SetAdapter(d.filesAdapter)
 
-	d.layout = newSplitterLayout(d.theme)
-	d.layout.SetOrientation(gxui.Vertical)
+	d.layout = theme.CreateLinearLayout()
+	d.layout.SetDirection(gxui.TopToBottom)
 	d.layout.AddChild(d.dirs)
 	d.layout.AddChild(d.files)
 
@@ -81,20 +80,15 @@ func (d *ProjectTree) Button() gxui.Button {
 }
 
 func (d *ProjectTree) SetRoot(path string) {
-	d.dirsAdapter = dirTree(path)
+	d.dirsAdapter = loadDirTreeAdapter(path)
 	d.dirs.SetAdapter(d.dirsAdapter)
+
 	d.filesAdapter = fileList(path)
 	d.files.SetAdapter(d.filesAdapter)
 }
 
-func (d *ProjectTree) SetProject(project string) {
-	for _, proj := range settings.Projects() {
-		if proj.Name == project {
-			d.SetRoot(proj.Path)
-			return
-		}
-	}
-	panic(fmt.Errorf("Could not find project %s", project))
+func (d *ProjectTree) SetProject(project settings.Project) {
+	d.SetRoot(project.Path)
 }
 
 func (d *ProjectTree) Open(filePath string) {
@@ -115,57 +109,28 @@ func (d *ProjectTree) OnComplete(onComplete func(commands.Command)) {
 	})
 }
 
-type splitterLayout struct {
-	mixins.SplitterLayout
-	theme *basic.Theme
-}
-
-func newSplitterLayout(theme *basic.Theme) *splitterLayout {
-	layout := &splitterLayout{
-		theme: theme,
-	}
-	layout.Init(layout, theme)
-	return layout
-}
-
-func (l *splitterLayout) CreateSplitterBar() gxui.Control {
-	b := &mixins.SplitterBar{}
-	b.Init(b, l.theme)
-	b.SetBackgroundColor(splitterBarBackgroundColor)
-	b.SetForegroundColor(splitterBarForegroundColor)
-	return b
-}
-
-func (l *splitterLayout) DesiredSize(min, max math.Size) math.Size {
-	width := 30 * l.theme.DefaultMonospaceFont().GlyphMaxSize().W
-	if min.W > width {
-		width = min.W
-	}
-	if max.W < width {
-		width = max.W
-	}
-	return math.Size{
-		W: width,
-		H: max.H,
-	}
-}
-
 type fsAdapter struct {
 	gxui.AdapterBase
 	path     string
 	children []string
-	click    func(event gxui.MouseEvent)
+	dirs     bool
 }
 
 func fsList(dirPath string, dirs bool) fsAdapter {
-	dir := fsAdapter{
+	fs := fsAdapter{
 		path: dirPath,
+		dirs: dirs,
 	}
-	filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
-		if err == nil && path != dirPath {
-			use := (dirs && info.IsDir()) || (!dirs && !info.IsDir())
+	fs.Walk()
+	return fs
+}
+
+func (a *fsAdapter) Walk() {
+	filepath.Walk(a.path, func(path string, info os.FileInfo, err error) error {
+		if err == nil && path != a.path {
+			use := (a.dirs && info.IsDir()) || (!a.dirs && !info.IsDir())
 			if use && !strings.HasPrefix(info.Name(), ".") {
-				dir.children = append(dir.children, path)
+				a.children = append(a.children, path)
 			}
 			if info.IsDir() {
 				return filepath.SkipDir
@@ -173,7 +138,6 @@ func fsList(dirPath string, dirs bool) fsAdapter {
 		}
 		return nil
 	})
-	return dir
 }
 
 func (a *fsAdapter) Count() int {
@@ -203,11 +167,46 @@ func (a *fsAdapter) create(theme gxui.Theme, path string) gxui.Label {
 	return label
 }
 
+type dirTree struct {
+	mixins.Tree
+	theme *basic.Theme
+}
+
+func newDirTree(theme *basic.Theme) gxui.Tree {
+	t := &dirTree{
+		theme: theme,
+	}
+	t.Init(t, theme)
+	return t
+}
+
+func (t *dirTree) DesiredSize(min, max math.Size) math.Size {
+	width := 20 * t.theme.DefaultMonospaceFont().GlyphMaxSize().W
+	if min.W > width {
+		width = min.W
+	}
+	if max.W < width {
+		width = max.W
+	}
+	height := 20 * t.theme.DefaultMonospaceFont().GlyphMaxSize().H
+	if min.H > height {
+		height = min.H
+	}
+	if max.H < height {
+		height = max.H
+	}
+	size := math.Size{
+		W: width,
+		H: height,
+	}
+	return size
+}
+
 type dirTreeAdapter struct {
 	fsAdapter
 }
 
-func dirTree(dirPath string) *dirTreeAdapter {
+func loadDirTreeAdapter(dirPath string) *dirTreeAdapter {
 	return &dirTreeAdapter{
 		fsAdapter: fsList(dirPath, true),
 	}
@@ -218,7 +217,7 @@ func (a *dirTreeAdapter) Item() gxui.AdapterItem {
 }
 
 func (a *dirTreeAdapter) NodeAt(index int) gxui.TreeNode {
-	return dirTree(a.children[index])
+	return loadDirTreeAdapter(a.children[index])
 }
 
 func (a *dirTreeAdapter) Create(theme gxui.Theme) gxui.Control {
