@@ -6,6 +6,7 @@ package editor
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
@@ -20,8 +21,14 @@ type ProjectEditor struct {
 	origPath string
 }
 
-func (p *ProjectEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font) {
+func (p *ProjectEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, project settings.Project) {
 	p.TabbedEditor.Init(p, driver, theme, font)
+	p.project = project
+}
+
+func (p *ProjectEditor) Open(path string) {
+	name := strings.TrimPrefix(strings.TrimPrefix(path, p.project.Path), "/")
+	p.TabbedEditor.New(name, path)
 }
 
 func (p *ProjectEditor) Attach() {
@@ -55,7 +62,7 @@ type MultiProjectEditor struct {
 
 func New(driver gxui.Driver, theme *basic.Theme, font gxui.Font) *MultiProjectEditor {
 	defaultEditor := new(ProjectEditor)
-	defaultEditor.Init(driver, theme, font)
+	defaultEditor.Init(driver, theme, font, settings.DefaultProject)
 
 	e := &MultiProjectEditor{
 		projects: map[string]*ProjectEditor{
@@ -79,7 +86,7 @@ func (e *MultiProjectEditor) SetProject(project settings.Project) {
 	editor, ok := e.projects[project.Name]
 	if !ok {
 		editor = new(ProjectEditor)
-		editor.Init(e.driver, e.theme, e.font)
+		editor.Init(e.driver, e.theme, e.font, project)
 		e.projects[project.Name] = editor
 	}
 	e.RemoveChild(e.current)

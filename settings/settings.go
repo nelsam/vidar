@@ -13,6 +13,11 @@ import (
 )
 
 var (
+	DefaultProject = Project{
+		Name:   "*default*",
+		Path:   "/",
+		Gopath: os.Getenv("GOPATH"),
+	}
 	settingsDir  = path.Join(os.Getenv("HOME"), ".config", "vidar")
 	projectsFile = path.Join(settingsDir, "projects")
 )
