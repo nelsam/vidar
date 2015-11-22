@@ -47,6 +47,9 @@ func (p *GoCodeProvider) SuggestionsAt(runeIndex int) []gxui.CodeSuggestion {
 	if err := json.Unmarshal(outputJSON, &output); err != nil {
 		panic(err)
 	}
+	if len(output) < 2 {
+		return nil
+	}
 	completions := output[1].([]interface{})
 	suggestions := make([]gxui.CodeSuggestion, 0, len(completions))
 	for _, completionItem := range completions {

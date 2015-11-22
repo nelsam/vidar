@@ -40,10 +40,9 @@ func (f *FSLocator) Init(driver gxui.Driver, theme *basic.Theme) {
 }
 
 func (f *FSLocator) loadEditorDir(control gxui.Control) {
-	startingPath := findCurrentFile(control)
-	dirname := filepath.Dir(startingPath)
+	startingPath := findStart(control)
 
-	f.dir.SetText(dirname)
+	f.dir.SetText(startingPath)
 	f.file.SetText("")
 }
 
@@ -78,6 +77,9 @@ func (f *FSLocator) KeyPress(event gxui.KeyboardEvent) bool {
 		case gxui.KeyBackspace:
 			if len(f.file.Text()) == 0 {
 				newDir := filepath.Dir(f.dir.Text())
+				if newDir == f.dir.Text() {
+					newDir = "/"
+				}
 				f.dir.SetText(newDir)
 				return true
 			}
@@ -184,6 +186,14 @@ func (f *fileBox) setFile(file string) {
 
 type currentFiler interface {
 	CurrentFile() string
+}
+
+func findStart(control gxui.Control) string {
+	startingPath := findCurrentFile(control)
+	if startingPath == "" {
+		return os.Getenv("HOME")
+	}
+	return filepath.Dir(startingPath)
 }
 
 func findCurrentFile(control gxui.Control) string {

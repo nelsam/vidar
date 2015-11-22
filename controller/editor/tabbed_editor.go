@@ -93,5 +93,8 @@ func (e *TabbedEditor) KeyPress(event gxui.KeyboardEvent) bool {
 }
 
 func (e *TabbedEditor) CurrentFile() string {
+	if e.SelectedPanel() == nil {
+		return ""
+	}
 	return e.SelectedPanel().(*editor).filepath
 }

@@ -60,6 +60,10 @@ func Projects() []Project {
 }
 
 func AddProject(project Project) {
+	bytes, err := yaml.Marshal(append(Projects(), project))
+	if err != nil {
+		panic(err)
+	}
 	projects, err := os.Create(projectsFile)
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(path.Dir(projectsFile), 0777)
@@ -72,9 +76,5 @@ func AddProject(project Project) {
 		panic(err)
 	}
 	defer projects.Close()
-	bytes, err := yaml.Marshal(append(Projects(), project))
-	if err != nil {
-		panic(err)
-	}
 	projects.Write(bytes)
 }

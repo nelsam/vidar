@@ -80,8 +80,11 @@ func (c *Controller) Execute(command commands.Command) {
 
 func execRecursively(command commands.Command, element interface{}) (executed, consume bool) {
 	executed, consume = command.Exec(element)
+	if consume {
+		return
+	}
 	var childExecuted bool
-	if parent, ok := element.(gxui.Parent); ok && !consume {
+	if parent, ok := element.(gxui.Parent); ok {
 		for _, child := range parent.Children() {
 			childExecuted, consume = execRecursively(command, child.Control)
 			executed = executed || childExecuted

@@ -57,7 +57,7 @@ func (d *ProjectTree) Init(driver gxui.Driver, theme *basic.Theme) {
 
 	d.button = createIconButton(driver, theme, "folder.png")
 	d.dirs = newDirTree(theme)
-	d.dirsAdapter = loadDirTreeAdapter(os.Getenv("HOME"))
+	d.dirsAdapter = loadDirTreeAdapter(settings.DefaultProject.Path)
 	d.dirs.SetAdapter(d.dirsAdapter)
 
 	d.files = theme.CreateList()
