@@ -19,7 +19,7 @@ func handleExpr(expr ast.Expr) gxui.CodeSyntaxLayers {
 	case *ast.ArrayType:
 		return nil
 	case *ast.BadExpr:
-		return nil
+		return handleBadExpr(src)
 	case *ast.BasicLit:
 		return handleBasicLitExpr(src)
 	case *ast.BinaryExpr:
@@ -59,6 +59,10 @@ func handleExpr(expr ast.Expr) gxui.CodeSyntaxLayers {
 	default:
 		panic(fmt.Errorf("Unknown expression type: %T", expr))
 	}
+}
+
+func handleBadExpr(src *ast.BadExpr) gxui.CodeSyntaxLayers {
+	return gxui.CodeSyntaxLayers{nodeLayer(src, badColor, badBackground)}
 }
 
 func handleBasicLitExpr(src *ast.BasicLit) gxui.CodeSyntaxLayers {

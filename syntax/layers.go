@@ -11,14 +11,23 @@ import (
 	"github.com/nelsam/gxui"
 )
 
-func nodeLayer(node ast.Node, color gxui.Color) *gxui.CodeSyntaxLayer {
-	return layer(node.Pos(), int(node.End()-node.Pos()), color)
+func nodeLayer(node ast.Node, colors ...gxui.Color) *gxui.CodeSyntaxLayer {
+	return layer(node.Pos(), int(node.End()-node.Pos()), colors...)
 }
 
-func layer(pos token.Pos, length int, color gxui.Color) *gxui.CodeSyntaxLayer {
+func layer(pos token.Pos, length int, colors ...gxui.Color) *gxui.CodeSyntaxLayer {
+	if len(colors) == 0 {
+		panic("No colors passed to layer()")
+	}
+	if len(colors) > 2 {
+		panic("Only two colors (text and background) are currently supported")
+	}
 	layer := gxui.CreateCodeSyntaxLayer()
 	layer.Add(int(pos-1), length)
-	layer.SetColor(color)
+	layer.SetColor(colors[0])
+	if len(colors) > 1 {
+		layer.SetBackgroundColor(colors[1])
+	}
 	return layer
 }
 
