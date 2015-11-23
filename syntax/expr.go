@@ -6,7 +6,6 @@ package syntax
 import (
 	"fmt"
 	"go/ast"
-	"go/token"
 
 	"github.com/nelsam/gxui"
 )
@@ -17,65 +16,62 @@ func handleExpr(expr ast.Expr) gxui.CodeSyntaxLayers {
 	}
 	switch src := expr.(type) {
 	case *ast.ArrayType:
-		return nil
+		return handleArrayExpr(src)
 	case *ast.BadExpr:
 		return handleBadExpr(src)
 	case *ast.BasicLit:
-		return handleBasicLitExpr(src)
+		return handleBasicLit(src)
 	case *ast.BinaryExpr:
-		return nil
+		return handleBinaryExpr(src)
 	case *ast.CallExpr:
 		return handleCallExpr(src)
 	case *ast.ChanType:
-		return nil
+		return handleChanExpr(src)
 	case *ast.FuncLit:
-		return nil
+		return handleFuncLitExpr(src)
 	case *ast.FuncType:
-		return nil
+		return handleFuncType(src)
 	case *ast.IndexExpr:
-		return nil
+		return handleIndexExpr(src)
 	case *ast.InterfaceType:
-		return nil
+		return handleInterfaceType(src)
 	case *ast.KeyValueExpr:
-		return nil
+		return handleKeyValueExpr(src)
 	case *ast.MapType:
-		return nil
+		return handleMapType(src)
 	case *ast.ParenExpr:
-		return nil
+		return handleParenExpr(src)
 	case *ast.SelectorExpr:
 		return handleSelectorExpr(src)
 	case *ast.SliceExpr:
-		return nil
+		return handleSliceExpr(src)
 	case *ast.StarExpr:
-		return nil
+		return handleStarExpr(src)
 	case *ast.TypeAssertExpr:
-		return nil
+		return handleTypeAssertExpr(src)
 	case *ast.UnaryExpr:
-		return nil
+		return handleUnaryExpr(src)
 	case *ast.Ident:
 		return nil
 	case *ast.CompositeLit:
-		return nil
+		return handleCompositeLit(src)
 	default:
 		panic(fmt.Errorf("Unknown expression type: %T", expr))
 	}
+}
+
+func handleArrayExpr(src *ast.ArrayType) gxui.CodeSyntaxLayers {
+	layers := handleExpr(src.Elt)
+	layers = append(layers, handleExpr(src.Len)...)
+	return layers
 }
 
 func handleBadExpr(src *ast.BadExpr) gxui.CodeSyntaxLayers {
 	return gxui.CodeSyntaxLayers{nodeLayer(src, badColor, badBackground)}
 }
 
-func handleBasicLitExpr(src *ast.BasicLit) gxui.CodeSyntaxLayers {
-	var color gxui.Color
-	switch src.Kind {
-	case token.INT, token.FLOAT:
-		color = numColor
-	case token.CHAR, token.STRING:
-		color = stringColor
-	default:
-		return nil
-	}
-	return gxui.CodeSyntaxLayers{nodeLayer(src, color)}
+func handleBinaryExpr(src *ast.BinaryExpr) gxui.CodeSyntaxLayers {
+	return append(handleExpr(src.X), handleExpr(src.Y)...)
 }
 
 func handleCallExpr(src *ast.CallExpr) gxui.CodeSyntaxLayers {
@@ -87,6 +83,48 @@ func handleCallExpr(src *ast.CallExpr) gxui.CodeSyntaxLayers {
 	return layers
 }
 
+func handleChanExpr(src *ast.ChanType) gxui.CodeSyntaxLayers {
+	layers := gxui.CodeSyntaxLayers{layer(src.Begin, len("chan"), keywordColor)}
+	layers = append(layers, handleExpr(src.Value)...)
+	return layers
+}
+
+func handleFuncLitExpr(src *ast.FuncLit) gxui.CodeSyntaxLayers {
+	return append(handleFuncType(src.Type), handleBlockStmt(src.Body)...)
+}
+
+func handleIndexExpr(src *ast.IndexExpr) gxui.CodeSyntaxLayers {
+	return append(handleExpr(src.X), handleExpr(src.Index)...)
+}
+
+func handleKeyValueExpr(src *ast.KeyValueExpr) gxui.CodeSyntaxLayers {
+	return append(handleExpr(src.Key), handleExpr(src.Value)...)
+}
+
+func handleParenExpr(src *ast.ParenExpr) gxui.CodeSyntaxLayers {
+	return handleExpr(src.X)
+}
+
 func handleSelectorExpr(src *ast.SelectorExpr) gxui.CodeSyntaxLayers {
 	return gxui.CodeSyntaxLayers{nodeLayer(src.Sel, functionColor)}
+}
+
+func handleSliceExpr(src *ast.SliceExpr) gxui.CodeSyntaxLayers {
+	layers := handleExpr(src.X)
+	layers = append(layers, handleExpr(src.Low)...)
+	layers = append(layers, handleExpr(src.High)...)
+	layers = append(layers, handleExpr(src.Max)...)
+	return layers
+}
+
+func handleStarExpr(src *ast.StarExpr) gxui.CodeSyntaxLayers {
+	return handleExpr(src.X)
+}
+
+func handleTypeAssertExpr(src *ast.TypeAssertExpr) gxui.CodeSyntaxLayers {
+	return append(handleExpr(src.X), handleExpr(src.Type)...)
+}
+
+func handleUnaryExpr(src *ast.UnaryExpr) gxui.CodeSyntaxLayers {
+	return handleExpr(src.X)
 }

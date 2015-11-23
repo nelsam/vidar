@@ -6,7 +6,6 @@ package syntax
 import (
 	"fmt"
 	"go/ast"
-	"log"
 
 	"github.com/nelsam/gxui"
 )
@@ -17,8 +16,7 @@ func handleStmt(stmt ast.Stmt) gxui.CodeSyntaxLayers {
 	}
 	switch src := stmt.(type) {
 	case *ast.BadStmt:
-		log.Printf("Bad statement: %v", stmt)
-		return nil
+		return handleBadStmt(src)
 	case *ast.AssignStmt:
 		return handleAssignStmt(src)
 	case *ast.SwitchStmt:
@@ -30,21 +28,21 @@ func handleStmt(stmt ast.Stmt) gxui.CodeSyntaxLayers {
 	case *ast.DeclStmt:
 		return handleDecl(src.Decl)
 	case *ast.SendStmt:
-		return nil
+		return handleSendStmt(src)
 	case *ast.SelectStmt:
-		return nil
+		return handleSelectStmt(src)
 	case *ast.ReturnStmt:
 		return handleReturnStmt(src)
 	case *ast.RangeStmt:
 		return handleRangeStmt(src)
 	case *ast.LabeledStmt:
-		return nil
+		return handleLabeledStmt(src)
 	case *ast.IncDecStmt:
-		return nil
+		return handleIncDecStmt(src)
 	case *ast.IfStmt:
 		return handleIfStmt(src)
 	case *ast.GoStmt:
-		return nil
+		return handleGoStmt(src)
 	case *ast.ForStmt:
 		return handleForStmt(src)
 	case *ast.ExprStmt:
@@ -52,7 +50,7 @@ func handleStmt(stmt ast.Stmt) gxui.CodeSyntaxLayers {
 	case *ast.EmptyStmt:
 		return nil
 	case *ast.DeferStmt:
-		return nil
+		return handleDeferStmt(src)
 	case *ast.BranchStmt:
 		return handleBranchStmt(src)
 	case *ast.BlockStmt:
@@ -60,6 +58,10 @@ func handleStmt(stmt ast.Stmt) gxui.CodeSyntaxLayers {
 	default:
 		panic(fmt.Errorf("Unknown stmt type: %T", stmt))
 	}
+}
+
+func handleBadStmt(stmt *ast.BadStmt) gxui.CodeSyntaxLayers {
+	return gxui.CodeSyntaxLayers{nodeLayer(stmt, badColor, badBackground)}
 }
 
 func handleAssignStmt(stmt *ast.AssignStmt) gxui.CodeSyntaxLayers {
@@ -107,6 +109,10 @@ func handleCaseStmt(stmt *ast.CaseClause) gxui.CodeSyntaxLayers {
 	return layers
 }
 
+func handleSendStmt(stmt *ast.SendStmt) gxui.CodeSyntaxLayers {
+	return append(handleExpr(stmt.Chan), handleExpr(stmt.Value)...)
+}
+
 func handleReturnStmt(stmt *ast.ReturnStmt) gxui.CodeSyntaxLayers {
 	layers := make(gxui.CodeSyntaxLayers, 0, 5)
 	layers = append(layers, layer(stmt.Return, len("return"), keywordColor))
@@ -143,8 +149,34 @@ func handleForStmt(stmt *ast.ForStmt) gxui.CodeSyntaxLayers {
 	return layers
 }
 
+func handleGoStmt(stmt *ast.GoStmt) gxui.CodeSyntaxLayers {
+	layers := gxui.CodeSyntaxLayers{layer(stmt.Go, len("go"), keywordColor)}
+	return append(layers, handleCallExpr(stmt.Call)...)
+}
+
+func handleLabeledStmt(stmt *ast.LabeledStmt) gxui.CodeSyntaxLayers {
+	// TODO: handle stmt.Label
+	return handleStmt(stmt.Stmt)
+}
+
+func handleDeferStmt(stmt *ast.DeferStmt) gxui.CodeSyntaxLayers {
+	layers := gxui.CodeSyntaxLayers{layer(stmt.Defer, len("defer"), keywordColor)}
+	layers = append(layers, handleCallExpr(stmt.Call)...)
+	return layers
+}
+
+func handleIncDecStmt(stmt *ast.IncDecStmt) gxui.CodeSyntaxLayers {
+	return handleExpr(stmt.X)
+}
+
 func handleExprStmt(stmt *ast.ExprStmt) gxui.CodeSyntaxLayers {
 	return handleExpr(stmt.X)
+}
+
+func handleSelectStmt(stmt *ast.SelectStmt) gxui.CodeSyntaxLayers {
+	layers := gxui.CodeSyntaxLayers{layer(stmt.Select, len("select"), keywordColor)}
+	layers = append(layers, handleBlockStmt(stmt.Body)...)
+	return layers
 }
 
 func handleBranchStmt(stmt *ast.BranchStmt) gxui.CodeSyntaxLayers {
