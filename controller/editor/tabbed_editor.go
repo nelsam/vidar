@@ -92,6 +92,13 @@ func (e *TabbedEditor) KeyPress(event gxui.KeyboardEvent) bool {
 	return e.PanelHolder.KeyPress(event)
 }
 
+func (e *TabbedEditor) CurrentEditor() gxui.CodeEditor {
+	if e.SelectedPanel() == nil {
+		return nil
+	}
+	return e.SelectedPanel().(gxui.CodeEditor)
+}
+
 func (e *TabbedEditor) CurrentFile() string {
 	if e.SelectedPanel() == nil {
 		return ""

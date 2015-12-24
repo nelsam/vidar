@@ -19,6 +19,8 @@ func handleStmt(stmt ast.Stmt) gxui.CodeSyntaxLayers {
 		return handleBadStmt(src)
 	case *ast.AssignStmt:
 		return handleAssignStmt(src)
+	case *ast.CommClause:
+		return nil
 	case *ast.SwitchStmt:
 		return handleSwitchStmt(src)
 	case *ast.TypeSwitchStmt:

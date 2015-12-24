@@ -38,11 +38,13 @@ type commandBox struct {
 
 	label   gxui.Label
 	current commands.Command
-	display gxui.Control
-	input   gxui.Focusable
+	// TODO: think about moving this to current.Done()
+	currentDone bool
+	display     gxui.Control
+	input       gxui.Focusable
 }
 
-func NewCommandBox(theme *basic.Theme, controller Controller) CommandBox {
+func newCommandBox(theme *basic.Theme, controller Controller) *commandBox {
 	box := &commandBox{}
 	box.Init(theme, controller)
 	return box
@@ -81,6 +83,13 @@ func (b *commandBox) Run(command commands.Command) (needsInput bool) {
 	return b.nextInput()
 }
 
+// Done is a workaround for the fact that events don't get consumed in the way
+// I was expecting them to.  Currently, the Commander still ends up getting
+// the events, even when they're consumed.  I don't know why.
+func (b *commandBox) Done() bool {
+	return b.currentDone
+}
+
 func (b *commandBox) Current() commands.Command {
 	return b.current
 }
@@ -98,6 +107,9 @@ func (b *commandBox) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 		hasMore := b.nextInput()
 		complete = !hasMore
 	}
+	b.currentDone = complete
+	// TODO: figure out why this isn't consuming the event when it should.  The commander
+	// still receives this event, even when it's consumed.
 	return !(complete && isEnter)
 }
 
@@ -129,8 +141,10 @@ type debuggable interface {
 func (b *commandBox) nextInput() (more bool) {
 	next := b.current.Next()
 	if next == nil {
+		b.currentDone = true
 		return false
 	}
+	b.currentDone = false
 	b.clearInput()
 	b.input = next
 	b.AddChild(b.input)

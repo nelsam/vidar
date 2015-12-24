@@ -57,17 +57,14 @@ func (d *ProjectTree) Init(driver gxui.Driver, theme *basic.Theme) {
 
 	d.button = createIconButton(driver, theme, "folder.png")
 	d.dirs = newDirTree(theme)
-	d.dirsAdapter = loadDirTreeAdapter(settings.DefaultProject.Path)
-	d.dirs.SetAdapter(d.dirsAdapter)
-
 	d.files = theme.CreateList()
-	d.filesAdapter = fileList(os.Getenv("HOME"))
-	d.files.SetAdapter(d.filesAdapter)
 
 	d.layout = theme.CreateLinearLayout()
 	d.layout.SetDirection(gxui.TopToBottom)
 	d.layout.AddChild(d.dirs)
 	d.layout.AddChild(d.files)
+
+	d.SetProject(settings.DefaultProject)
 
 	d.dirs.OnSelectionChanged(func(selection gxui.AdapterItem) {
 		d.filesAdapter = fileList(selection.(string))
@@ -80,7 +77,9 @@ func (d *ProjectTree) Button() gxui.Button {
 }
 
 func (d *ProjectTree) SetRoot(path string) {
-	d.dirsAdapter = loadDirTreeAdapter(path)
+	d.dirsAdapter = &dirTreeAdapter{}
+	d.dirsAdapter.children = []string{path}
+	d.dirsAdapter.dirs = true
 	d.dirs.SetAdapter(d.dirsAdapter)
 
 	d.filesAdapter = fileList(path)
