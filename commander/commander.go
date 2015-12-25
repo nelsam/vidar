@@ -12,27 +12,6 @@ import (
 	"github.com/nelsam/vidar/controller"
 )
 
-// CommandBox is a box to accept user input for commands.
-type CommandBox interface {
-	gxui.Control
-
-	// HasFocus returns whether or not the CommandBox is currently
-	// focused.
-	HasFocus() bool
-
-	// Run takes a command and runs it.  Returns true if user input is
-	// required before executing the command.
-	Run(commands.Command) (requiresInput bool)
-
-	// Current returns the commands.Command that is currently
-	// running in the CommandBox.  If no command is currently running,
-	// Current returns nil.
-	Current() commands.Command
-
-	// Clear clears the CommandBox's current command context.
-	Clear()
-}
-
 // Completer is a type which defines when a gxui.KeyboardEvent
 // completes an action.  Types returned from
 // "../commands".Command.Next() may implement this if they don't want
@@ -62,7 +41,7 @@ type Commander struct {
 	theme      *basic.Theme
 	font       gxui.Font
 	controller Controller
-	box        CommandBox
+	box        *commandBox
 
 	commands []commands.Command
 	bindings map[gxui.KeyboardEvent]commands.Command
@@ -86,7 +65,7 @@ func (c *Commander) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font)
 	c.SetSize(math.MaxSize)
 
 	c.controller = controller.New(c.driver, c.theme, c.font)
-	c.box = NewCommandBox(c.theme, c.controller)
+	c.box = newCommandBox(c.theme, c.controller)
 
 	c.AddChild(c.box)
 	c.AddChild(c.controller)
@@ -117,6 +96,30 @@ func (c *Commander) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font)
 	}
 	c.bindings[ctrlShiftN] = addProject
 	c.bindings[supShiftN] = addProject
+
+	openProj := commands.NewProjectOpener(c.driver, c.theme)
+	ctrlShiftO := gxui.KeyboardEvent{
+		Key:      gxui.KeyO,
+		Modifier: gxui.ModControl | gxui.ModShift,
+	}
+	cmdShiftO := gxui.KeyboardEvent{
+		Key:      gxui.KeyO,
+		Modifier: gxui.ModSuper | gxui.ModShift,
+	}
+	c.bindings[ctrlShiftO] = openProj
+	c.bindings[cmdShiftO] = openProj
+
+	find := commands.NewFinder(c.driver, c.theme)
+	ctrlF := gxui.KeyboardEvent{
+		Key:      gxui.KeyF,
+		Modifier: gxui.ModControl,
+	}
+	supF := gxui.KeyboardEvent{
+		Key:      gxui.KeyF,
+		Modifier: gxui.ModSuper,
+	}
+	c.bindings[ctrlF] = find
+	c.bindings[supF] = find
 }
 
 // Controller returns c's controller.
@@ -133,6 +136,7 @@ func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 	}
 	cmdDone := c.box.HasFocus() && event.Modifier == 0 && event.Key == gxui.KeyEnter
 	if command, ok := c.bindings[event]; ok {
+		c.box.Clear()
 		if c.box.Run(command) {
 			return true
 		}

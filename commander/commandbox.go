@@ -42,7 +42,7 @@ type commandBox struct {
 	input   gxui.Focusable
 }
 
-func NewCommandBox(theme *basic.Theme, controller Controller) CommandBox {
+func newCommandBox(theme *basic.Theme, controller Controller) *commandBox {
 	box := &commandBox{}
 	box.Init(theme, controller)
 	return box
@@ -98,6 +98,8 @@ func (b *commandBox) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 		hasMore := b.nextInput()
 		complete = !hasMore
 	}
+	// TODO: figure out why this isn't consuming the event when it should.  The commander
+	// still receives this event, even when it's consumed.
 	return !(complete && isEnter)
 }
 
