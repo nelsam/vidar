@@ -9,12 +9,13 @@ import (
 )
 
 type opener interface {
-	Open(string)
+	Open(string, int)
 }
 
 type FileOpener struct {
-	file  *FSLocator
-	input <-chan gxui.Focusable
+	file   *FSLocator
+	cursor int
+	input  <-chan gxui.Focusable
 }
 
 func NewFileOpener(driver gxui.Driver, theme *basic.Theme) *FileOpener {
@@ -27,8 +28,9 @@ func (f *FileOpener) Init(driver gxui.Driver, theme *basic.Theme) {
 	f.file = NewFSLocator(driver, theme)
 }
 
-func (f *FileOpener) SetPath(filepath string) {
+func (f *FileOpener) SetLocation(filepath string, position int) {
 	f.file.SetPath(filepath)
+	f.cursor = position
 }
 
 func (f *FileOpener) Name() string {
@@ -50,7 +52,7 @@ func (f *FileOpener) Next() gxui.Focusable {
 
 func (f *FileOpener) Exec(element interface{}) (executed, consume bool) {
 	if opener, ok := element.(opener); ok {
-		opener.Open(f.file.Path())
+		opener.Open(f.file.Path(), f.cursor)
 		return true, false
 	}
 	return false, false

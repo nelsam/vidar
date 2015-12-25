@@ -23,7 +23,7 @@ type Editor interface {
 	gxui.Control
 	Focus()
 	CurrentFile() string
-	Open(file string)
+	Open(path string, cursor int)
 }
 
 type Elementer interface {

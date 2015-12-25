@@ -68,7 +68,7 @@ func uiMain(driver gxui.Driver) {
 	}
 	for _, file := range files {
 		filepath := path.Join(workingDir, file)
-		commander.Controller().Editor().Open(filepath)
+		commander.Controller().Editor().Open(filepath, 0)
 	}
 
 	window.OnClose(driver.Terminate)

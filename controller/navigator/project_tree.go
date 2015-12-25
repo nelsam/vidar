@@ -36,6 +36,11 @@ var (
 	}
 )
 
+type Locationer interface {
+	File() string
+	Pos() int
+}
+
 type ProjectTree struct {
 	button gxui.Button
 
@@ -45,8 +50,8 @@ type ProjectTree struct {
 	dirs        gxui.Tree
 	dirsAdapter *dirTreeAdapter
 
-	files        gxui.List
-	filesAdapter *fileListAdapter
+	project        gxui.Tree
+	projectAdapter *TOC
 
 	layout gxui.LinearLayout
 }
@@ -57,21 +62,18 @@ func (d *ProjectTree) Init(driver gxui.Driver, theme *basic.Theme) {
 
 	d.button = createIconButton(driver, theme, "folder.png")
 	d.dirs = newDirTree(theme)
-	d.dirsAdapter = loadDirTreeAdapter(settings.DefaultProject.Path)
-	d.dirs.SetAdapter(d.dirsAdapter)
-
-	d.files = theme.CreateList()
-	d.filesAdapter = fileList(os.Getenv("HOME"))
-	d.files.SetAdapter(d.filesAdapter)
+	d.project = newDirTree(theme)
 
 	d.layout = theme.CreateLinearLayout()
 	d.layout.SetDirection(gxui.TopToBottom)
 	d.layout.AddChild(d.dirs)
-	d.layout.AddChild(d.files)
+	d.layout.AddChild(d.project)
+
+	d.SetProject(settings.DefaultProject)
 
 	d.dirs.OnSelectionChanged(func(selection gxui.AdapterItem) {
-		d.filesAdapter = fileList(selection.(string))
-		d.files.SetAdapter(d.filesAdapter)
+		d.projectAdapter = NewTOC(selection.(string))
+		d.project.SetAdapter(d.projectAdapter)
 	})
 }
 
@@ -80,11 +82,13 @@ func (d *ProjectTree) Button() gxui.Button {
 }
 
 func (d *ProjectTree) SetRoot(path string) {
-	d.dirsAdapter = loadDirTreeAdapter(path)
+	d.dirsAdapter = &dirTreeAdapter{}
+	d.dirsAdapter.children = []string{path}
+	d.dirsAdapter.dirs = true
 	d.dirs.SetAdapter(d.dirsAdapter)
 
-	d.filesAdapter = fileList(path)
-	d.files.SetAdapter(d.filesAdapter)
+	d.projectAdapter = NewTOC(path)
+	d.project.SetAdapter(d.projectAdapter)
 }
 
 func (d *ProjectTree) SetProject(project settings.Project) {
@@ -92,9 +96,8 @@ func (d *ProjectTree) SetProject(project settings.Project) {
 }
 
 func (d *ProjectTree) Open(filePath string) {
-	dir, file := filepath.Split(filePath)
+	dir, _ := filepath.Split(filePath)
 	d.dirs.Select(dir)
-	d.files.Select(file)
 }
 
 func (d *ProjectTree) Frame() gxui.Control {
@@ -103,8 +106,16 @@ func (d *ProjectTree) Frame() gxui.Control {
 
 func (d *ProjectTree) OnComplete(onComplete func(commands.Command)) {
 	cmd := commands.NewFileOpener(d.driver, d.theme)
-	d.files.OnSelectionChanged(func(selected gxui.AdapterItem) {
-		cmd.SetPath(selected.(string))
+	d.project.OnSelectionChanged(func(selected gxui.AdapterItem) {
+		var node gxui.TreeNode = d.projectAdapter
+		for i := node.ItemIndex(selected); i != -1; i = node.ItemIndex(selected) {
+			node = node.NodeAt(i)
+		}
+		locationer, ok := node.(Locationer)
+		if !ok {
+			return
+		}
+		cmd.SetLocation(locationer.File(), locationer.Pos())
 		onComplete(cmd)
 	})
 }

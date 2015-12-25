@@ -26,9 +26,11 @@ func (p *ProjectEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.F
 	p.project = project
 }
 
-func (p *ProjectEditor) Open(path string) {
+func (p *ProjectEditor) Open(path string, cursor int) {
 	name := strings.TrimPrefix(strings.TrimPrefix(path, p.project.Path), "/")
 	p.TabbedEditor.New(name, path)
+	p.CurrentEditor().Controller().SetCaret(cursor)
+	p.CurrentEditor().ScrollToRune(cursor)
 }
 
 func (p *ProjectEditor) Attach() {
@@ -102,6 +104,6 @@ func (e *MultiProjectEditor) Focus() {
 	e.current.Focus()
 }
 
-func (e *MultiProjectEditor) Open(file string) {
-	e.current.Open(file)
+func (e *MultiProjectEditor) Open(file string, cursor int) {
+	e.current.Open(file, cursor)
 }
