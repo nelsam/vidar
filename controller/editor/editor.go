@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/go-fsnotify/fsnotify"
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
@@ -23,14 +25,23 @@ type editor struct {
 	adapter     *suggestions.Adapter
 	suggestions gxui.List
 	theme       *basic.Theme
+	driver      gxui.Driver
 
 	lastModified time.Time
 	hasChanges   bool
 	filepath     string
+
+	watcher *fsnotify.Watcher
+
+	// loading is a channel keeping track of a count of
+	// threads that are (re)loading the file.
+	loading chan bool
 }
 
 func (e *editor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, file string) {
 	e.theme = theme
+	e.driver = driver
+	e.loading = make(chan bool, 5)
 
 	e.adapter = &suggestions.Adapter{}
 	e.suggestions = e.CreateSuggestionList()
@@ -63,6 +74,62 @@ func (e *editor) open() {
 // Use at your own risk!`)
 		return
 	}
+	go e.watch()
+	e.load()
+}
+
+func (e *editor) watch() {
+	var err error
+	e.watcher, err = fsnotify.NewWatcher()
+	if err != nil {
+		panic(err)
+	}
+	err = e.watcher.Add(e.filepath)
+	if os.IsNotExist(err) {
+		err = e.waitForFileCreate()
+	}
+	if err != nil {
+		panic(err)
+	}
+	err = e.inotifyWait(func(event fsnotify.Event) bool {
+		if event.Op&fsnotify.Write == fsnotify.Write {
+			e.load()
+		}
+		return false
+	})
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (e *editor) waitForFileCreate() error {
+	dir := filepath.Dir(e.filepath)
+	if err := e.watcher.Add(dir); err != nil {
+		panic(err)
+	}
+	defer e.watcher.Remove(dir)
+
+	return e.inotifyWait(func(event fsnotify.Event) bool {
+		return event.Name == e.filepath && event.Op|fsnotify.Create == fsnotify.Create
+	})
+}
+
+func (e *editor) inotifyWait(eventFunc func(fsnotify.Event) (done bool)) error {
+	for {
+		select {
+		case event := <-e.watcher.Events:
+			eventFunc(event)
+		case err := <-e.watcher.Errors:
+			return err
+		}
+	}
+}
+
+func (e *editor) load() {
+	e.loading <- true
+	defer func() {
+		<-e.loading
+	}()
 	f, err := os.Open(e.filepath)
 	if os.IsNotExist(err) {
 		e.SetText("")
@@ -81,7 +148,17 @@ func (e *editor) open() {
 	if err != nil {
 		panic(err)
 	}
-	e.SetText(string(b))
+	e.driver.Call(func() {
+		if len(e.loading) > 1 {
+			return
+		}
+		if e.Text() == string(b) {
+			return
+		}
+		location := e.Controller().FirstCaret()
+		e.SetText(string(b))
+		e.Controller().SetCaret(location)
+	})
 }
 
 // mixins.CodeEditor overrides
