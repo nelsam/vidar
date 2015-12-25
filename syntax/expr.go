@@ -45,6 +45,8 @@ func handleExpr(expr ast.Expr) gxui.CodeSyntaxLayers {
 		return handleSelectorExpr(src)
 	case *ast.SliceExpr:
 		return handleSliceExpr(src)
+	case *ast.StructType:
+		return handleStructType(src)
 	case *ast.StarExpr:
 		return handleStarExpr(src)
 	case *ast.TypeAssertExpr:

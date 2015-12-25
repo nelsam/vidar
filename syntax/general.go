@@ -18,8 +18,15 @@ func handleFieldList(src *ast.FieldList) gxui.CodeSyntaxLayers {
 	return layers
 }
 
+func handleStructType(src *ast.StructType) gxui.CodeSyntaxLayers {
+	layers := make(gxui.CodeSyntaxLayers, 0, 1+len(src.Fields.List))
+	layers = append(layers, layer(src.Struct, len("struct"), keywordColor))
+	layers = append(layers, handleFieldList(src.Fields)...)
+	return layers
+}
+
 func handleFuncType(src *ast.FuncType) gxui.CodeSyntaxLayers {
-	layers := make(gxui.CodeSyntaxLayers, 3)
+	layers := make(gxui.CodeSyntaxLayers, 0, 3)
 	if src.Func != token.NoPos {
 		layers = append(layers, layer(src.Func, len("func"), keywordColor))
 	}

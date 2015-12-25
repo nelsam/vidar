@@ -28,19 +28,37 @@ func handleValueSpec(val *ast.ValueSpec) gxui.CodeSyntaxLayers {
 	if val.Doc != nil {
 		layers = append(layers, nodeLayer(val.Doc, commentColor))
 	}
-	if val.Type != nil {
-		layers = append(layers, nodeLayer(val.Type, typeColor))
-	}
 	if val.Comment != nil {
 		layers = append(layers, nodeLayer(val.Comment, commentColor))
+	}
+	if val.Type != nil {
+		layers = append(layers, nodeLayer(val.Type, typeColor))
 	}
 	return layers
 }
 
-func handleImportSpec(*ast.ImportSpec) gxui.CodeSyntaxLayers {
-	return nil
+func handleImportSpec(imp *ast.ImportSpec) gxui.CodeSyntaxLayers {
+	layers := make(gxui.CodeSyntaxLayers, 0, 5)
+	if imp.Doc != nil {
+		layers = append(layers, nodeLayer(imp.Doc, commentColor))
+	}
+	if imp.Comment != nil {
+		layers = append(layers, nodeLayer(imp.Comment, commentColor))
+	}
+	// TODO: Decide if there should be more highlighting here.  It
+	// seems like the current import highlighting already takes care
+	// of it.
+	return layers
 }
 
-func handleTypeSpec(*ast.TypeSpec) gxui.CodeSyntaxLayers {
-	return nil
+func handleTypeSpec(typ *ast.TypeSpec) gxui.CodeSyntaxLayers {
+	layers := make(gxui.CodeSyntaxLayers, 0, 5)
+	if typ.Doc != nil {
+		layers = append(layers, nodeLayer(typ.Doc, commentColor))
+	}
+	if typ.Comment != nil {
+		layers = append(layers, nodeLayer(typ.Comment, commentColor))
+	}
+	layers = append(layers, handleExpr(typ.Type)...)
+	return layers
 }
