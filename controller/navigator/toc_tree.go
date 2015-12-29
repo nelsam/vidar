@@ -1,6 +1,7 @@
 package navigator
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -8,6 +9,13 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
+)
+
+var (
+	// Since the const values aren't exported by go/build, I've just copied them
+	// from https://github.com/golang/go/blob/master/src/go/build/syslist.go
+	gooses   = []string{"android", "darwin", "dragonfly", "freebsd", "linux", "nacl", "netbsd", "openbsd", "plan9", "solaris", "windows"}
+	goarches = []string{"386", "amd64", "amd64p32", "arm", "armbe", "arm64", "arm64be", "ppc64", "ppc64le", "mips", "mipsle", "mips64", "mips64le", "mips64p32", "mips64p32le", "ppc", "s390", "s390x", "sparc", "sparc64"}
 )
 
 type genericTreeNode struct {
@@ -91,7 +99,7 @@ func (t *TOC) Init(path string) {
 }
 
 func (t *TOC) Reload() {
-	pkgs, err := parser.ParseDir(token.NewFileSet(), t.path, nil, 0)
+	pkgs, err := parser.ParseDir(token.NewFileSet(), t.path, nil, parser.ParseComments)
 	if err != nil {
 		return
 	}
@@ -116,6 +124,10 @@ func (t *TOC) addPkg(pkg *ast.Package) {
 		if strings.HasSuffix(filename, "_test.go") {
 			continue
 		}
+
+		fileTags := readTags(f)
+		// TODO: use the fileTags to add sub-categories.
+
 		for _, decl := range f.Decls {
 			switch src := decl.(type) {
 			case *ast.GenDecl:
@@ -194,4 +206,94 @@ func valueNamesFrom(filename, parentName string, specs []ast.Spec) (names []gxui
 		}
 	}
 	return
+}
+
+// popMatchingLastField only pops the last field in fields if it is found
+// to match any item in haystack.
+func popMatchingLastField(fields, haystack []string) (fieldsWithoutFoundField []string, foundField string) {
+	if len(fields) == 0 {
+		return fields, false
+	}
+	lastField := fields[len(fields)-1]
+	for _, blade := range haystack {
+		if blade == lastField {
+			return fields[:len(fields)-1], lastField
+		}
+	}
+	return fields, ""
+}
+
+type tagList struct {
+	tags []interface{}
+	op   string
+}
+
+// parseTags parses a build tag string, following these rules:
+//
+// 1. Space-separated tags imply "OR".
+// 2. Comma-separated tags imply "AND".
+// 3. Tags on separate lines will not be passed to this function.
+func parseTags(tags string) tagList {
+	orList := tagList{op: "OR"}
+	for _, andTag := range strings.Split(tags, " ") {
+		andList := tagList{op: "AND"}
+		for _, tag := range strings.Split(andTag, ",") {
+			andList.tags = append(andList.tags, tag)
+		}
+		orList.tags = append(orList.tags, andList)
+	}
+	return orList
+}
+
+func (t tagList) String() string {
+	var tagRep string
+	for _, tag := range tags {
+		if len(tagRep) > 0 {
+			tagRep = fmt.Sprintf("%s %s", tagRep, t.op)
+		}
+		switch src := tag.(type) {
+		case string:
+			tagRep = fmt.Sprintf("%s %s", tagRep, src)
+		case tagList:
+			subTagRep := src.String()
+			if len(src.tags) > 1 {
+				subTagRep = fmt.Sprintf("(%s)", subTagRep)
+			}
+			tagRep = fmt.Sprintf("%s %s", tagRep, subTagRep)
+		}
+	}
+	return tagRep
+}
+
+// readTags performs ugly, ugly parsing of file name to figure out if it ends with
+// goos and/or goarch values, then gathers all the tags together with those values
+// and returns a representation of all applicable tags.
+func readTags(f *ast.File) string {
+	var (
+		tags  = tagList{op: "AND"}
+		found string
+	)
+	nameParts := strings.Split(strings.TrimSuffix(filename, ".go"), "_")
+	nameParts, found = popMatchingLastField(nameParts, goarches)
+	if len(found) > 0 {
+		tags.tags = append(tags.tags, found)
+	}
+	nameParts, found = popMatchingLastField(nameParts, gooses)
+	if len(found) > 0 {
+		tags.tags = append(tags.tags, found)
+	}
+
+	for _, block := range f.Comments {
+		for _, comment := range block.List {
+			commentText = strings.TrimSpace(strings.TrimPrefix(comment.Text, "//"))
+			if strings.HasPrefix(commentText, "+build") {
+				tagLine := strings.TrimSpace(strings.TrimPrefix(commentText, "+build"))
+				newTags := parseTags(tagLine)
+				if len(newTags.tags) > 0 {
+					tags.tags = append(tags.tags, newTags)
+				}
+			}
+		}
+	}
+	return tags.String()
 }
