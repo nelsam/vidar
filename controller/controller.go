@@ -53,8 +53,18 @@ func (c *Controller) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 	c.font = font
 
 	c.SetDirection(gxui.LeftToRight)
-	c.navigator = navigator.New(driver, theme, c.Execute)
+
+	c.navigator = navigator.New(driver, theme, c)
 	c.AddChild(c.navigator)
+
+	projects := &navigator.Projects{}
+	projects.Init(driver, theme)
+	c.navigator.Add(projects)
+
+	projTree := &navigator.ProjectTree{}
+	projTree.Init(driver, theme)
+	c.navigator.Add(projTree)
+
 	c.editor = editor.New(driver, theme, font)
 	c.AddChild(c.editor)
 }
