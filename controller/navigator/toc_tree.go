@@ -11,6 +11,32 @@ import (
 	"github.com/nelsam/gxui/math"
 )
 
+var (
+	genericColor = gxui.Color{
+		R: 0.6,
+		G: 0.8,
+		B: 1,
+		A: 1,
+	}
+	nameColor = gxui.Color{
+		R: 0.6,
+		G: 1,
+		B: 0.5,
+		A: 1,
+	}
+	skippableColor = gxui.Color{
+		R: 0.9,
+		G: 0.6,
+		B: 0.8,
+		A: 1,
+	}
+
+	// Since the const values aren't exported by go/build, I've just copied them
+	// from https://github.com/golang/go/blob/master/src/go/build/syslist.go
+	gooses   = []string{"android", "darwin", "dragonfly", "freebsd", "linux", "nacl", "netbsd", "openbsd", "plan9", "solaris", "windows"}
+	goarches = []string{"386", "amd64", "amd64p32", "arm", "armbe", "arm64", "arm64be", "ppc64", "ppc64le", "mips", "mipsle", "mips64", "mips64le", "mips64p32", "mips64p32le", "ppc", "s390", "s390x", "sparc", "sparc64"}
+)
+
 type genericTreeNode struct {
 	gxui.AdapterBase
 
@@ -179,7 +205,7 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 					}
 					typ.name = typeName
 					typ.path = pkg.Name + ".types." + typ.name
-					typ.color = dirColor
+					typ.color = nameColor
 					typ.filename = filename
 					typ.pos = int(typeSpec.Pos())
 					types = append(types, typ)
@@ -188,7 +214,7 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 				var name Name
 				name.name = src.Name.String()
 				name.path = pkg.Name + ".funcs." + name.name
-				name.color = dirColor
+				name.color = nameColor
 				name.filename = filename
 				name.pos = int(src.Pos())
 				if src.Recv == nil {
@@ -211,10 +237,10 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 		}
 	}
 	pkgNode.children = []gxui.TreeNode{
-		genericTreeNode{name: "constants", path: pkg.Name + ".constants", color: dirColor, children: consts},
-		genericTreeNode{name: "global vars", path: pkg.Name + ".global vars", color: dirColor, children: vars},
-		genericTreeNode{name: "types", path: pkg.Name + ".types", color: dirColor, children: types},
-		genericTreeNode{name: "funcs", path: pkg.Name + ".funcs", color: dirColor, children: funcs},
+		genericTreeNode{name: "constants", path: pkg.Name + ".constants", color: genericColor, children: consts},
+		genericTreeNode{name: "global vars", path: pkg.Name + ".global vars", color: genericColor, children: vars},
+		genericTreeNode{name: "types", path: pkg.Name + ".types", color: genericColor, children: types},
+		genericTreeNode{name: "funcs", path: pkg.Name + ".funcs", color: genericColor, children: funcs},
 	}
 	return pkgNode
 }
@@ -229,7 +255,7 @@ func valueNamesFrom(filename, parentName string, specs []ast.Spec) (names []gxui
 			var newName Name
 			newName.name = name.String()
 			newName.path = parentName + "." + newName.name
-			newName.color = dirColor
+			newName.color = nameColor
 			newName.filename = filename
 			newName.pos = int(name.Pos())
 			names = append(names, newName)
