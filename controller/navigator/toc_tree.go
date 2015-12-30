@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"log"
 	"strings"
 
 	"github.com/nelsam/gxui"
@@ -24,8 +25,10 @@ func (t genericTreeNode) Count() int {
 }
 
 func (t genericTreeNode) ItemIndex(item gxui.AdapterItem) int {
+	path := item.(string)
 	for i, child := range t.children {
-		if strings.HasPrefix(item.(string), child.Item().(string)) {
+		childPath := child.Item().(string)
+		if path == childPath || strings.HasPrefix(path, childPath+".") {
 			return i
 		}
 	}
@@ -54,6 +57,50 @@ func (t genericTreeNode) Create(theme gxui.Theme) gxui.Control {
 	return label
 }
 
+// skippingTreeNode is a gxui.TreeNode that will skip to the child
+// node if there is exactly one child node on implementations of all
+// gxui.TreeNode methods.  This means that any number of nested
+// skippingTreeNodes will display as a single node, so long as no
+// child contains more than one child.
+type skippingTreeNode struct {
+	genericTreeNode
+}
+
+func (t skippingTreeNode) Count() int {
+	if len(t.children) == 1 {
+		return t.children[0].Count()
+	}
+	return t.genericTreeNode.Count()
+}
+
+func (t skippingTreeNode) ItemIndex(item gxui.AdapterItem) int {
+	if len(t.children) == 1 {
+		return t.children[0].ItemIndex(item)
+	}
+	return t.genericTreeNode.ItemIndex(item)
+}
+
+func (t skippingTreeNode) Item() gxui.AdapterItem {
+	if len(t.children) == 1 {
+		return t.children[0].Item()
+	}
+	return t.genericTreeNode.Item()
+}
+
+func (t skippingTreeNode) NodeAt(index int) gxui.TreeNode {
+	if len(t.children) == 1 {
+		return t.children[0].NodeAt(index)
+	}
+	return t.genericTreeNode.NodeAt(index)
+}
+
+func (t skippingTreeNode) Create(theme gxui.Theme) gxui.Control {
+	if len(t.children) == 1 {
+		return t.children[0].Create(theme)
+	}
+	return t.genericTreeNode.Create(theme)
+}
+
 type Location struct {
 	filename string
 	pos      int
@@ -73,9 +120,8 @@ type Name struct {
 }
 
 type TOC struct {
-	genericTreeNode
+	skippingTreeNode
 
-	pkg  string
 	path string
 }
 
@@ -93,19 +139,17 @@ func (t *TOC) Init(path string) {
 func (t *TOC) Reload() {
 	pkgs, err := parser.ParseDir(token.NewFileSet(), t.path, nil, 0)
 	if err != nil {
-		return
+		log.Printf("Error parsing dir: %s", err)
 	}
-	for name, pkg := range pkgs {
-		if strings.HasSuffix(name, "_test") {
-			continue
-		}
-		t.pkg = name
-		t.addPkg(pkg)
+	for _, pkg := range pkgs {
+		t.children = append(t.children, t.parsePkg(pkg))
 	}
 }
 
-func (t *TOC) addPkg(pkg *ast.Package) {
+func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 	var (
+		pkgNode = genericTreeNode{name: pkg.Name, path: pkg.Name, color: dirColor}
+
 		consts  []gxui.TreeNode
 		vars    []gxui.TreeNode
 		typeMap = make(map[string]*Name)
@@ -113,17 +157,14 @@ func (t *TOC) addPkg(pkg *ast.Package) {
 		funcs   []gxui.TreeNode
 	)
 	for filename, f := range pkg.Files {
-		if strings.HasSuffix(filename, "_test.go") {
-			continue
-		}
 		for _, decl := range f.Decls {
 			switch src := decl.(type) {
 			case *ast.GenDecl:
 				switch src.Tok.String() {
 				case "const":
-					consts = append(consts, valueNamesFrom(filename, "constants", src.Specs)...)
+					consts = append(consts, valueNamesFrom(filename, pkg.Name+".constants", src.Specs)...)
 				case "var":
-					vars = append(vars, valueNamesFrom(filename, "global vars", src.Specs)...)
+					vars = append(vars, valueNamesFrom(filename, pkg.Name+".global vars", src.Specs)...)
 				case "type":
 					// I have yet to see a case where a type declaration has more than one Specs.
 					typeSpec := src.Specs[0].(*ast.TypeSpec)
@@ -137,7 +178,7 @@ func (t *TOC) addPkg(pkg *ast.Package) {
 						typeMap[typeName] = typ
 					}
 					typ.name = typeName
-					typ.path = "types." + typ.name
+					typ.path = pkg.Name + ".types." + typ.name
 					typ.color = dirColor
 					typ.filename = filename
 					typ.pos = int(typeSpec.Pos())
@@ -146,7 +187,7 @@ func (t *TOC) addPkg(pkg *ast.Package) {
 			case *ast.FuncDecl:
 				var name Name
 				name.name = src.Name.String()
-				name.path = "funcs." + name.name
+				name.path = pkg.Name + ".funcs." + name.name
 				name.color = dirColor
 				name.filename = filename
 				name.pos = int(src.Pos())
@@ -164,17 +205,18 @@ func (t *TOC) addPkg(pkg *ast.Package) {
 					typ = &Name{}
 					typeMap[recvTypeName] = typ
 				}
-				name.path = "types." + recvTypeName + "." + name.name
+				name.path = pkg.Name + ".types." + recvTypeName + "." + name.name
 				typ.children = append(typ.children, name)
 			}
 		}
 	}
-	t.children = append(t.children,
-		genericTreeNode{name: "constants", path: "constants", color: dirColor, children: consts},
-		genericTreeNode{name: "global vars", path: "global vars", color: dirColor, children: vars},
-		genericTreeNode{name: "types", path: "types", color: dirColor, children: types},
-		genericTreeNode{name: "funcs", path: "funcs", color: dirColor, children: funcs},
-	)
+	pkgNode.children = []gxui.TreeNode{
+		genericTreeNode{name: "constants", path: pkg.Name + ".constants", color: dirColor, children: consts},
+		genericTreeNode{name: "global vars", path: pkg.Name + ".global vars", color: dirColor, children: vars},
+		genericTreeNode{name: "types", path: pkg.Name + ".types", color: dirColor, children: types},
+		genericTreeNode{name: "funcs", path: pkg.Name + ".funcs", color: dirColor, children: funcs},
+	}
+	return pkgNode
 }
 
 func valueNamesFrom(filename, parentName string, specs []ast.Spec) (names []gxui.TreeNode) {
