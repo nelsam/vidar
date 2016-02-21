@@ -1,130 +1,103 @@
 // This is free and unencumbered software released into the public
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
+
 package commander
 
 import (
+	"fmt"
+
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
-	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commands"
 	"github.com/nelsam/vidar/controller"
 )
 
-// Completer is a type which defines when a gxui.KeyboardEvent
-// completes an action.  Types returned from
-// "../commands".Command.Next() may implement this if they don't want
-// to immediately complete when the "enter" key is pressed.
-type Completer interface {
-	// Complete returns whether or not the key signals a completion of
-	// the input.
-	Complete(gxui.KeyboardEvent) bool
-}
-
-// Controller is a type which controls the main editor UI.
+// Controller is a type which is used by the Commander to control the
+// main UI.
 type Controller interface {
 	gxui.Control
-	Execute(commands.Command)
+	Execute(controller.Executor)
 	Editor() controller.Editor
 	Navigator() controller.Navigator
 }
 
-// Commander is a gxui.LinearLayout that includes a Controller (taking
-// up the majority of the Commander) and a CommandBox (taking up one
-// line at the bottom of the Commander).  Commands can be manually
-// entered through the command box or bound to keyboard shortcuts.
+// A commandMapping is a mapping between keyboard shortcuts (if any),
+// a menu name, and a command.  The menu name is required.
+type commandMapping struct {
+	binding  gxui.KeyboardEvent
+	menuName string
+	command  Command
+}
+
+// Commander is a gxui.LinearLayout that takes care of displaying the
+// command utilities around a controller.
 type Commander struct {
 	mixins.LinearLayout
 
-	driver     gxui.Driver
-	theme      *basic.Theme
-	font       gxui.Font
 	controller Controller
 	box        *commandBox
 
-	commands []commands.Command
-	bindings map[gxui.KeyboardEvent]commands.Command
+	commands []commandMapping
 }
 
 // New creates and initializes a *Commander, then returns it.
-func New(driver gxui.Driver, theme *basic.Theme, font gxui.Font) *Commander {
+func New(theme gxui.Theme, controller Controller) *Commander {
 	commander := new(Commander)
-	commander.Init(driver, theme, font)
+	commander.LinearLayout.Init(commander, theme)
+
+	commander.SetDirection(gxui.BottomToTop)
+	commander.SetSize(math.MaxSize)
+
+	commander.controller = controller
+	commander.box = newCommandBox(theme, commander.controller)
+
+	commander.AddChild(commander.box)
+	commander.AddChild(commander.controller)
 	return commander
-}
-
-// Init resets c's state.
-func (c *Commander) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font) {
-	c.LinearLayout.Init(c, theme)
-	c.bindings = make(map[gxui.KeyboardEvent]commands.Command)
-	c.driver = driver
-	c.theme = theme
-	c.font = font
-	c.SetDirection(gxui.BottomToTop)
-	c.SetSize(math.MaxSize)
-
-	c.controller = controller.New(c.driver, c.theme, c.font)
-	c.box = newCommandBox(c.theme, c.controller)
-
-	c.AddChild(c.box)
-	c.AddChild(c.controller)
-
-	// TODO: Store these in a config file or something
-	openFile := commands.NewFileOpener(c.driver, c.theme)
-	c.commands = append(c.commands, openFile)
-	ctrlO := gxui.KeyboardEvent{
-		Key:      gxui.KeyO,
-		Modifier: gxui.ModControl,
-	}
-	supO := gxui.KeyboardEvent{
-		Key:      gxui.KeyO,
-		Modifier: gxui.ModSuper,
-	}
-	c.bindings[ctrlO] = openFile
-	c.bindings[supO] = openFile
-
-	addProject := commands.NewProjectAdder(c.driver, c.theme)
-	c.commands = append(c.commands, addProject)
-	ctrlShiftN := gxui.KeyboardEvent{
-		Key:      gxui.KeyN,
-		Modifier: gxui.ModControl | gxui.ModShift,
-	}
-	supShiftN := gxui.KeyboardEvent{
-		Key:      gxui.KeyN,
-		Modifier: gxui.ModSuper | gxui.ModShift,
-	}
-	c.bindings[ctrlShiftN] = addProject
-	c.bindings[supShiftN] = addProject
-
-	openProj := commands.NewProjectOpener(c.driver, c.theme)
-	ctrlShiftO := gxui.KeyboardEvent{
-		Key:      gxui.KeyO,
-		Modifier: gxui.ModControl | gxui.ModShift,
-	}
-	cmdShiftO := gxui.KeyboardEvent{
-		Key:      gxui.KeyO,
-		Modifier: gxui.ModSuper | gxui.ModShift,
-	}
-	c.bindings[ctrlShiftO] = openProj
-	c.bindings[cmdShiftO] = openProj
-
-	find := commands.NewFinder(c.driver, c.theme)
-	ctrlF := gxui.KeyboardEvent{
-		Key:      gxui.KeyF,
-		Modifier: gxui.ModControl,
-	}
-	supF := gxui.KeyboardEvent{
-		Key:      gxui.KeyF,
-		Modifier: gxui.ModSuper,
-	}
-	c.bindings[ctrlF] = find
-	c.bindings[supF] = find
 }
 
 // Controller returns c's controller.
 func (c *Commander) Controller() Controller {
 	return c.controller
+}
+
+// Map maps a Command to a menu and an optional key binding.
+func (c *Commander) Map(command Command, menu string, bindings ...gxui.KeyboardEvent) error {
+	if len(menu) == 0 {
+		return fmt.Errorf("All commands must have a menu entry")
+	}
+	for _, binding := range bindings {
+		if err := c.mapBinding(command, menu, binding); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Commander) mapBinding(command Command, menu string, binding gxui.KeyboardEvent) error {
+	if command := c.Binding(binding); command != nil {
+		return fmt.Errorf("Binding %s is already mapped", binding)
+	}
+	c.commands = append(c.commands, commandMapping{
+		binding:  binding,
+		menuName: menu,
+		command:  command,
+	})
+	return nil
+}
+
+// Binding finds the Command associated with binding.
+func (c *Commander) Binding(binding gxui.KeyboardEvent) Command {
+	if binding.Key == gxui.KeyUnknown {
+		return nil
+	}
+	for _, mapping := range c.commands {
+		if mapping.binding == binding {
+			return mapping.command
+		}
+	}
+	return nil
 }
 
 // KeyPress handles key bindings for c.
@@ -135,7 +108,7 @@ func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 		return true
 	}
 	cmdDone := c.box.HasFocus() && event.Modifier == 0 && event.Key == gxui.KeyEnter
-	if command, ok := c.bindings[event]; ok {
+	if command := c.Binding(event); command != nil {
 		c.box.Clear()
 		if c.box.Run(command) {
 			return true

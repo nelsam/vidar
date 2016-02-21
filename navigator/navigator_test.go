@@ -12,7 +12,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/drivers/gl"
 	"github.com/nelsam/gxui/themes/dark"
-	"github.com/nelsam/vidar/controller/navigator"
+	"github.com/nelsam/vidar/navigator"
 )
 
 func TestNavigator(t *testing.T) {

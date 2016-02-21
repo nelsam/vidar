@@ -7,6 +7,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commands"
+	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/settings"
 )
 
@@ -47,7 +48,7 @@ func (p *Projects) Projects() []settings.Project {
 	return p.projectsAdapter.Items().([]settings.Project)
 }
 
-func (p *Projects) OnComplete(onComplete func(commands.Command)) {
+func (p *Projects) OnComplete(onComplete func(controller.Executor)) {
 	opener := commands.NewProjectOpener(p.driver, p.theme)
 	p.projects.OnSelectionChanged(func(selected gxui.AdapterItem) {
 		opener.SetProject(selected.(settings.Project))

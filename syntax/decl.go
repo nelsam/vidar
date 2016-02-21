@@ -35,21 +35,10 @@ func handleFuncDecl(decl *ast.FuncDecl) gxui.CodeSyntaxLayers {
 	}
 	layers = append(layers, handleFuncType(decl.Type)...)
 	if decl.Recv != nil {
-		for _, block := range decl.Recv.List {
-			layers = append(layers, nodeLayer(block.Type, typeColor))
-		}
+		layers = append(layers, handleFieldList(decl.Recv)...)
 	}
 	layers = append(layers, nodeLayer(decl.Name, functionColor))
-	if decl.Type.Params != nil {
-		for _, block := range decl.Type.Params.List {
-			layers = append(layers, nodeLayer(block.Type, typeColor))
-		}
-	}
-	if decl.Type.Results != nil {
-		for _, block := range decl.Type.Results.List {
-			layers = append(layers, nodeLayer(block.Type, typeColor))
-		}
-	}
+	layers = append(layers, handleFuncType(decl.Type)...)
 	if decl.Body != nil {
 		layers = append(layers, handleBlockStmt(decl.Body)...)
 	}
@@ -68,9 +57,15 @@ func handleGenDecl(decl *ast.GenDecl) gxui.CodeSyntaxLayers {
 	default:
 		panic(fmt.Errorf("Don't know how to handle token %v", decl.Tok))
 	}
+	if decl.Lparen != 0 {
+		layers = append(layers, layer(decl.Lparen, 1, defaultRainbow.New()))
+	}
 	layers = append(layers, layer(decl.TokPos, len(decl.Tok.String()), tokColor))
 	for _, spec := range decl.Specs {
 		layers = append(layers, handleSpec(spec)...)
+	}
+	if decl.Rparen != 0 {
+		layers = append(layers, layer(decl.Rparen, 1, defaultRainbow.Pop()))
 	}
 	return layers
 }

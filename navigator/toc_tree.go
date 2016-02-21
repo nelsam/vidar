@@ -37,6 +37,10 @@ var (
 	goarches = []string{"386", "amd64", "amd64p32", "arm", "armbe", "arm64", "arm64be", "ppc64", "ppc64le", "mips", "mipsle", "mips64", "mips64le", "mips64p32", "mips64p32le", "ppc", "s390", "s390x", "sparc", "sparc64"}
 )
 
+func zeroBasedPos(pos token.Pos) int {
+	return int(pos) - 1
+}
+
 type genericTreeNode struct {
 	gxui.AdapterBase
 
@@ -176,6 +180,7 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 	var (
 		pkgNode = genericTreeNode{name: pkg.Name, path: pkg.Name, color: skippableColor}
 
+		files   []gxui.TreeNode
 		consts  []gxui.TreeNode
 		vars    []gxui.TreeNode
 		typeMap = make(map[string]*Name)
@@ -183,6 +188,12 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 		funcs   []gxui.TreeNode
 	)
 	for filename, f := range pkg.Files {
+		var fileNode Name
+		fileNode.name = filename
+		fileNode.path = pkg.Name + ".files." + filename
+		fileNode.color = nameColor
+		fileNode.filename = filename
+		files = append(files, fileNode)
 		for _, decl := range f.Decls {
 			switch src := decl.(type) {
 			case *ast.GenDecl:
@@ -207,7 +218,7 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 					typ.path = pkg.Name + ".types." + typ.name
 					typ.color = nameColor
 					typ.filename = filename
-					typ.pos = int(typeSpec.Pos())
+					typ.pos = zeroBasedPos(typeSpec.Pos())
 					types = append(types, typ)
 				}
 			case *ast.FuncDecl:
@@ -216,7 +227,7 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 				name.path = pkg.Name + ".funcs." + name.name
 				name.color = nameColor
 				name.filename = filename
-				name.pos = int(src.Pos())
+				name.pos = zeroBasedPos(src.Pos())
 				if src.Recv == nil {
 					funcs = append(funcs, name)
 					continue
@@ -237,6 +248,7 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 		}
 	}
 	pkgNode.children = []gxui.TreeNode{
+		genericTreeNode{name: "files", path: pkg.Name + ".files", color: genericColor, children: files},
 		genericTreeNode{name: "constants", path: pkg.Name + ".constants", color: genericColor, children: consts},
 		genericTreeNode{name: "global vars", path: pkg.Name + ".global vars", color: genericColor, children: vars},
 		genericTreeNode{name: "types", path: pkg.Name + ".types", color: genericColor, children: types},
@@ -257,7 +269,7 @@ func valueNamesFrom(filename, parentName string, specs []ast.Spec) (names []gxui
 			newName.path = parentName + "." + newName.name
 			newName.color = nameColor
 			newName.filename = filename
-			newName.pos = int(name.Pos())
+			newName.pos = zeroBasedPos(name.Pos())
 			names = append(names, newName)
 		}
 	}

@@ -12,8 +12,14 @@ import (
 
 func handleFieldList(src *ast.FieldList) gxui.CodeSyntaxLayers {
 	layers := make(gxui.CodeSyntaxLayers, 0, len(src.List))
+	if src.Opening != 0 {
+		layers = append(layers, layer(src.Opening, 1, defaultRainbow.New()))
+	}
 	for _, block := range src.List {
 		layers = append(layers, nodeLayer(block.Type, typeColor))
+	}
+	if src.Closing != 0 {
+		layers = append(layers, layer(src.Closing, 1, defaultRainbow.Pop()))
 	}
 	return layers
 }
@@ -26,7 +32,7 @@ func handleStructType(src *ast.StructType) gxui.CodeSyntaxLayers {
 }
 
 func handleFuncType(src *ast.FuncType) gxui.CodeSyntaxLayers {
-	layers := make(gxui.CodeSyntaxLayers, 0, 3)
+	layers := make(gxui.CodeSyntaxLayers, 0, 5)
 	if src.Func != token.NoPos {
 		layers = append(layers, layer(src.Func, len("func"), keywordColor))
 	}
@@ -52,6 +58,14 @@ func handleMapType(src *ast.MapType) gxui.CodeSyntaxLayers {
 	return layers
 }
 
+func handleArrayType(src *ast.ArrayType) gxui.CodeSyntaxLayers {
+	layers := gxui.CodeSyntaxLayers{layer(src.Lbrack, 1, defaultRainbow.New())}
+	layers = append(layers, handleExpr(src.Len)...)
+	layers = append(layers, layer(src.End(), 1, defaultRainbow.Pop()))
+	layers = append(layers, handleExpr(src.Elt)...)
+	return layers
+}
+
 func handleBasicLit(src *ast.BasicLit) gxui.CodeSyntaxLayers {
 	var color gxui.Color
 	switch src.Kind {
@@ -66,9 +80,12 @@ func handleBasicLit(src *ast.BasicLit) gxui.CodeSyntaxLayers {
 }
 
 func handleCompositeLit(src *ast.CompositeLit) gxui.CodeSyntaxLayers {
-	layers := handleExpr(src.Type)
+	layers := append(
+		handleExpr(src.Type),
+		layer(src.Lbrace, 1, defaultRainbow.New()),
+	)
 	for _, elt := range src.Elts {
 		layers = append(layers, handleExpr(elt)...)
 	}
-	return layers
+	return append(layers, layer(src.Rbrace, 1, defaultRainbow.Pop()))
 }

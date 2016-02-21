@@ -10,6 +10,7 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commands"
+	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/settings"
 )
 
@@ -104,7 +105,7 @@ func (d *ProjectTree) Frame() gxui.Control {
 	return d.layout
 }
 
-func (d *ProjectTree) OnComplete(onComplete func(commands.Command)) {
+func (d *ProjectTree) OnComplete(onComplete func(controller.Executor)) {
 	cmd := commands.NewFileOpener(d.driver, d.theme)
 	d.project.OnSelectionChanged(func(selected gxui.AdapterItem) {
 		var node gxui.TreeNode = d.projectAdapter

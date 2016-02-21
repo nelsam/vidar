@@ -38,7 +38,7 @@ func (e *TabbedEditor) New(name, path string) {
 	}
 	editor := new(editor)
 	editor.Init(e.driver, e.theme, e.font, path)
-	editor.SetTabWidth(8)
+	editor.SetTabWidth(4)
 	suggester := suggestions.NewGoCodeProvider(editor).(*suggestions.GoCodeProvider)
 	editor.SetSuggestionProvider(suggester)
 

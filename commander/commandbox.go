@@ -6,8 +6,6 @@ package commander
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
-	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commands"
 )
 
 var (
@@ -25,6 +23,43 @@ var (
 	}
 )
 
+// Completer is a type which defines when a gxui.KeyboardEvent
+// completes an action.  Types returned from
+// "../commands".Command.Next() may implement this if they don't want
+// to immediately complete when the "enter" key is pressed.
+type Completer interface {
+	// Complete returns whether or not the key signals a completion of
+	// the input.
+	Complete(gxui.KeyboardEvent) bool
+}
+
+// A Command is any command that can be run by the commandBox.
+type Command interface {
+	// Start starts the command.  The returned gxui.Control can be
+	// used to display the status of the command.
+	//
+	// If no display element is necessary, or if display will be taken
+	// care of by the input elements, Start should return nil.
+	Start(gxui.Control) gxui.Control
+
+	// Name returns the name of the command
+	Name() string
+
+	// Next returns the next control element for reading user input.
+	// By default, this is called every time the commander receives a
+	// gxui.KeyEnter event in KeyPress.  If there are situations where
+	// this is not the desired behavior, the returned gxui.Focusable
+	// can consume the event.  If more keys are required to signal the
+	// end of input, the gxui.Focusable can implement Completer.
+	//
+	// Next will continue to be called until it returns nil, at which
+	// point the command is assumed to be done.
+	Next() gxui.Focusable
+
+	// Exec implements controller.Executor
+	Exec(interface{}) (executed, consume bool)
+}
+
 type colorSetter interface {
 	SetColor(gxui.Color)
 }
@@ -32,32 +67,26 @@ type colorSetter interface {
 type commandBox struct {
 	mixins.LinearLayout
 
-	driver     gxui.Driver
-	theme      *basic.Theme
 	controller Controller
 
 	label   gxui.Label
-	current commands.Command
+	current Command
 	display gxui.Control
 	input   gxui.Focusable
 }
 
-func newCommandBox(theme *basic.Theme, controller Controller) *commandBox {
+func newCommandBox(theme gxui.Theme, controller Controller) *commandBox {
 	box := &commandBox{}
-	box.Init(theme, controller)
+
+	box.controller = controller
+	box.label = theme.CreateLabel()
+	box.label.SetColor(cmdColor)
+
+	box.LinearLayout.Init(box, theme)
+	box.SetDirection(gxui.LeftToRight)
+	box.AddChild(box.label)
+	box.Clear()
 	return box
-}
-
-func (b *commandBox) Init(theme *basic.Theme, controller Controller) {
-	b.theme = theme
-	b.controller = controller
-	b.label = b.theme.CreateLabel()
-	b.label.SetColor(cmdColor)
-
-	b.LinearLayout.Init(b, b.theme)
-	b.SetDirection(gxui.LeftToRight)
-	b.AddChild(b.label)
-	b.Clear()
 }
 
 func (b *commandBox) Clear() {
@@ -67,7 +96,7 @@ func (b *commandBox) Clear() {
 	b.current = nil
 }
 
-func (b *commandBox) Run(command commands.Command) (needsInput bool) {
+func (b *commandBox) Run(command Command) (needsInput bool) {
 	b.current = command
 
 	b.label.SetText(b.current.Name())
@@ -81,7 +110,7 @@ func (b *commandBox) Run(command commands.Command) (needsInput bool) {
 	return b.nextInput()
 }
 
-func (b *commandBox) Current() commands.Command {
+func (b *commandBox) Current() Command {
 	return b.current
 }
 

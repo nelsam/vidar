@@ -9,14 +9,10 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commands"
-	"github.com/nelsam/vidar/controller/editor"
-	"github.com/nelsam/vidar/controller/navigator"
 )
 
 type Navigator interface {
 	gxui.Control
-	Add(navigator.Pane)
 }
 
 type Editor interface {
@@ -30,6 +26,17 @@ type Elementer interface {
 	Elements() []interface{}
 }
 
+// An Executor is a type which can execute operations on the
+// controller and/or its children.
+type Executor interface {
+	// Exec executes the operation(s).  Exec will be called once for
+	// the controller and each of its children, until consume is
+	// true.  If Exec has been run against the controller and all its
+	// children without ever returning true for executed, it is
+	// assumed to be unexpected behavior, and an error will be shown.
+	Exec(interface{}) (executed, consume bool)
+}
+
 type Controller struct {
 	mixins.LinearLayout
 
@@ -40,33 +47,18 @@ type Controller struct {
 	editor    Editor
 }
 
-func New(driver gxui.Driver, theme *basic.Theme, font gxui.Font) *Controller {
+func New(driver gxui.Driver, theme *basic.Theme) *Controller {
 	controller := new(Controller)
-	controller.Init(driver, theme, font)
+	controller.Init(driver, theme)
 	return controller
 }
 
-func (c *Controller) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font) {
+func (c *Controller) Init(driver gxui.Driver, theme *basic.Theme) {
 	c.LinearLayout.Init(c, theme)
 	c.driver = driver
 	c.theme = theme
-	c.font = font
 
 	c.SetDirection(gxui.LeftToRight)
-
-	c.navigator = navigator.New(driver, theme, c)
-	c.AddChild(c.navigator)
-
-	projects := &navigator.Projects{}
-	projects.Init(driver, theme)
-	c.navigator.Add(projects)
-
-	projTree := &navigator.ProjectTree{}
-	projTree.Init(driver, theme)
-	c.navigator.Add(projTree)
-
-	c.editor = editor.New(driver, theme, font)
-	c.AddChild(c.editor)
 }
 
 // Navigator returns c's Navigator instance.
@@ -74,29 +66,56 @@ func (c *Controller) Navigator() Navigator {
 	return c.navigator
 }
 
-// Editor returns c's Editor instance
+// SetNavigator sets c's Navigator instance.
+func (c *Controller) SetNavigator(navigator Navigator) {
+	if c.navigator != nil {
+		c.RemoveChild(c.navigator)
+	}
+	c.navigator = navigator
+	if c.navigator != nil {
+		c.AddChild(c.navigator)
+
+		// Reset the editor, since it should come after the navigator.
+		c.SetEditor(c.editor)
+	}
+}
+
+// Editor returns c's Editor instance.
 func (c *Controller) Editor() Editor {
 	return c.editor
 }
 
+// SetEditor sets c's Editor instance.
+func (c *Controller) SetEditor(editor Editor) {
+	if c.editor != nil {
+		c.RemoveChild(c.editor)
+	}
+	c.editor = editor
+	if c.editor != nil {
+		c.AddChild(c.editor)
+	}
+}
+
 // Execute implements "../commander".Controller.
-func (c *Controller) Execute(command commands.Command) {
-	executed, _ := execRecursively(command, c)
+func (c *Controller) Execute(executor Executor) {
+	executed, _ := execRecursively(executor, c)
 	if !executed {
-		panic(fmt.Errorf("Command %s ran without executing", command.Name()))
+		// TODO: we should probably return an error rather than
+		// panicking.
+		panic(fmt.Errorf("Executor of type %T ran without executing", executor))
 	}
 	c.Editor().Focus()
 }
 
-func execRecursively(command commands.Command, element interface{}) (executed, consume bool) {
-	executed, consume = command.Exec(element)
+func execRecursively(executor Executor, element interface{}) (executed, consume bool) {
+	executed, consume = executor.Exec(element)
 	if consume {
 		return
 	}
 	var childExecuted bool
 	if parent, ok := element.(gxui.Parent); ok {
 		for _, child := range parent.Children() {
-			childExecuted, consume = execRecursively(command, child.Control)
+			childExecuted, consume = execRecursively(executor, child.Control)
 			executed = executed || childExecuted
 			if consume {
 				return
@@ -105,7 +124,7 @@ func execRecursively(command commands.Command, element interface{}) (executed, c
 	}
 	if elementer, ok := element.(Elementer); ok {
 		for _, element := range elementer.Elements() {
-			childExecuted, consume = execRecursively(command, element)
+			childExecuted, consume = execRecursively(executor, element)
 			executed = executed || childExecuted
 			if consume {
 				return

@@ -29,8 +29,10 @@ func (p *ProjectEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.F
 func (p *ProjectEditor) Open(path string, cursor int) {
 	name := strings.TrimPrefix(strings.TrimPrefix(path, p.project.Path), "/")
 	p.TabbedEditor.New(name, path)
-	p.CurrentEditor().Controller().SetCaret(cursor)
-	p.CurrentEditor().ScrollToRune(cursor)
+	p.driver.Call(func() {
+		p.CurrentEditor().Controller().SetCaret(cursor)
+		p.CurrentEditor().ScrollToRune(cursor)
+	})
 }
 
 func (p *ProjectEditor) Attach() {

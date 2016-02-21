@@ -13,6 +13,10 @@ import (
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/gxui/themes/dark"
 	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/commands"
+	"github.com/nelsam/vidar/controller"
+	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/navigator"
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +50,68 @@ func uiMain(driver gxui.Driver) {
 
 	// TODO: figure out a better way to get this resolution
 	window := theme.CreateWindow(1600, 800, "Vidar - GXUI Go Editor")
-	commander := commander.New(driver, theme, theme.DefaultMonospaceFont())
+	controller := controller.New(driver, theme)
+
+	nav := navigator.New(driver, theme, controller)
+	controller.SetNavigator(nav)
+
+	editor := editor.New(driver, theme, theme.DefaultMonospaceFont())
+	controller.SetEditor(editor)
+
+	projects := &navigator.Projects{}
+	projects.Init(driver, theme)
+	nav.Add(projects)
+
+	projTree := &navigator.ProjectTree{}
+	projTree.Init(driver, theme)
+	nav.Add(projTree)
+
+	commander := commander.New(theme, controller)
+
+	// TODO: Store these in a config file or something
+	openFile := commands.NewFileOpener(driver, theme)
+	ctrlO := gxui.KeyboardEvent{
+		Key:      gxui.KeyO,
+		Modifier: gxui.ModControl,
+	}
+	supO := gxui.KeyboardEvent{
+		Key:      gxui.KeyO,
+		Modifier: gxui.ModSuper,
+	}
+	commander.Map(openFile, "File", ctrlO, supO)
+
+	addProject := commands.NewProjectAdder(driver, theme)
+	ctrlShiftN := gxui.KeyboardEvent{
+		Key:      gxui.KeyN,
+		Modifier: gxui.ModControl | gxui.ModShift,
+	}
+	supShiftN := gxui.KeyboardEvent{
+		Key:      gxui.KeyN,
+		Modifier: gxui.ModSuper | gxui.ModShift,
+	}
+	commander.Map(addProject, "File", ctrlShiftN, supShiftN)
+
+	openProj := commands.NewProjectOpener(driver, theme)
+	ctrlShiftO := gxui.KeyboardEvent{
+		Key:      gxui.KeyO,
+		Modifier: gxui.ModControl | gxui.ModShift,
+	}
+	cmdShiftO := gxui.KeyboardEvent{
+		Key:      gxui.KeyO,
+		Modifier: gxui.ModSuper | gxui.ModShift,
+	}
+	commander.Map(openProj, "File", ctrlShiftO, cmdShiftO)
+
+	find := commands.NewFinder(driver, theme)
+	ctrlF := gxui.KeyboardEvent{
+		Key:      gxui.KeyF,
+		Modifier: gxui.ModControl,
+	}
+	supF := gxui.KeyboardEvent{
+		Key:      gxui.KeyF,
+		Modifier: gxui.ModSuper,
+	}
+	commander.Map(find, "Edit", ctrlF, supF)
 
 	window.OnKeyDown(func(event gxui.KeyboardEvent) {
 		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {

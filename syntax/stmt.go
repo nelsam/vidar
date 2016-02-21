@@ -190,9 +190,10 @@ func handleBranchStmt(stmt *ast.BranchStmt) gxui.CodeSyntaxLayers {
 }
 
 func handleBlockStmt(stmt *ast.BlockStmt) gxui.CodeSyntaxLayers {
-	layers := make(gxui.CodeSyntaxLayers, 0, len(stmt.List))
+	layers := make(gxui.CodeSyntaxLayers, 0, len(stmt.List)+2)
+	layers = append(layers, layer(stmt.Lbrace, 1, defaultRainbow.New()))
 	for _, stmt := range stmt.List {
 		layers = append(layers, handleStmt(stmt)...)
 	}
-	return layers
+	return append(layers, layer(stmt.Rbrace, 1, defaultRainbow.Pop()))
 }
