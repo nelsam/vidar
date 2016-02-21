@@ -37,6 +37,12 @@ type Executor interface {
 	Exec(interface{}) (executed, consume bool)
 }
 
+// A BeforeExecutor is an Executor which has tasks to run on the
+// Controller prior to running Exec.
+type BeforeExecutor interface {
+	BeforeExec(interface{})
+}
+
 type Controller struct {
 	mixins.LinearLayout
 
@@ -98,6 +104,9 @@ func (c *Controller) SetEditor(editor Editor) {
 
 // Execute implements "../commander".Controller.
 func (c *Controller) Execute(executor Executor) {
+	if before, ok := executor.(BeforeExecutor); ok {
+		before.BeforeExec(c)
+	}
 	executed, _ := execRecursively(executor, c)
 	if !executed {
 		// TODO: we should probably return an error rather than

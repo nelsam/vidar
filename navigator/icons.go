@@ -6,7 +6,6 @@ import (
 	"image/draw"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/assets"
 	"github.com/nfnt/resize"
 
@@ -16,7 +15,7 @@ import (
 	_ "image/png"
 )
 
-func createIconButton(driver gxui.Driver, theme *basic.Theme, iconPath string) gxui.Button {
+func createIconButton(driver gxui.Driver, theme gxui.Theme, iconPath string) gxui.Button {
 	button := theme.CreateButton()
 	button.SetType(gxui.PushButton)
 

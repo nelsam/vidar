@@ -46,6 +46,7 @@ func main() {
 
 func uiMain(driver gxui.Driver) {
 	theme := dark.CreateTheme(driver).(*basic.Theme)
+	theme.SetDefaultFont(theme.DefaultMonospaceFont())
 	theme.WindowBackground = background
 
 	// TODO: figure out a better way to get this resolution
@@ -58,12 +59,10 @@ func uiMain(driver gxui.Driver) {
 	editor := editor.New(driver, theme, theme.DefaultMonospaceFont())
 	controller.SetEditor(editor)
 
-	projects := &navigator.Projects{}
-	projects.Init(driver, theme)
-	nav.Add(projects)
+	projTree := navigator.NewProjectTree(driver, theme)
+	projects := navigator.NewProjectsPane(driver, theme, projTree.Frame())
 
-	projTree := &navigator.ProjectTree{}
-	projTree.Init(driver, theme)
+	nav.Add(projects)
 	nav.Add(projTree)
 
 	commander := commander.New(theme, controller)
@@ -91,7 +90,7 @@ func uiMain(driver gxui.Driver) {
 	}
 	commander.Map(addProject, "File", ctrlShiftN, supShiftN)
 
-	openProj := commands.NewProjectOpener(driver, theme)
+	openProj := commands.NewProjectOpener(theme, projTree.Frame())
 	ctrlShiftO := gxui.KeyboardEvent{
 		Key:      gxui.KeyO,
 		Modifier: gxui.ModControl | gxui.ModShift,

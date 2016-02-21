@@ -86,23 +86,37 @@ func (n *Navigator) Add(pane Pane) {
 		if event.Button != gxui.MouseButtonLeft {
 			return
 		}
-		if n.frame != nil {
-			disable := n.frame == pane.Frame()
-			n.RemoveChild(n.frame)
-			n.frame = nil
-			if disable {
-				return
-			}
-		}
-		n.frame = pane.Frame()
-		if n.frame != nil {
-			n.AddChild(n.frame)
-			if focusable, ok := n.frame.(gxui.Focusable); ok {
-				gxui.SetFocus(focusable)
-			}
-		}
+		n.ToggleNavPane(pane.Frame())
 	})
 	n.caller.Call(func() {
 		n.buttons.AddChild(button)
 	})
+}
+
+func (n *Navigator) ToggleNavPane(frame gxui.Control) {
+	if n.frame == frame {
+		n.HideNavPane()
+		return
+	}
+	n.ShowNavPane(frame)
+}
+
+func (n *Navigator) HideNavPane() {
+	if n.frame == nil {
+		return
+	}
+	n.RemoveChild(n.frame)
+	n.frame = nil
+}
+
+func (n *Navigator) ShowNavPane(frame gxui.Control) {
+	n.HideNavPane()
+	if frame == nil {
+		return
+	}
+	n.frame = frame
+	n.AddChild(n.frame)
+	if focusable, ok := n.frame.(gxui.Focusable); ok {
+		gxui.SetFocus(focusable)
+	}
 }

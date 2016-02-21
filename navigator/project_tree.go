@@ -1,6 +1,7 @@
 package navigator
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,25 +58,29 @@ type ProjectTree struct {
 	layout gxui.LinearLayout
 }
 
-func (d *ProjectTree) Init(driver gxui.Driver, theme *basic.Theme) {
-	d.driver = driver
-	d.theme = theme
+func NewProjectTree(driver gxui.Driver, theme *basic.Theme) *ProjectTree {
+	tree := &ProjectTree{
+		driver:  driver,
+		theme:   theme,
+		button:  createIconButton(driver, theme, "folder.png"),
+		dirs:    newDirTree(theme),
+		project: newDirTree(theme),
+		layout:  theme.CreateLinearLayout(),
+	}
+	tree.layout.SetDirection(gxui.TopToBottom)
+	tree.layout.AddChild(tree.dirs)
+	tree.layout.AddChild(tree.project)
 
-	d.button = createIconButton(driver, theme, "folder.png")
-	d.dirs = newDirTree(theme)
-	d.project = newDirTree(theme)
+	tree.SetProject(settings.DefaultProject)
 
-	d.layout = theme.CreateLinearLayout()
-	d.layout.SetDirection(gxui.TopToBottom)
-	d.layout.AddChild(d.dirs)
-	d.layout.AddChild(d.project)
-
-	d.SetProject(settings.DefaultProject)
-
-	d.dirs.OnSelectionChanged(func(selection gxui.AdapterItem) {
-		d.projectAdapter = NewTOC(selection.(string))
-		d.project.SetAdapter(d.projectAdapter)
+	tree.dirs.OnSelectionChanged(func(selection gxui.AdapterItem) {
+		tree.dirs.Show(selection)
+		tree.projectAdapter = NewTOC(selection.(string))
+		tree.project.SetAdapter(tree.projectAdapter)
+		tree.project.ExpandAll()
 	})
+
+	return tree
 }
 
 func (d *ProjectTree) Button() gxui.Button {
@@ -83,16 +88,22 @@ func (d *ProjectTree) Button() gxui.Button {
 }
 
 func (d *ProjectTree) SetRoot(path string) {
+	log.Printf("Setting the dir adapter")
 	d.dirsAdapter = &dirTreeAdapter{}
 	d.dirsAdapter.children = []string{path}
 	d.dirsAdapter.dirs = true
 	d.dirs.SetAdapter(d.dirsAdapter)
 
+	log.Printf("Setting the toc")
 	d.projectAdapter = NewTOC(path)
 	d.project.SetAdapter(d.projectAdapter)
+
+	d.project.ExpandAll()
+	log.Printf("Done setting the project")
 }
 
 func (d *ProjectTree) SetProject(project settings.Project) {
+	log.Printf("SetProject called with project %#v", project)
 	d.SetRoot(project.Path)
 }
 

@@ -190,7 +190,7 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 	for filename, f := range pkg.Files {
 		var fileNode Name
 		fileNode.name = filename
-		fileNode.path = pkg.Name + ".files." + filename
+		fileNode.path = pkg.Name + ".files." + strings.TrimPrefix(filename, t.path)
 		fileNode.color = nameColor
 		fileNode.filename = filename
 		files = append(files, fileNode)

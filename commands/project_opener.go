@@ -5,27 +5,28 @@ package commands
 
 import (
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/settings"
 )
+
+type Nav interface {
+	ShowNavPane(gxui.Control)
+}
 
 type projectSetter interface {
 	SetProject(settings.Project)
 }
 
 type ProjectOpener struct {
-	name  gxui.TextBox
-	input <-chan gxui.Focusable
+	name     gxui.TextBox
+	input    <-chan gxui.Focusable
+	projPane gxui.Control
 }
 
-func NewProjectOpener(driver gxui.Driver, theme *basic.Theme) *ProjectOpener {
-	projectOpener := new(ProjectOpener)
-	projectOpener.Init(driver, theme)
-	return projectOpener
-}
-
-func (p *ProjectOpener) Init(driver gxui.Driver, theme *basic.Theme) {
-	p.name = theme.CreateTextBox()
+func NewProjectOpener(theme gxui.Theme, projPane gxui.Control) *ProjectOpener {
+	return &ProjectOpener{
+		name:     theme.CreateTextBox(),
+		projPane: projPane,
+	}
 }
 
 func (p *ProjectOpener) Name() string {
@@ -46,6 +47,14 @@ func (p *ProjectOpener) Next() gxui.Focusable {
 
 func (p *ProjectOpener) SetProject(proj settings.Project) {
 	p.name.SetText(proj.Name)
+}
+
+func (p *ProjectOpener) BeforeExec(element interface{}) {
+	for _, child := range element.(gxui.Parent).Children() {
+		if nav, ok := child.Control.(Nav); ok {
+			nav.ShowNavPane(p.projPane)
+		}
+	}
 }
 
 func (p *ProjectOpener) Exec(element interface{}) (executed, consume bool) {

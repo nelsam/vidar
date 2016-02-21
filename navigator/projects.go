@@ -5,30 +5,32 @@ package navigator
 
 import (
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commands"
 	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/settings"
 )
 
 type Projects struct {
-	driver gxui.Driver
-	theme  *basic.Theme
+	theme gxui.Theme
 
 	button          gxui.Button
 	projects        gxui.List
 	projectsAdapter *gxui.DefaultAdapter
+
+	projectFrame gxui.Control
 }
 
-func (p *Projects) Init(driver gxui.Driver, theme *basic.Theme) {
-	p.driver = driver
-	p.theme = theme
-	p.button = createIconButton(driver, theme, "projects.png")
-	p.projects = theme.CreateList()
-	p.projectsAdapter = gxui.CreateDefaultAdapter()
-
-	p.projectsAdapter.SetItems(settings.Projects())
-	p.projects.SetAdapter(p.projectsAdapter)
+func NewProjectsPane(driver gxui.Driver, theme gxui.Theme, projFrame gxui.Control) *Projects {
+	pane := &Projects{
+		theme:           theme,
+		projectFrame:    projFrame,
+		button:          createIconButton(driver, theme, "projects.png"),
+		projects:        theme.CreateList(),
+		projectsAdapter: gxui.CreateDefaultAdapter(),
+	}
+	pane.projectsAdapter.SetItems(settings.Projects())
+	pane.projects.SetAdapter(pane.projectsAdapter)
+	return pane
 }
 
 func (p *Projects) Add(project settings.Project) {
@@ -49,7 +51,7 @@ func (p *Projects) Projects() []settings.Project {
 }
 
 func (p *Projects) OnComplete(onComplete func(controller.Executor)) {
-	opener := commands.NewProjectOpener(p.driver, p.theme)
+	opener := commands.NewProjectOpener(p.theme, p.projectFrame)
 	p.projects.OnSelectionChanged(func(selected gxui.AdapterItem) {
 		opener.SetProject(selected.(settings.Project))
 		onComplete(opener)
