@@ -292,9 +292,9 @@ func (e *editor) KeyPress(event gxui.KeyboardEvent) bool {
 		// TODO: Gain knowledge about scope, so we know how much to indent.
 		switch {
 		case event.Modifier.Shift():
-			e.Controller().UnindentSelection(e.TabWidth())
+			e.Controller().UnindentSelection()
 		default:
-			e.Controller().IndentSelection(e.TabWidth())
+			e.Controller().IndentSelection()
 		}
 		return true
 	case gxui.KeyUp:
