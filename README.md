@@ -7,7 +7,7 @@ Vidar is the Norse god of silence, patience, and revenge.  Sounds perfect for an
 ## History
 
 Vidar started as a repository that I had named `gxui_playground`.  It was quite literally just a
-place for me to mess around with [gxui](github.com/google/gxui).  The problem I chose to tackle
+place for me to mess around with [gxui](https://github.com/google/gxui).  The problem I chose to tackle
 for my little learning exercise was "I dislike nearly every editor out there for working on Go
 code."
 
