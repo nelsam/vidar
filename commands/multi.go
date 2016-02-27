@@ -36,7 +36,7 @@ func NewMulti(theme gxui.Theme, commands ...Command) *MultiCommand {
 
 func (c *MultiCommand) Start(control gxui.Control) gxui.Control {
 	c.display = c.theme.CreateLinearLayout()
-	c.needExec = c.all
+	c.needExec = append([]Command{}, c.all...)
 	c.executed = make([]bool, len(c.all))
 	c.incoming = make(chan Command, len(c.all))
 	for _, cmd := range c.all {

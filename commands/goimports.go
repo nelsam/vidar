@@ -18,7 +18,6 @@ type ProjectFinder interface {
 }
 
 type GoImports struct {
-	inputs chan gxui.Control
 }
 
 func NewGoImports() *GoImports {
@@ -63,6 +62,7 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 	if err != nil {
 		// TODO: report this error to the user via the UI
 		log.Printf("Received error from goimports: %s", err)
+		return true, true
 	}
 	editor.SetText(string(formatted))
 	return true, true
