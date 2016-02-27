@@ -4,8 +4,6 @@
 package editor
 
 import (
-	"fmt"
-	"os"
 	"strings"
 
 	"github.com/nelsam/gxui"
@@ -28,7 +26,7 @@ func (p *ProjectEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.F
 
 func (p *ProjectEditor) Open(path string, cursor int) {
 	name := strings.TrimPrefix(strings.TrimPrefix(path, p.project.Path), "/")
-	p.TabbedEditor.New(name, path)
+	p.TabbedEditor.New(name, path, p.project.Gopath)
 	p.driver.Call(func() {
 		p.CurrentEditor().Controller().SetCaret(cursor)
 		p.CurrentEditor().ScrollToRune(cursor)
@@ -37,20 +35,14 @@ func (p *ProjectEditor) Open(path string, cursor int) {
 
 func (p *ProjectEditor) Attach() {
 	p.TabbedEditor.Attach()
-	if p.project.Gopath != "" {
-		os.Setenv("GOPATH", p.project.Gopath)
-		p.origPath = os.Getenv("PATH")
-		os.Setenv("PATH", fmt.Sprintf("%s/bin:%s", p.project.Gopath, p.origPath))
-	}
 }
 
 func (p *ProjectEditor) Detach() {
 	p.TabbedEditor.Detach()
-	if p.project.Gopath != "" {
-		os.Unsetenv("GOPATH")
-		os.Setenv("PATH", p.origPath)
-		p.origPath = ""
-	}
+}
+
+func (p *ProjectEditor) Project() settings.Project {
+	return p.project
 }
 
 type MultiProjectEditor struct {
@@ -100,6 +92,10 @@ func (e *MultiProjectEditor) SetProject(project settings.Project) {
 
 func (e *MultiProjectEditor) CurrentFile() string {
 	return e.current.CurrentFile()
+}
+
+func (e *MultiProjectEditor) CurrentProject() settings.Project {
+	return e.current.Project()
 }
 
 func (e *MultiProjectEditor) Focus() {

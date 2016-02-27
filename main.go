@@ -112,6 +112,62 @@ func uiMain(driver gxui.Driver) {
 	}
 	commander.Map(find, "Edit", ctrlF, supF)
 
+	goimports := commands.NewGoImports()
+	ctrlShiftF := gxui.KeyboardEvent{
+		Key:      gxui.KeyF,
+		Modifier: gxui.ModControl | gxui.ModShift,
+	}
+	supShiftF := gxui.KeyboardEvent{
+		Key:      gxui.KeyF,
+		Modifier: gxui.ModSuper | gxui.ModShift,
+	}
+	commander.Map(goimports, "Edit", ctrlShiftF, supShiftF)
+
+	save := commands.NewSave()
+	ctrlS := gxui.KeyboardEvent{
+		Key:      gxui.KeyS,
+		Modifier: gxui.ModControl,
+	}
+	supS := gxui.KeyboardEvent{
+		Key:      gxui.KeyS,
+		Modifier: gxui.ModControl,
+	}
+	saveAndGoimports := commands.NewMulti(theme, goimports, save)
+	commander.Map(saveAndGoimports, "File", ctrlS, supS)
+
+	copy := commands.NewCopy(driver)
+	ctrlC := gxui.KeyboardEvent{
+		Key:      gxui.KeyC,
+		Modifier: gxui.ModControl,
+	}
+	supC := gxui.KeyboardEvent{
+		Key:      gxui.KeyC,
+		Modifier: gxui.ModSuper,
+	}
+	commander.Map(copy, "Edit", ctrlC, supC)
+
+	cut := commands.NewCut(driver)
+	ctrlX := gxui.KeyboardEvent{
+		Key:      gxui.KeyX,
+		Modifier: gxui.ModControl,
+	}
+	supX := gxui.KeyboardEvent{
+		Key:      gxui.KeyX,
+		Modifier: gxui.ModSuper,
+	}
+	commander.Map(cut, "Edit", ctrlX, supX)
+
+	paste := commands.NewPaste(driver)
+	ctrlV := gxui.KeyboardEvent{
+		Key:      gxui.KeyV,
+		Modifier: gxui.ModControl,
+	}
+	supV := gxui.KeyboardEvent{
+		Key:      gxui.KeyV,
+		Modifier: gxui.ModSuper,
+	}
+	commander.Map(paste, "Edit", ctrlV, supV)
+
 	window.OnKeyDown(func(event gxui.KeyboardEvent) {
 		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {
 			os.Exit(0)

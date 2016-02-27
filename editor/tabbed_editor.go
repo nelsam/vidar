@@ -14,7 +14,7 @@ import (
 type TabbedEditor struct {
 	mixins.PanelHolder
 
-	editors map[string]*editor
+	editors map[string]*CodeEditor
 
 	driver gxui.Driver
 	theme  *basic.Theme
@@ -22,7 +22,7 @@ type TabbedEditor struct {
 }
 
 func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, theme *basic.Theme, font gxui.Font) {
-	e.editors = make(map[string]*editor)
+	e.editors = make(map[string]*CodeEditor)
 	e.driver = driver
 	e.theme = theme
 	e.font = font
@@ -30,16 +30,16 @@ func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, t
 	e.SetMargin(math.Spacing{L: 0, T: 2, R: 0, B: 0})
 }
 
-func (e *TabbedEditor) New(name, path string) {
+func (e *TabbedEditor) New(name, path, gopath string) {
 	if editor, ok := e.editors[name]; ok {
 		e.Select(e.PanelIndex(editor))
 		e.Focus()
 		return
 	}
-	editor := new(editor)
+	editor := &CodeEditor{}
 	editor.Init(e.driver, e.theme, e.font, path)
 	editor.SetTabWidth(4)
-	suggester := suggestions.NewGoCodeProvider(editor).(*suggestions.GoCodeProvider)
+	suggester := suggestions.NewGoCodeProvider(editor, gopath).(*suggestions.GoCodeProvider)
 	editor.SetSuggestionProvider(suggester)
 
 	e.editors[name] = editor
@@ -92,16 +92,16 @@ func (e *TabbedEditor) KeyPress(event gxui.KeyboardEvent) bool {
 	return e.PanelHolder.KeyPress(event)
 }
 
-func (e *TabbedEditor) CurrentEditor() gxui.CodeEditor {
+func (e *TabbedEditor) CurrentEditor() *CodeEditor {
 	if e.SelectedPanel() == nil {
 		return nil
 	}
-	return e.SelectedPanel().(gxui.CodeEditor)
+	return e.SelectedPanel().(*CodeEditor)
 }
 
 func (e *TabbedEditor) CurrentFile() string {
 	if e.SelectedPanel() == nil {
 		return ""
 	}
-	return e.SelectedPanel().(*editor).filepath
+	return e.SelectedPanel().(*CodeEditor).filepath
 }

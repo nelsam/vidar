@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/go-fsnotify/fsnotify"
@@ -21,7 +20,7 @@ import (
 	"github.com/nelsam/vidar/syntax"
 )
 
-type editor struct {
+type CodeEditor struct {
 	mixins.CodeEditor
 	adapter     *suggestions.Adapter
 	suggestions gxui.List
@@ -39,7 +38,7 @@ type editor struct {
 	loading chan bool
 }
 
-func (e *editor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, file string) {
+func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, file string) {
 	e.theme = theme
 	e.driver = driver
 	e.loading = make(chan bool, 5)
@@ -68,7 +67,7 @@ func (e *editor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, fi
 	e.SetBorderPen(gxui.TransparentPen)
 }
 
-func (e *editor) open() {
+func (e *CodeEditor) open() {
 	if e.filepath == "" {
 		e.SetText(`// Scratch
 // This buffer is for jotting down quick notes, but is not saved to disk.
@@ -79,7 +78,7 @@ func (e *editor) open() {
 	e.load()
 }
 
-func (e *editor) watch() {
+func (e *CodeEditor) watch() {
 	var err error
 	e.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
@@ -103,7 +102,7 @@ func (e *editor) watch() {
 	}
 }
 
-func (e *editor) waitForFileCreate() error {
+func (e *CodeEditor) waitForFileCreate() error {
 	dir := filepath.Dir(e.filepath)
 	if err := e.watcher.Add(dir); err != nil {
 		panic(err)
@@ -115,7 +114,7 @@ func (e *editor) waitForFileCreate() error {
 	})
 }
 
-func (e *editor) inotifyWait(eventFunc func(fsnotify.Event) (done bool)) error {
+func (e *CodeEditor) inotifyWait(eventFunc func(fsnotify.Event) (done bool)) error {
 	for {
 		select {
 		case event := <-e.watcher.Events:
@@ -126,7 +125,7 @@ func (e *editor) inotifyWait(eventFunc func(fsnotify.Event) (done bool)) error {
 	}
 }
 
-func (e *editor) load() {
+func (e *CodeEditor) load() {
 	e.loading <- true
 	defer func() {
 		<-e.loading
@@ -162,8 +161,20 @@ func (e *editor) load() {
 	})
 }
 
-// mixins.CodeEditor overrides
-func (e *editor) Paint(c gxui.Canvas) {
+func (e *CodeEditor) HasChanges() bool {
+	return e.hasChanges
+}
+
+func (e *CodeEditor) LastKnownMTime() time.Time {
+	return e.lastModified
+}
+
+func (e *CodeEditor) FlushedChanges() {
+	e.hasChanges = false
+	e.lastModified = time.Now()
+}
+
+func (e *CodeEditor) Paint(c gxui.Canvas) {
 	e.CodeEditor.Paint(c)
 
 	if e.HasFocus() {
@@ -172,14 +183,14 @@ func (e *editor) Paint(c gxui.Canvas) {
 	}
 }
 
-func (e *editor) CreateSuggestionList() gxui.List {
+func (e *CodeEditor) CreateSuggestionList() gxui.List {
 	l := e.theme.CreateList()
 	l.SetBackgroundBrush(e.theme.CodeSuggestionListStyle.Brush)
 	l.SetBorderPen(e.theme.CodeSuggestionListStyle.Pen)
 	return l
 }
 
-func (e *editor) SetSuggestionProvider(provider gxui.CodeSuggestionProvider) {
+func (e *CodeEditor) SetSuggestionProvider(provider gxui.CodeSuggestionProvider) {
 	if e.SuggestionProvider() != provider {
 		e.CodeEditor.SetSuggestionProvider(provider)
 		if e.IsSuggestionListShowing() {
@@ -188,24 +199,24 @@ func (e *editor) SetSuggestionProvider(provider gxui.CodeSuggestionProvider) {
 	}
 }
 
-func (e *editor) IsSuggestionListShowing() bool {
+func (e *CodeEditor) IsSuggestionListShowing() bool {
 	return e.Children().Find(e.suggestions) != nil
 }
 
-func (e *editor) SortSuggestionList() {
+func (e *CodeEditor) SortSuggestionList() {
 	caret := e.Controller().LastCaret()
 	partial := e.WordAt(caret)
 	e.adapter.Sort(partial)
 }
 
-func (e *editor) ShowSuggestionList() {
+func (e *CodeEditor) ShowSuggestionList() {
 	if e.SuggestionProvider() == nil || e.IsSuggestionListShowing() {
 		return
 	}
 	e.updateSuggestionList()
 }
 
-func (e *editor) updateSuggestionList() {
+func (e *CodeEditor) updateSuggestionList() {
 	caret := e.Controller().LastCaret()
 
 	suggestions := e.SuggestionProvider().SuggestionsAt(caret)
@@ -243,51 +254,28 @@ func (e *editor) updateSuggestionList() {
 	child.Layout(cs.Rect().Offset(target).Intersect(bounds))
 }
 
-func (e *editor) HideSuggestionList() {
+func (e *CodeEditor) HideSuggestionList() {
 	if e.IsSuggestionListShowing() {
 		e.RemoveChild(e.suggestions)
 	}
 }
 
-func (e *editor) KeyPress(event gxui.KeyboardEvent) bool {
+func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 	if event.Modifier.Control() || event.Modifier.Super() {
 		switch event.Key {
 		case gxui.KeySpace:
 			e.ShowSuggestionList()
-			return true
-		case gxui.KeyS:
-			if !e.lastModified.IsZero() {
-				finfo, err := os.Stat(e.filepath)
-				if err != nil {
-					panic(err)
-				}
-				if finfo.ModTime().After(e.lastModified) {
-					panic("Cannot save file: written since last open")
-				}
-			}
-			f, err := os.Create(e.filepath)
-			if err != nil {
-				panic(err)
-			}
-			if !strings.HasSuffix(e.Text(), "\n") {
-				e.SetText(e.Text() + "\n")
-			}
-			if _, err := f.WriteString(e.Text()); err != nil {
-				panic(err)
-			}
-			finfo, err := f.Stat()
-			if err != nil {
-				panic(err)
-			}
-			e.lastModified = finfo.ModTime()
-			f.Close()
-			e.hasChanges = false
 			return true
 		case gxui.KeyTab:
 			return false
 		}
 	}
 	switch event.Key {
+	case gxui.KeyHome, gxui.KeyEnd, gxui.KeyPageUp, gxui.KeyPageDown,
+		gxui.KeyBackspace, gxui.KeyDelete, gxui.KeyA:
+
+		// These are all bindings that the TextBox handles fine.
+		return e.TextBox.KeyPress(event)
 	case gxui.KeyTab:
 		// TODO: Gain knowledge about scope, so we know how much to indent.
 		switch {
@@ -297,16 +285,14 @@ func (e *editor) KeyPress(event gxui.KeyboardEvent) bool {
 			e.Controller().IndentSelection()
 		}
 		return true
-	case gxui.KeyUp:
-		fallthrough
-	case gxui.KeyDown:
+	case gxui.KeyUp, gxui.KeyDown:
 		if e.IsSuggestionListShowing() {
 			return e.suggestions.KeyPress(event)
 		}
-	case gxui.KeyLeft:
+		return e.TextBox.KeyPress(event)
+	case gxui.KeyLeft, gxui.KeyRight:
 		e.HideSuggestionList()
-	case gxui.KeyRight:
-		e.HideSuggestionList()
+		return e.TextBox.KeyPress(event)
 	case gxui.KeyEnter:
 		controller := e.Controller()
 		if e.IsSuggestionListShowing() {
@@ -329,10 +315,10 @@ func (e *editor) KeyPress(event gxui.KeyboardEvent) bool {
 			return true
 		}
 	}
-	return e.CodeEditor.KeyPress(event)
+	return false
 }
 
-func (e *editor) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
+func (e *CodeEditor) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
 	consume = e.CodeEditor.KeyStroke(event)
 	if e.IsSuggestionListShowing() {
 		e.SortSuggestionList()
@@ -340,7 +326,7 @@ func (e *editor) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
 	return
 }
 
-func (e *editor) CreateLine(theme gxui.Theme, index int) (mixins.TextBoxLine, gxui.Control) {
+func (e *CodeEditor) CreateLine(theme gxui.Theme, index int) (mixins.TextBoxLine, gxui.Control) {
 	lineNumber := theme.CreateLabel()
 	lineNumber.SetText(fmt.Sprintf("%4d", index+1))
 

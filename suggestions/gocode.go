@@ -6,7 +6,9 @@ package suggestions
 import (
 	"encoding/json"
 	"io/ioutil"
+	"os"
 	"os/exec"
+	"path"
 	"strconv"
 
 	"github.com/nelsam/gxui"
@@ -16,16 +18,22 @@ import (
 type GoCodeProvider struct {
 	Path   string
 	editor gxui.CodeEditor
+	gopath string
 }
 
-func NewGoCodeProvider(editor gxui.CodeEditor) gxui.CodeSuggestionProvider {
+func NewGoCodeProvider(editor gxui.CodeEditor, gopath string) gxui.CodeSuggestionProvider {
 	return &GoCodeProvider{
 		editor: editor,
+		gopath: gopath,
 	}
 }
 
 func (p *GoCodeProvider) SuggestionsAt(runeIndex int) []gxui.CodeSuggestion {
 	cmd := exec.Command("gocode", "-f", "json", "autocomplete", p.Path, strconv.Itoa(runeIndex))
+	cmd.Env = []string{
+		"PATH=" + os.Getenv("PATH") + ":" + path.Join(p.gopath, "bin"),
+		"GOPATH=" + p.gopath,
+	}
 	in, err := cmd.StdinPipe()
 	if err != nil {
 		panic(err)

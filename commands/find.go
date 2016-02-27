@@ -12,10 +12,11 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/editor"
 )
 
 type EditorFinder interface {
-	CurrentEditor() gxui.CodeEditor
+	CurrentEditor() *editor.CodeEditor
 }
 
 type Find struct {

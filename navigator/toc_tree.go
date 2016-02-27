@@ -5,6 +5,7 @@ import (
 	"go/parser"
 	"go/token"
 	"log"
+	"path"
 	"strings"
 
 	"github.com/nelsam/gxui"
@@ -132,12 +133,12 @@ func (t skippingTreeNode) Create(theme gxui.Theme) gxui.Control {
 }
 
 type Location struct {
-	filename string
+	filepath string
 	pos      int
 }
 
 func (l Location) File() string {
-	return l.filename
+	return l.filepath
 }
 
 func (l Location) Pos() int {
@@ -187,21 +188,22 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 		types   []gxui.TreeNode
 		funcs   []gxui.TreeNode
 	)
-	for filename, f := range pkg.Files {
+	for filepath, f := range pkg.Files {
 		var fileNode Name
+		filename := path.Base(filepath)
 		fileNode.name = filename
-		fileNode.path = pkg.Name + ".files." + strings.TrimPrefix(filename, t.path)
+		fileNode.path = pkg.Name + ".files." + filepath
 		fileNode.color = nameColor
-		fileNode.filename = filename
+		fileNode.filepath = filepath
 		files = append(files, fileNode)
 		for _, decl := range f.Decls {
 			switch src := decl.(type) {
 			case *ast.GenDecl:
 				switch src.Tok.String() {
 				case "const":
-					consts = append(consts, valueNamesFrom(filename, pkg.Name+".constants", src.Specs)...)
+					consts = append(consts, valueNamesFrom(filepath, pkg.Name+".constants", src.Specs)...)
 				case "var":
-					vars = append(vars, valueNamesFrom(filename, pkg.Name+".global vars", src.Specs)...)
+					vars = append(vars, valueNamesFrom(filepath, pkg.Name+".global vars", src.Specs)...)
 				case "type":
 					// I have yet to see a case where a type declaration has more than one Specs.
 					typeSpec := src.Specs[0].(*ast.TypeSpec)
@@ -217,7 +219,7 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 					typ.name = typeName
 					typ.path = pkg.Name + ".types." + typ.name
 					typ.color = nameColor
-					typ.filename = filename
+					typ.filepath = filepath
 					typ.pos = zeroBasedPos(typeSpec.Pos())
 					types = append(types, typ)
 				}
@@ -226,7 +228,7 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 				name.name = src.Name.String()
 				name.path = pkg.Name + ".funcs." + name.name
 				name.color = nameColor
-				name.filename = filename
+				name.filepath = filepath
 				name.pos = zeroBasedPos(src.Pos())
 				if src.Recv == nil {
 					funcs = append(funcs, name)
@@ -257,7 +259,7 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 	return pkgNode
 }
 
-func valueNamesFrom(filename, parentName string, specs []ast.Spec) (names []gxui.TreeNode) {
+func valueNamesFrom(filepath, parentName string, specs []ast.Spec) (names []gxui.TreeNode) {
 	for _, spec := range specs {
 		valSpec, ok := spec.(*ast.ValueSpec)
 		if !ok {
@@ -268,7 +270,7 @@ func valueNamesFrom(filename, parentName string, specs []ast.Spec) (names []gxui
 			newName.name = name.String()
 			newName.path = parentName + "." + newName.name
 			newName.color = nameColor
-			newName.filename = filename
+			newName.filepath = filepath
 			newName.pos = zeroBasedPos(name.Pos())
 			names = append(names, newName)
 		}
