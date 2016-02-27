@@ -172,10 +172,14 @@ func uiMain(driver gxui.Driver) {
 		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {
 			os.Exit(0)
 		}
-		commander.KeyDown(event)
+		if window.Focus() == nil {
+			commander.KeyDown(event)
+		}
 	})
 	window.OnKeyUp(func(event gxui.KeyboardEvent) {
-		commander.KeyPress(event)
+		if window.Focus() == nil {
+			commander.KeyPress(event)
+		}
 	})
 
 	// TODO: Check the system's DPI settings for this value
