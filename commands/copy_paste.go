@@ -1,10 +1,6 @@
 package commands
 
-import (
-	"log"
-
-	"github.com/nelsam/gxui"
-)
+import "github.com/nelsam/gxui"
 
 type Copy struct {
 	driver gxui.Driver
@@ -82,7 +78,6 @@ func (p *Paste) Name() string {
 }
 
 func (p *Paste) Start(gxui.Control) gxui.Control {
-	log.Printf("Calling paste start")
 	return nil
 }
 
@@ -91,7 +86,6 @@ func (p *Paste) Next() gxui.Focusable {
 }
 
 func (p *Paste) Exec(target interface{}) (executed, consume bool) {
-	log.Printf("Calling paste execute")
 	finder, ok := target.(EditorFinder)
 	if !ok {
 		return false, false
