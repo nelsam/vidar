@@ -60,7 +60,8 @@ func (c *Cut) Exec(target interface{}) (executed, consume bool) {
 	selection := editor.Controller().FirstSelection()
 	newRunes, _ := editor.Controller().ReplaceAt(editor.Runes(), selection.Start(), selection.End(), []rune(""))
 	editor.SetText(string(newRunes))
-	return
+	editor.Controller().ClearSelections()
+	return true, true
 }
 
 type Paste struct {

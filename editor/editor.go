@@ -319,7 +319,7 @@ func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 }
 
 func (e *CodeEditor) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
-	consume = e.CodeEditor.KeyStroke(event)
+	consume = e.TextBox.KeyStroke(event)
 	if e.IsSuggestionListShowing() {
 		e.SortSuggestionList()
 	}
