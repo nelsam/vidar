@@ -68,7 +68,7 @@ func (r *Redo) Next() gxui.Focusable {
 
 func (r *Redo) Exec(interface{}) (executed, consume bool) {
 	history := r.editor.History()
-	edit := history.Redo(0)
+	edit := history.Redo(history.Redos() - 1)
 	text, _ := r.editor.Controller().ReplaceAt(r.editor.Runes(), edit.At, edit.At+len(edit.Old), edit.New)
 	r.editor.Controller().SetTextRunes(text)
 	return true, true
