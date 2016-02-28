@@ -200,9 +200,6 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 
 		buildTags := findBuildTags(filename, f)
 		buildTagLine := strings.Join(buildTags, " ")
-		if buildTagLine != "" {
-
-		}
 		for _, decl := range f.Decls {
 			switch src := decl.(type) {
 			case *ast.GenDecl:
