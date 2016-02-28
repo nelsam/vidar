@@ -1,6 +1,7 @@
 package navigator
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -168,7 +169,7 @@ func (t *TOC) Init(path string) {
 }
 
 func (t *TOC) Reload() {
-	pkgs, err := parser.ParseDir(token.NewFileSet(), t.path, nil, 0)
+	pkgs, err := parser.ParseDir(token.NewFileSet(), t.path, nil, parser.ParseComments)
 	if err != nil {
 		log.Printf("Error parsing dir: %s", err)
 	}
@@ -196,14 +197,20 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 		fileNode.color = nameColor
 		fileNode.filepath = filepath
 		files = append(files, fileNode)
+
+		buildTags := findBuildTags(filename, f)
+		buildTagLine := strings.Join(buildTags, " ")
+		if buildTagLine != "" {
+
+		}
 		for _, decl := range f.Decls {
 			switch src := decl.(type) {
 			case *ast.GenDecl:
 				switch src.Tok.String() {
 				case "const":
-					consts = append(consts, valueNamesFrom(filepath, pkg.Name+".constants", src.Specs)...)
+					consts = append(consts, valueNamesFrom(filepath, buildTagLine, pkg.Name+".constants", src.Specs)...)
 				case "var":
-					vars = append(vars, valueNamesFrom(filepath, pkg.Name+".global vars", src.Specs)...)
+					vars = append(vars, valueNamesFrom(filepath, buildTagLine, pkg.Name+".global vars", src.Specs)...)
 				case "type":
 					// I have yet to see a case where a type declaration has more than one Specs.
 					typeSpec := src.Specs[0].(*ast.TypeSpec)
@@ -217,6 +224,9 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 						typeMap[typeName] = typ
 					}
 					typ.name = typeName
+					if buildTagLine != "" {
+						typ.name = fmt.Sprintf("%s (%s)", typ.name, buildTagLine)
+					}
 					typ.path = pkg.Name + ".types." + typ.name
 					typ.color = nameColor
 					typ.filepath = filepath
@@ -224,8 +234,16 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 					types = append(types, typ)
 				}
 			case *ast.FuncDecl:
+				if src.Name.String() == "init" {
+					// There can be multiple inits in the package, so this
+					// doesn't really help us in the TOC.
+					continue
+				}
 				var name Name
 				name.name = src.Name.String()
+				if buildTagLine != "" {
+					name.name = fmt.Sprintf("%s (%s)", name.name, buildTagLine)
+				}
 				name.path = pkg.Name + ".funcs." + name.name
 				name.color = nameColor
 				name.filepath = filepath
@@ -259,15 +277,102 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 	return pkgNode
 }
 
-func valueNamesFrom(filepath, parentName string, specs []ast.Spec) (names []gxui.TreeNode) {
+func findBuildTags(filename string, file *ast.File) (tags []string) {
+	fileTag := parseFileTag(filename)
+	if fileTag != "" {
+
+		tags = append(tags, fileTag)
+	}
+
+	for _, commentBlock := range file.Comments {
+		if commentBlock.End() >= file.Package-1 {
+			// A build tag comment *must* have an empty line between it
+			// and the `package` declaration.
+			continue
+		}
+
+		for _, comment := range commentBlock.List {
+			newTags := parseTag(comment)
+			tags = applyTags(newTags, tags)
+
+		}
+	}
+	return tags
+}
+
+func applyTags(newTags, prevTags []string) (combinedTags []string) {
+	if len(prevTags) == 0 {
+		return newTags
+	}
+	if len(newTags) == 0 {
+		return prevTags
+	}
+	for _, newTag := range newTags {
+		for _, prevTag := range prevTags {
+			combinedTags = append(combinedTags, prevTag+","+newTag)
+		}
+	}
+	return
+}
+
+func parseFileTag(filename string) (fileTag string) {
+	filename = strings.TrimSuffix(filename, ".go")
+	filename = strings.TrimSuffix(filename, "_test")
+	var goarch, goos string
+	for _, arch := range goarches {
+		archSuffix := "_" + arch
+		if strings.HasSuffix(filename, archSuffix) {
+			goarch = arch
+			filename = strings.TrimSuffix(filename, archSuffix)
+			break
+		}
+	}
+	for _, os := range gooses {
+		osSuffix := "_" + os
+		if strings.HasSuffix(filename, osSuffix) {
+			goos = os
+			filename = strings.TrimSuffix(filename, osSuffix)
+			break
+		}
+	}
+	if goos != "" {
+		fileTag += goos
+	}
+	if goarch != "" {
+		if fileTag != "" {
+			fileTag += ","
+		}
+		fileTag += goarch
+	}
+	return fileTag
+}
+
+func parseTag(commentLine *ast.Comment) []string {
+	comment := commentLine.Text
+	if !strings.HasPrefix(comment, "// +build ") {
+		return nil
+	}
+	tags := strings.TrimPrefix(comment, "// +build ")
+	return strings.Split(tags, " ")
+}
+
+func valueNamesFrom(filepath, buildTags, parentName string, specs []ast.Spec) (names []gxui.TreeNode) {
 	for _, spec := range specs {
 		valSpec, ok := spec.(*ast.ValueSpec)
 		if !ok {
 			continue
 		}
 		for _, name := range valSpec.Names {
+			if name.String() == "_" {
+				// _ can be redeclared multiple times, so providing access to
+				// it in the TOC isn't that useful.
+				continue
+			}
 			var newName Name
 			newName.name = name.String()
+			if buildTags != "" {
+				newName.name = fmt.Sprintf("%s (%s)", newName.name, buildTags)
+			}
 			newName.path = parentName + "." + newName.name
 			newName.color = nameColor
 			newName.filepath = filepath
