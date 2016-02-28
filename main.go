@@ -173,6 +173,28 @@ func uiMain(driver gxui.Driver) {
 	}
 	commander.Map(paste, "Edit", ctrlV, supV)
 
+	undo := commands.NewUndo()
+	ctrlZ := gxui.KeyboardEvent{
+		Key:      gxui.KeyZ,
+		Modifier: gxui.ModControl,
+	}
+	supZ := gxui.KeyboardEvent{
+		Key:      gxui.KeyZ,
+		Modifier: gxui.ModSuper,
+	}
+	commander.Map(undo, "Edit", ctrlZ, supZ)
+
+	redo := commands.NewRedo(theme)
+	ctrlR := gxui.KeyboardEvent{
+		Key:      gxui.KeyR,
+		Modifier: gxui.ModControl,
+	}
+	supR := gxui.KeyboardEvent{
+		Key:      gxui.KeyR,
+		Modifier: gxui.ModSuper,
+	}
+	commander.Map(redo, "Edit", ctrlR, supR)
+
 	window.OnKeyDown(func(event gxui.KeyboardEvent) {
 		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {
 			os.Exit(0)

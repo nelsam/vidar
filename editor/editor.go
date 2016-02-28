@@ -26,6 +26,7 @@ type CodeEditor struct {
 	suggestions gxui.List
 	theme       *basic.Theme
 	driver      gxui.Driver
+	history     *History
 
 	lastModified time.Time
 	hasChanges   bool
@@ -42,6 +43,7 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 	e.theme = theme
 	e.driver = driver
 	e.loading = make(chan bool, 5)
+	e.history = NewHistory()
 
 	e.adapter = &suggestions.Adapter{}
 	e.suggestions = e.CreateSuggestionList()
@@ -57,6 +59,7 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 		e.SetSyntaxLayers(newLayers)
 		// TODO: display the error in some pane of the editor
 		_ = err
+		e.history.Add(changes...)
 	})
 	e.filepath = file
 	e.open()
@@ -159,6 +162,10 @@ func (e *CodeEditor) load() {
 		e.SetText(string(b))
 		e.Controller().SetCaret(location)
 	})
+}
+
+func (e *CodeEditor) History() *History {
+	return e.history
 }
 
 func (e *CodeEditor) HasChanges() bool {

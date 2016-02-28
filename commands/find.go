@@ -107,7 +107,7 @@ func (b *findBox) Init(driver gxui.Driver, theme *basic.Theme, editor gxui.CodeE
 	b.SetMultiline(false)
 }
 
-func findEditor(control gxui.Control) gxui.CodeEditor {
+func findEditor(control gxui.Control) *editor.CodeEditor {
 	switch src := control.(type) {
 	case EditorFinder:
 		return src.CurrentEditor()
