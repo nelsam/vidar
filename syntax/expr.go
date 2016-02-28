@@ -94,7 +94,7 @@ func handleIndexExpr(src *ast.IndexExpr) gxui.CodeSyntaxLayers {
 	layers := handleExpr(src.X)
 	layers = append(layers, layer(src.Lbrack, 1, defaultRainbow.New()))
 	layers = append(layers, handleExpr(src.Index)...)
-	return append(layers, layer(src.Lbrack, 1, defaultRainbow.Pop()))
+	return append(layers, layer(src.Rbrack, 1, defaultRainbow.Pop()))
 }
 
 func handleKeyValueExpr(src *ast.KeyValueExpr) gxui.CodeSyntaxLayers {
