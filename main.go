@@ -177,6 +177,9 @@ func uiMain(driver gxui.Driver) {
 		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {
 			os.Exit(0)
 		}
+		if event.Modifier == 0 && event.Key == gxui.KeyF11 {
+			window.SetFullscreen(!window.Fullscreen())
+		}
 		if window.Focus() == nil {
 			commander.KeyDown(event)
 		}
