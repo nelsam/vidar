@@ -65,6 +65,11 @@ func uiMain(driver gxui.Driver) {
 	nav.Add(projects)
 	nav.Add(projTree)
 
+	nav.Resize(window.Size().H)
+	window.OnResize(func() {
+		nav.Resize(window.Size().H)
+	})
+
 	commander := commander.New(theme, controller)
 
 	// TODO: Store these in a config file or something

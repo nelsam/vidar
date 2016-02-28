@@ -1,7 +1,6 @@
 package navigator
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,10 +48,10 @@ type ProjectTree struct {
 	driver gxui.Driver
 	theme  *basic.Theme
 
-	dirs        gxui.Tree
+	dirs        *dirTree
 	dirsAdapter *dirTreeAdapter
 
-	project        gxui.Tree
+	project        *dirTree
 	projectAdapter *TOC
 
 	layout gxui.LinearLayout
@@ -83,27 +82,28 @@ func NewProjectTree(driver gxui.Driver, theme *basic.Theme) *ProjectTree {
 	return tree
 }
 
+func (d *ProjectTree) SetHeight(height int) {
+	d.project.height = height - d.dirs.height
+	d.project.SizeChanged()
+}
+
 func (d *ProjectTree) Button() gxui.Button {
 	return d.button
 }
 
 func (d *ProjectTree) SetRoot(path string) {
-	log.Printf("Setting the dir adapter")
 	d.dirsAdapter = &dirTreeAdapter{}
 	d.dirsAdapter.children = []string{path}
 	d.dirsAdapter.dirs = true
 	d.dirs.SetAdapter(d.dirsAdapter)
 
-	log.Printf("Setting the toc")
 	d.projectAdapter = NewTOC(path)
 	d.project.SetAdapter(d.projectAdapter)
 
 	d.project.ExpandAll()
-	log.Printf("Done setting the project")
 }
 
 func (d *ProjectTree) SetProject(project settings.Project) {
-	log.Printf("SetProject called with project %#v", project)
 	d.SetRoot(project.Path)
 }
 
@@ -192,12 +192,14 @@ func (a *fsAdapter) create(theme gxui.Theme, path string) gxui.Label {
 
 type dirTree struct {
 	mixins.Tree
-	theme *basic.Theme
+	theme  *basic.Theme
+	height int
 }
 
-func newDirTree(theme *basic.Theme) gxui.Tree {
+func newDirTree(theme *basic.Theme) *dirTree {
 	t := &dirTree{
-		theme: theme,
+		theme:  theme,
+		height: 20 * theme.DefaultMonospaceFont().GlyphMaxSize().H,
 	}
 	t.Init(t, theme)
 	return t
@@ -211,7 +213,7 @@ func (t *dirTree) DesiredSize(min, max math.Size) math.Size {
 	if max.W < width {
 		width = max.W
 	}
-	height := 20 * t.theme.DefaultMonospaceFont().GlyphMaxSize().H
+	height := t.height
 	if min.H > height {
 		height = min.H
 	}

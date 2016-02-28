@@ -35,6 +35,11 @@ type Caller interface {
 	Call(func()) bool
 }
 
+// HeightSetter is any type which needs its height set explicitly
+type HeightSetter interface {
+	SetHeight(int)
+}
+
 // Navigator is a type implementing the navigation pane of vidar.
 type Navigator struct {
 	mixins.LinearLayout
@@ -51,7 +56,7 @@ type Navigator struct {
 
 // New creates and returns a new *Navigator.
 func New(driver gxui.Driver, theme gxui.Theme, executor CommandExecutor) *Navigator {
-	nav := new(Navigator)
+	nav := &Navigator{}
 	nav.Init(nav, theme)
 
 	nav.SetDirection(gxui.LeftToRight)
@@ -99,6 +104,14 @@ func (n *Navigator) ToggleNavPane(frame gxui.Control) {
 		return
 	}
 	n.ShowNavPane(frame)
+}
+
+func (n *Navigator) Resize(height int) {
+	for _, pane := range n.panes {
+		if heightSetter, ok := pane.(HeightSetter); ok {
+			heightSetter.SetHeight(height)
+		}
+	}
 }
 
 func (n *Navigator) HideNavPane() {
