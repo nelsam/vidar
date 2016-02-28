@@ -32,7 +32,7 @@ func init() {
 	cmd = &cobra.Command{
 		Use:   "vidar [files...]",
 		Short: "An experimental Go editor",
-		Long:  "An editor for Go code, still in its infancy.  Basic editing of Go code is mostly complete, but there's still a high potential for data loss.",
+		Long:  "An editor for Go code, still in its infancy.  Basic editing of Go code is mostly complete, but there's still a potential for data loss.",
 		Run: func(cmd *cobra.Command, args []string) {
 			files = args
 			gl.StartDriver(uiMain)
