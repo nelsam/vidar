@@ -127,8 +127,6 @@ func (b *commandBox) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 		hasMore := b.nextInput()
 		complete = !hasMore
 	}
-	// TODO: figure out why this isn't consuming the event when it should.  The commander
-	// still receives this event, even when it's consumed.
 	return !(complete && isEnter)
 }
 
