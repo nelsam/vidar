@@ -42,7 +42,6 @@ func layer(pos token.Pos, length int, colors ...gxui.Color) *gxui.CodeSyntaxLaye
 	return layer
 }
 
-// TODO: highlight matching parenthesis/braces/brackets
 func Layers(filename, text string) (gxui.CodeSyntaxLayers, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, filename, text, 0)
