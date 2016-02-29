@@ -5,6 +5,7 @@ package controller
 
 import (
 	"fmt"
+	"go/token"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
@@ -19,7 +20,7 @@ type Editor interface {
 	gxui.Control
 	Focus()
 	CurrentFile() string
-	Open(path string, cursor int)
+	Open(path string, cursor token.Position)
 }
 
 type Elementer interface {

@@ -1,6 +1,7 @@
 // This is free and unencumbered software released into the public
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
+
 package syntax
 
 import (
@@ -10,190 +11,190 @@ import (
 	"github.com/nelsam/gxui"
 )
 
-func handleStmt(stmt ast.Stmt) gxui.CodeSyntaxLayers {
+func (l layers) handleStmt(stmt ast.Stmt) gxui.CodeSyntaxLayers {
 	if stmt == nil {
 		return nil
 	}
 	switch src := stmt.(type) {
 	case *ast.BadStmt:
-		return handleBadStmt(src)
+		return l.handleBadStmt(src)
 	case *ast.AssignStmt:
-		return handleAssignStmt(src)
+		return l.handleAssignStmt(src)
 	case *ast.CommClause:
 		return nil
 	case *ast.SwitchStmt:
-		return handleSwitchStmt(src)
+		return l.handleSwitchStmt(src)
 	case *ast.TypeSwitchStmt:
-		return handleTypeSwitchStmt(src)
+		return l.handleTypeSwitchStmt(src)
 	case *ast.CaseClause:
-		return handleCaseStmt(src)
+		return l.handleCaseStmt(src)
 	case *ast.DeclStmt:
-		return handleDecl(src.Decl)
+		return l.handleDecl(src.Decl)
 	case *ast.SendStmt:
-		return handleSendStmt(src)
+		return l.handleSendStmt(src)
 	case *ast.SelectStmt:
-		return handleSelectStmt(src)
+		return l.handleSelectStmt(src)
 	case *ast.ReturnStmt:
-		return handleReturnStmt(src)
+		return l.handleReturnStmt(src)
 	case *ast.RangeStmt:
-		return handleRangeStmt(src)
+		return l.handleRangeStmt(src)
 	case *ast.LabeledStmt:
-		return handleLabeledStmt(src)
+		return l.handleLabeledStmt(src)
 	case *ast.IncDecStmt:
-		return handleIncDecStmt(src)
+		return l.handleIncDecStmt(src)
 	case *ast.IfStmt:
-		return handleIfStmt(src)
+		return l.handleIfStmt(src)
 	case *ast.GoStmt:
-		return handleGoStmt(src)
+		return l.handleGoStmt(src)
 	case *ast.ForStmt:
-		return handleForStmt(src)
+		return l.handleForStmt(src)
 	case *ast.ExprStmt:
-		return handleExprStmt(src)
+		return l.handleExprStmt(src)
 	case *ast.EmptyStmt:
 		return nil
 	case *ast.DeferStmt:
-		return handleDeferStmt(src)
+		return l.handleDeferStmt(src)
 	case *ast.BranchStmt:
-		return handleBranchStmt(src)
+		return l.handleBranchStmt(src)
 	case *ast.BlockStmt:
-		return handleBlockStmt(src)
+		return l.handleBlockStmt(src)
 	default:
 		panic(fmt.Errorf("Unknown stmt type: %T", stmt))
 	}
 }
 
-func handleBadStmt(stmt *ast.BadStmt) gxui.CodeSyntaxLayers {
-	return gxui.CodeSyntaxLayers{nodeLayer(stmt, badColor, badBackground)}
+func (l layers) handleBadStmt(stmt *ast.BadStmt) gxui.CodeSyntaxLayers {
+	return gxui.CodeSyntaxLayers{l.nodeLayer(stmt, badColor, badBackground)}
 }
 
-func handleAssignStmt(stmt *ast.AssignStmt) gxui.CodeSyntaxLayers {
+func (l layers) handleAssignStmt(stmt *ast.AssignStmt) gxui.CodeSyntaxLayers {
 	layers := make(gxui.CodeSyntaxLayers, len(stmt.Lhs)+len(stmt.Rhs))
 	for _, expr := range stmt.Lhs {
-		layers = append(layers, handleExpr(expr)...)
+		layers = append(layers, l.handleExpr(expr)...)
 	}
 	for _, expr := range stmt.Rhs {
-		layers = append(layers, handleExpr(expr)...)
+		layers = append(layers, l.handleExpr(expr)...)
 	}
 	return layers
 }
 
-func handleSwitchStmt(stmt *ast.SwitchStmt) gxui.CodeSyntaxLayers {
+func (l layers) handleSwitchStmt(stmt *ast.SwitchStmt) gxui.CodeSyntaxLayers {
 	layers := make(gxui.CodeSyntaxLayers, 0, len(stmt.Body.List)+3)
-	layers = append(layers, layer(stmt.Switch, len("switch"), keywordColor))
-	layers = append(layers, handleStmt(stmt.Init)...)
-	layers = append(layers, handleExpr(stmt.Tag)...)
-	layers = append(layers, handleBlockStmt(stmt.Body)...)
+	layers = append(layers, l.layer(stmt.Switch, len("switch"), keywordColor))
+	layers = append(layers, l.handleStmt(stmt.Init)...)
+	layers = append(layers, l.handleExpr(stmt.Tag)...)
+	layers = append(layers, l.handleBlockStmt(stmt.Body)...)
 	return layers
 }
 
-func handleTypeSwitchStmt(stmt *ast.TypeSwitchStmt) gxui.CodeSyntaxLayers {
+func (l layers) handleTypeSwitchStmt(stmt *ast.TypeSwitchStmt) gxui.CodeSyntaxLayers {
 	layers := make(gxui.CodeSyntaxLayers, 0, len(stmt.Body.List)+3)
-	layers = append(layers, layer(stmt.Switch, len("switch"), keywordColor))
-	layers = append(layers, handleStmt(stmt.Init)...)
-	layers = append(layers, handleStmt(stmt.Assign)...)
-	layers = append(layers, handleBlockStmt(stmt.Body)...)
+	layers = append(layers, l.layer(stmt.Switch, len("switch"), keywordColor))
+	layers = append(layers, l.handleStmt(stmt.Init)...)
+	layers = append(layers, l.handleStmt(stmt.Assign)...)
+	layers = append(layers, l.handleBlockStmt(stmt.Body)...)
 	return layers
 }
 
-func handleCaseStmt(stmt *ast.CaseClause) gxui.CodeSyntaxLayers {
+func (l layers) handleCaseStmt(stmt *ast.CaseClause) gxui.CodeSyntaxLayers {
 	layers := make(gxui.CodeSyntaxLayers, 0, len(stmt.Body)+len(stmt.List))
 	length := len("case")
 	if stmt.List == nil {
 		length = len("default")
 	}
-	layers = append(layers, layer(stmt.Case, length, keywordColor))
+	layers = append(layers, l.layer(stmt.Case, length, keywordColor))
 	for _, expr := range stmt.List {
-		layers = append(layers, handleExpr(expr)...)
+		layers = append(layers, l.handleExpr(expr)...)
 	}
 	for _, stmt := range stmt.Body {
-		layers = append(layers, handleStmt(stmt)...)
+		layers = append(layers, l.handleStmt(stmt)...)
 	}
 	return layers
 }
 
-func handleSendStmt(stmt *ast.SendStmt) gxui.CodeSyntaxLayers {
-	return append(handleExpr(stmt.Chan), handleExpr(stmt.Value)...)
+func (l layers) handleSendStmt(stmt *ast.SendStmt) gxui.CodeSyntaxLayers {
+	return append(l.handleExpr(stmt.Chan), l.handleExpr(stmt.Value)...)
 }
 
-func handleReturnStmt(stmt *ast.ReturnStmt) gxui.CodeSyntaxLayers {
+func (l layers) handleReturnStmt(stmt *ast.ReturnStmt) gxui.CodeSyntaxLayers {
 	layers := make(gxui.CodeSyntaxLayers, 0, 5)
-	layers = append(layers, layer(stmt.Return, len("return"), keywordColor))
+	layers = append(layers, l.layer(stmt.Return, len("return"), keywordColor))
 	for _, res := range stmt.Results {
-		layers = append(layers, handleExpr(res)...)
+		layers = append(layers, l.handleExpr(res)...)
 	}
 	return layers
 }
 
-func handleRangeStmt(stmt *ast.RangeStmt) gxui.CodeSyntaxLayers {
+func (l layers) handleRangeStmt(stmt *ast.RangeStmt) gxui.CodeSyntaxLayers {
 	layers := make(gxui.CodeSyntaxLayers, 0, len(stmt.Body.List)+5)
-	layers = append(layers, layer(stmt.For, len("for"), keywordColor))
-	layers = append(layers, handleExpr(stmt.X)...)
-	layers = append(layers, handleBlockStmt(stmt.Body)...)
+	layers = append(layers, l.layer(stmt.For, len("for"), keywordColor))
+	layers = append(layers, l.handleExpr(stmt.X)...)
+	layers = append(layers, l.handleBlockStmt(stmt.Body)...)
 	return layers
 }
 
-func handleIfStmt(stmt *ast.IfStmt) gxui.CodeSyntaxLayers {
+func (l layers) handleIfStmt(stmt *ast.IfStmt) gxui.CodeSyntaxLayers {
 	layers := make(gxui.CodeSyntaxLayers, 0, len(stmt.Body.List)+3)
-	layers = append(layers, layer(stmt.If, len("if"), keywordColor))
-	layers = append(layers, handleStmt(stmt.Init)...)
-	layers = append(layers, handleExpr(stmt.Cond)...)
-	layers = append(layers, handleBlockStmt(stmt.Body)...)
-	layers = append(layers, handleStmt(stmt.Else)...)
+	layers = append(layers, l.layer(stmt.If, len("if"), keywordColor))
+	layers = append(layers, l.handleStmt(stmt.Init)...)
+	layers = append(layers, l.handleExpr(stmt.Cond)...)
+	layers = append(layers, l.handleBlockStmt(stmt.Body)...)
+	layers = append(layers, l.handleStmt(stmt.Else)...)
 	return layers
 }
 
-func handleForStmt(stmt *ast.ForStmt) gxui.CodeSyntaxLayers {
+func (l layers) handleForStmt(stmt *ast.ForStmt) gxui.CodeSyntaxLayers {
 	layers := make(gxui.CodeSyntaxLayers, 0, len(stmt.Body.List)+5)
-	layers = append(layers, layer(stmt.For, len("for"), keywordColor))
-	layers = append(layers, handleStmt(stmt.Init)...)
-	layers = append(layers, handleExpr(stmt.Cond)...)
-	layers = append(layers, handleStmt(stmt.Post)...)
+	layers = append(layers, l.layer(stmt.For, len("for"), keywordColor))
+	layers = append(layers, l.handleStmt(stmt.Init)...)
+	layers = append(layers, l.handleExpr(stmt.Cond)...)
+	layers = append(layers, l.handleStmt(stmt.Post)...)
 	return layers
 }
 
-func handleGoStmt(stmt *ast.GoStmt) gxui.CodeSyntaxLayers {
-	layers := gxui.CodeSyntaxLayers{layer(stmt.Go, len("go"), keywordColor)}
-	return append(layers, handleCallExpr(stmt.Call)...)
+func (l layers) handleGoStmt(stmt *ast.GoStmt) gxui.CodeSyntaxLayers {
+	layers := gxui.CodeSyntaxLayers{l.layer(stmt.Go, len("go"), keywordColor)}
+	return append(layers, l.handleCallExpr(stmt.Call)...)
 }
 
-func handleLabeledStmt(stmt *ast.LabeledStmt) gxui.CodeSyntaxLayers {
+func (l layers) handleLabeledStmt(stmt *ast.LabeledStmt) gxui.CodeSyntaxLayers {
 	// TODO: handle stmt.Label
-	return handleStmt(stmt.Stmt)
+	return l.handleStmt(stmt.Stmt)
 }
 
-func handleDeferStmt(stmt *ast.DeferStmt) gxui.CodeSyntaxLayers {
-	layers := gxui.CodeSyntaxLayers{layer(stmt.Defer, len("defer"), keywordColor)}
-	layers = append(layers, handleCallExpr(stmt.Call)...)
+func (l layers) handleDeferStmt(stmt *ast.DeferStmt) gxui.CodeSyntaxLayers {
+	layers := gxui.CodeSyntaxLayers{l.layer(stmt.Defer, len("defer"), keywordColor)}
+	layers = append(layers, l.handleCallExpr(stmt.Call)...)
 	return layers
 }
 
-func handleIncDecStmt(stmt *ast.IncDecStmt) gxui.CodeSyntaxLayers {
-	return handleExpr(stmt.X)
+func (l layers) handleIncDecStmt(stmt *ast.IncDecStmt) gxui.CodeSyntaxLayers {
+	return l.handleExpr(stmt.X)
 }
 
-func handleExprStmt(stmt *ast.ExprStmt) gxui.CodeSyntaxLayers {
-	return handleExpr(stmt.X)
+func (l layers) handleExprStmt(stmt *ast.ExprStmt) gxui.CodeSyntaxLayers {
+	return l.handleExpr(stmt.X)
 }
 
-func handleSelectStmt(stmt *ast.SelectStmt) gxui.CodeSyntaxLayers {
-	layers := gxui.CodeSyntaxLayers{layer(stmt.Select, len("select"), keywordColor)}
-	layers = append(layers, handleBlockStmt(stmt.Body)...)
+func (l layers) handleSelectStmt(stmt *ast.SelectStmt) gxui.CodeSyntaxLayers {
+	layers := gxui.CodeSyntaxLayers{l.layer(stmt.Select, len("select"), keywordColor)}
+	layers = append(layers, l.handleBlockStmt(stmt.Body)...)
 	return layers
 }
 
-func handleBranchStmt(stmt *ast.BranchStmt) gxui.CodeSyntaxLayers {
+func (l layers) handleBranchStmt(stmt *ast.BranchStmt) gxui.CodeSyntaxLayers {
 	layers := make(gxui.CodeSyntaxLayers, 0, 2)
-	layers = append(layers, layer(stmt.TokPos, len(stmt.Tok.String()), keywordColor))
+	layers = append(layers, l.layer(stmt.TokPos, len(stmt.Tok.String()), keywordColor))
 
 	// TODO: handle stmt.Label
 	return layers
 }
 
-func handleBlockStmt(stmt *ast.BlockStmt) gxui.CodeSyntaxLayers {
+func (l layers) handleBlockStmt(stmt *ast.BlockStmt) gxui.CodeSyntaxLayers {
 	layers := make(gxui.CodeSyntaxLayers, 0, len(stmt.List)+2)
-	layers = append(layers, layer(stmt.Lbrace, 1, defaultRainbow.New()))
+	layers = append(layers, l.layer(stmt.Lbrace, 1, defaultRainbow.New()))
 	for _, stmt := range stmt.List {
-		layers = append(layers, handleStmt(stmt)...)
+		layers = append(layers, l.handleStmt(stmt)...)
 	}
-	return append(layers, layer(stmt.Rbrace, 1, defaultRainbow.Pop()))
+	return append(layers, l.layer(stmt.Rbrace, 1, defaultRainbow.Pop()))
 }

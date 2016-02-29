@@ -4,17 +4,19 @@
 package commands
 
 import (
+	"go/token"
+
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 )
 
-type opener interface {
-	Open(string, int)
+type Opener interface {
+	Open(string, token.Position)
 }
 
 type FileOpener struct {
 	file   *FSLocator
-	cursor int
+	cursor token.Position
 	input  <-chan gxui.Focusable
 }
 
@@ -28,7 +30,7 @@ func (f *FileOpener) Init(driver gxui.Driver, theme *basic.Theme) {
 	f.file = NewFSLocator(driver, theme)
 }
 
-func (f *FileOpener) SetLocation(filepath string, position int) {
+func (f *FileOpener) SetLocation(filepath string, position token.Position) {
 	f.file.SetPath(filepath)
 	f.cursor = position
 }
@@ -51,9 +53,10 @@ func (f *FileOpener) Next() gxui.Focusable {
 }
 
 func (f *FileOpener) Exec(element interface{}) (executed, consume bool) {
-	if opener, ok := element.(opener); ok {
-		opener.Open(f.file.Path(), f.cursor)
-		return true, false
+	opener, ok := element.(Opener)
+	if !ok {
+		return false, false
 	}
-	return false, false
+	opener.Open(f.file.Path(), f.cursor)
+	return true, false
 }

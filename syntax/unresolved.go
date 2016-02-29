@@ -9,16 +9,16 @@ import (
 	"github.com/nelsam/gxui"
 )
 
-func handleUnresolved(unresolved *ast.Ident) gxui.CodeSyntaxLayers {
+func (l layers) handleUnresolved(unresolved *ast.Ident) gxui.CodeSyntaxLayers {
 	layers := make(gxui.CodeSyntaxLayers, 0, 1)
 	switch unresolved.String() {
 	case "append", "cap", "close", "complex", "copy",
 		"delete", "imag", "len", "make", "new", "panic",
 		"print", "println", "real", "recover":
 
-		layers = append(layers, nodeLayer(unresolved, builtinColor))
+		layers = append(layers, l.nodeLayer(unresolved, builtinColor))
 	case "nil":
-		layers = append(layers, nodeLayer(unresolved, nilColor))
+		layers = append(layers, l.nodeLayer(unresolved, nilColor))
 	}
 	return layers
 }

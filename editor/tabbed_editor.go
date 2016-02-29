@@ -30,22 +30,23 @@ func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, t
 	e.SetMargin(math.Spacing{L: 0, T: 2, R: 0, B: 0})
 }
 
-func (e *TabbedEditor) New(name, path, gopath string) {
+func (e *TabbedEditor) New(name, path, gopath string) *CodeEditor {
 	if editor, ok := e.editors[name]; ok {
 		e.Select(e.PanelIndex(editor))
 		e.Focus()
-		return
+		return editor
 	}
 	editor := &CodeEditor{}
 	editor.Init(e.driver, e.theme, e.font, path)
 	editor.SetTabWidth(4)
-	suggester := suggestions.NewGoCodeProvider(editor, gopath).(*suggestions.GoCodeProvider)
+	suggester := suggestions.NewGoCodeProvider(editor, gopath)
 	editor.SetSuggestionProvider(suggester)
 
 	e.editors[name] = editor
 	e.AddPanel(editor, name)
 	e.Select(e.PanelIndex(editor))
 	e.Focus()
+	return editor
 }
 
 func (e *TabbedEditor) Focus() {

@@ -4,6 +4,7 @@
 package main
 
 import (
+	"go/token"
 	"os"
 	"path"
 
@@ -222,7 +223,7 @@ func uiMain(driver gxui.Driver) {
 	}
 	for _, file := range files {
 		filepath := path.Join(workingDir, file)
-		commander.Controller().Editor().Open(filepath, 0)
+		commander.Controller().Editor().Open(filepath, token.Position{})
 	}
 
 	window.OnClose(driver.Terminate)

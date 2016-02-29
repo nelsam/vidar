@@ -1,6 +1,7 @@
 package navigator
 
 import (
+	"go/token"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,7 +40,7 @@ var (
 
 type Locationer interface {
 	File() string
-	Pos() int
+	Position() token.Position
 }
 
 type ProjectTree struct {
@@ -127,7 +128,7 @@ func (d *ProjectTree) OnComplete(onComplete func(controller.Executor)) {
 		if !ok {
 			return
 		}
-		cmd.SetLocation(locationer.File(), locationer.Pos())
+		cmd.SetLocation(locationer.File(), locationer.Position())
 		onComplete(cmd)
 	})
 }

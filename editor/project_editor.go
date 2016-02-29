@@ -4,6 +4,7 @@
 package editor
 
 import (
+	"go/token"
 	"strings"
 
 	"github.com/nelsam/gxui"
@@ -24,12 +25,12 @@ func (p *ProjectEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.F
 	p.project = project
 }
 
-func (p *ProjectEditor) Open(path string, cursor int) {
+func (p *ProjectEditor) Open(path string, cursor token.Position) {
 	name := strings.TrimPrefix(strings.TrimPrefix(path, p.project.Path), "/")
-	p.TabbedEditor.New(name, path, p.project.Gopath)
+	editor := p.TabbedEditor.New(name, path, p.project.Gopath)
 	p.driver.Call(func() {
-		p.CurrentEditor().Controller().SetCaret(cursor)
-		p.CurrentEditor().ScrollToRune(cursor)
+		editor.Controller().SetCaret(cursor.Offset)
+		editor.ScrollToRune(cursor.Offset)
 	})
 }
 
@@ -102,6 +103,6 @@ func (e *MultiProjectEditor) Focus() {
 	e.current.Focus()
 }
 
-func (e *MultiProjectEditor) Open(file string, cursor int) {
+func (e *MultiProjectEditor) Open(file string, cursor token.Position) {
 	e.current.Open(file, cursor)
 }

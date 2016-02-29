@@ -135,15 +135,15 @@ func (t skippingTreeNode) Create(theme gxui.Theme) gxui.Control {
 
 type Location struct {
 	filepath string
-	pos      int
+	position token.Position
 }
 
 func (l Location) File() string {
 	return l.filepath
 }
 
-func (l Location) Pos() int {
-	return l.pos
+func (l Location) Position() token.Position {
+	return l.position
 }
 
 type Name struct {
@@ -154,7 +154,8 @@ type Name struct {
 type TOC struct {
 	skippingTreeNode
 
-	path string
+	path    string
+	fileSet *token.FileSet
 }
 
 func NewTOC(path string) *TOC {
@@ -169,7 +170,8 @@ func (t *TOC) Init(path string) {
 }
 
 func (t *TOC) Reload() {
-	pkgs, err := parser.ParseDir(token.NewFileSet(), t.path, nil, parser.ParseComments)
+	t.fileSet = token.NewFileSet()
+	pkgs, err := parser.ParseDir(t.fileSet, t.path, nil, parser.ParseComments)
 	if err != nil {
 		log.Printf("Error parsing dir: %s", err)
 	}
@@ -205,9 +207,9 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 			case *ast.GenDecl:
 				switch src.Tok.String() {
 				case "const":
-					consts = append(consts, valueNamesFrom(filepath, buildTagLine, pkg.Name+".constants", src.Specs)...)
+					consts = append(consts, t.valueNamesFrom(filepath, buildTagLine, pkg.Name+".constants", src.Specs)...)
 				case "var":
-					vars = append(vars, valueNamesFrom(filepath, buildTagLine, pkg.Name+".global vars", src.Specs)...)
+					vars = append(vars, t.valueNamesFrom(filepath, buildTagLine, pkg.Name+".global vars", src.Specs)...)
 				case "type":
 					// I have yet to see a case where a type declaration has more than one Specs.
 					typeSpec := src.Specs[0].(*ast.TypeSpec)
@@ -227,7 +229,7 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 					typ.path = pkg.Name + ".types." + typ.name
 					typ.color = nameColor
 					typ.filepath = filepath
-					typ.pos = zeroBasedPos(typeSpec.Pos())
+					typ.position = t.fileSet.Position(typeSpec.Pos())
 					types = append(types, typ)
 				}
 			case *ast.FuncDecl:
@@ -244,7 +246,7 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 				name.path = pkg.Name + ".funcs." + name.name
 				name.color = nameColor
 				name.filepath = filepath
-				name.pos = zeroBasedPos(src.Pos())
+				name.position = t.fileSet.Position(src.Pos())
 				if src.Recv == nil {
 					funcs = append(funcs, name)
 					continue
@@ -272,6 +274,33 @@ func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
 		genericTreeNode{name: "funcs", path: pkg.Name + ".funcs", color: genericColor, children: funcs},
 	}
 	return pkgNode
+}
+
+func (t *TOC) valueNamesFrom(filepath, buildTags, parentName string, specs []ast.Spec) (names []gxui.TreeNode) {
+	for _, spec := range specs {
+		valSpec, ok := spec.(*ast.ValueSpec)
+		if !ok {
+			continue
+		}
+		for _, name := range valSpec.Names {
+			if name.String() == "_" {
+				// _ can be redeclared multiple times, so providing access to
+				// it in the TOC isn't that useful.
+				continue
+			}
+			var newName Name
+			newName.name = name.String()
+			if buildTags != "" {
+				newName.name = fmt.Sprintf("%s (%s)", newName.name, buildTags)
+			}
+			newName.path = parentName + "." + newName.name
+			newName.color = nameColor
+			newName.filepath = filepath
+			newName.position = t.fileSet.Position(name.Pos())
+			names = append(names, newName)
+		}
+	}
+	return
 }
 
 func findBuildTags(filename string, file *ast.File) (tags []string) {
@@ -351,31 +380,4 @@ func parseTag(commentLine *ast.Comment) []string {
 	}
 	tags := strings.TrimPrefix(comment, "// +build ")
 	return strings.Split(tags, " ")
-}
-
-func valueNamesFrom(filepath, buildTags, parentName string, specs []ast.Spec) (names []gxui.TreeNode) {
-	for _, spec := range specs {
-		valSpec, ok := spec.(*ast.ValueSpec)
-		if !ok {
-			continue
-		}
-		for _, name := range valSpec.Names {
-			if name.String() == "_" {
-				// _ can be redeclared multiple times, so providing access to
-				// it in the TOC isn't that useful.
-				continue
-			}
-			var newName Name
-			newName.name = name.String()
-			if buildTags != "" {
-				newName.name = fmt.Sprintf("%s (%s)", newName.name, buildTags)
-			}
-			newName.path = parentName + "." + newName.name
-			newName.color = nameColor
-			newName.filepath = filepath
-			newName.pos = zeroBasedPos(name.Pos())
-			names = append(names, newName)
-		}
-	}
-	return
 }

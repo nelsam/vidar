@@ -21,7 +21,7 @@ type GoCodeProvider struct {
 	gopath string
 }
 
-func NewGoCodeProvider(editor gxui.CodeEditor, gopath string) gxui.CodeSuggestionProvider {
+func NewGoCodeProvider(editor gxui.CodeEditor, gopath string) *GoCodeProvider {
 	return &GoCodeProvider{
 		editor: editor,
 		gopath: gopath,
