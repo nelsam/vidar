@@ -7,6 +7,7 @@ package editor
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -85,14 +86,16 @@ func (e *CodeEditor) watch() {
 	var err error
 	e.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
-		panic(err)
+		log.Printf("Error creating new fsnotify watcher: %s", err)
+		return
 	}
 	err = e.watcher.Add(e.filepath)
 	if os.IsNotExist(err) {
 		err = e.waitForFileCreate()
 	}
 	if err != nil {
-		panic(err)
+		log.Printf("Error trying to watch %s for changes: %s", e.filepath, err)
+		return
 	}
 	err = e.inotifyWait(func(event fsnotify.Event) bool {
 		if event.Op&fsnotify.Write == fsnotify.Write {
@@ -101,19 +104,20 @@ func (e *CodeEditor) watch() {
 		return false
 	})
 	if err != nil {
-		panic(err)
+		log.Printf("Failed to wait on events for %s: %s", e.filepath, err)
+		return
 	}
 }
 
 func (e *CodeEditor) waitForFileCreate() error {
 	dir := filepath.Dir(e.filepath)
 	if err := e.watcher.Add(dir); err != nil {
-		panic(err)
+		return err
 	}
 	defer e.watcher.Remove(dir)
 
 	return e.inotifyWait(func(event fsnotify.Event) bool {
-		return event.Name == e.filepath && event.Op|fsnotify.Create == fsnotify.Create
+		return event.Name == e.filepath && event.Op&fsnotify.Create == fsnotify.Create
 	})
 }
 
@@ -121,7 +125,9 @@ func (e *CodeEditor) inotifyWait(eventFunc func(fsnotify.Event) (done bool)) err
 	for {
 		select {
 		case event := <-e.watcher.Events:
-			eventFunc(event)
+			if eventFunc(event) {
+				return nil
+			}
 		case err := <-e.watcher.Errors:
 			return err
 		}
@@ -139,17 +145,20 @@ func (e *CodeEditor) load() {
 		return
 	}
 	if err != nil {
-		panic(err)
+		log.Printf("Error opening file %s: %s", e.filepath, err)
+		return
 	}
 	defer f.Close()
 	finfo, err := f.Stat()
 	if err != nil {
-		panic(err)
+		log.Printf("Error stating file %s: %s", e.filepath, err)
+		return
 	}
 	e.lastModified = finfo.ModTime()
 	b, err := ioutil.ReadAll(f)
 	if err != nil {
-		panic(err)
+		log.Printf("Error reading file %s: %s", e.filepath, err)
+		return
 	}
 	e.driver.Call(func() {
 		if len(e.loading) > 1 {

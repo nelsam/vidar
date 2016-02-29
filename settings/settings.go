@@ -6,6 +6,7 @@ package settings
 import (
 	"bytes"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 
@@ -19,7 +20,7 @@ var (
 		Gopath: os.Getenv("GOPATH"),
 	}
 	settingsDir  = path.Join(os.Getenv("HOME"), ".config", "vidar")
-	projectsFile = path.Join(settingsDir, "projects")
+	projectsPath = path.Join(settingsDir, "projects")
 )
 
 type Project struct {
@@ -41,20 +42,23 @@ func fromLine(line []byte) Project {
 }
 
 func Projects() []Project {
-	projectsFile, err := os.Open(projectsFile)
+	projectsFile, err := os.Open(projectsPath)
 	if os.IsNotExist(err) {
 		return nil
 	}
 	if err != nil {
-		panic(err)
+		log.Printf("Error: Could not open %s: %s", projectsPath, err)
+		return nil
 	}
 	projectsBytes, err := ioutil.ReadAll(projectsFile)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: Could not read %s: %s", projectsPath, err)
+		return nil
 	}
 	var projects []Project
 	if err := yaml.Unmarshal(projectsBytes, &projects); err != nil {
-		panic(err)
+		log.Printf("Error: Could not parse %s as yaml: %s", projectsPath, err)
+		return nil
 	}
 	return projects
 }
@@ -62,18 +66,21 @@ func Projects() []Project {
 func AddProject(project Project) {
 	bytes, err := yaml.Marshal(append(Projects(), project))
 	if err != nil {
-		panic(err)
+		log.Printf("Error: Could not convert project to yaml: %s", err)
+		return
 	}
-	projects, err := os.Create(projectsFile)
+	projects, err := os.Create(projectsPath)
 	if os.IsNotExist(err) {
-		err = os.MkdirAll(path.Dir(projectsFile), 0777)
+		err = os.MkdirAll(path.Dir(projectsPath), 0777)
 		if err != nil {
-			panic(err)
+			log.Printf("Error: Could not create %s: %s", path.Dir(projectsPath), err)
+			return
 		}
-		projects, err = os.Create(projectsFile)
+		projects, err = os.Create(projectsPath)
 	}
 	if err != nil {
-		panic(err)
+		log.Printf("Could not open %s for writing: %s", projectsPath, err)
+		return
 	}
 	defer projects.Close()
 	projects.Write(bytes)

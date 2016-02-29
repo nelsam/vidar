@@ -1,6 +1,10 @@
 package commands
 
-import "github.com/nelsam/gxui"
+import (
+	"log"
+
+	"github.com/nelsam/gxui"
+)
 
 type Copy struct {
 	driver gxui.Driver
@@ -31,7 +35,7 @@ func (c *Copy) Exec(target interface{}) (executed, consume bool) {
 	}
 	editor := finder.CurrentEditor()
 	if editor.Controller().SelectionCount() != 1 {
-		panic("Trying to copy without exactly 1 selection")
+		log.Print("Warning: copy can currently only copy the first selection")
 	}
 	selection := editor.Controller().SelectionText(0)
 	c.driver.SetClipboard(selection)
@@ -93,7 +97,8 @@ func (p *Paste) Exec(target interface{}) (executed, consume bool) {
 	}
 	contents, err := p.driver.GetClipboard()
 	if err != nil {
-		panic(err)
+		log.Printf("Error reading clipboard: %s", err)
+		return true, false
 	}
 	editor := finder.CurrentEditor()
 	editor.Controller().Replace(func(sel gxui.TextSelection) string {

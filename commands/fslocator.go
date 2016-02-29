@@ -4,6 +4,7 @@
 package commands
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,7 +64,8 @@ func (f *FSLocator) KeyPress(event gxui.KeyboardEvent) bool {
 			fullPath := f.Path()
 			matches, err := filepath.Glob(fullPath + "*")
 			if err != nil {
-				panic(err)
+				log.Printf("Error globbing path: %s", err)
+				return true
 			}
 			if len(matches) == 1 {
 				fullPath = matches[0]

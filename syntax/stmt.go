@@ -5,8 +5,8 @@
 package syntax
 
 import (
-	"fmt"
 	"go/ast"
+	"log"
 
 	"github.com/nelsam/gxui"
 )
@@ -59,7 +59,8 @@ func (l layers) handleStmt(stmt ast.Stmt) gxui.CodeSyntaxLayers {
 	case *ast.BlockStmt:
 		return l.handleBlockStmt(src)
 	default:
-		panic(fmt.Errorf("Unknown stmt type: %T", stmt))
+		log.Printf("Error: Unknown stmt type: %T", stmt)
+		return nil
 	}
 }
 

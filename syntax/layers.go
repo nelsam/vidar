@@ -5,9 +5,11 @@
 package syntax
 
 import (
+	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"log"
 
 	"github.com/nelsam/gxui"
 )
@@ -30,10 +32,12 @@ func (l layers) layer(pos token.Pos, length int, colors ...gxui.Color) *gxui.Cod
 		return nil
 	}
 	if len(colors) == 0 {
-		panic("No colors passed to layer()")
+		log.Printf("Error: No colors passed to layer()")
+		return nil
 	}
 	if len(colors) > 2 {
-		panic("Only two colors (text and background) are currently supported")
+		err := errors.New("Only two colors (text and background) are currently supported")
+		log.Printf("Error: Expected %d to be <= 2: %s", len(colors), err)
 	}
 	layer := gxui.CreateCodeSyntaxLayer()
 	layer.Add(int(l.fileSet.Position(pos).Offset), length)

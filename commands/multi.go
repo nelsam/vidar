@@ -26,7 +26,7 @@ type MultiCommand struct {
 
 func NewMulti(theme gxui.Theme, commands ...Command) *MultiCommand {
 	if len(commands) == 0 {
-		panic("MultiCommand created without any commands")
+		panic("commands.NewMulti called without any commands")
 	}
 	return &MultiCommand{
 		theme: theme,

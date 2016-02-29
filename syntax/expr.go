@@ -5,8 +5,8 @@
 package syntax
 
 import (
-	"fmt"
 	"go/ast"
+	"log"
 
 	"github.com/nelsam/gxui"
 )
@@ -59,7 +59,8 @@ func (l layers) handleExpr(expr ast.Expr) gxui.CodeSyntaxLayers {
 	case *ast.CompositeLit:
 		return l.handleCompositeLit(src)
 	default:
-		panic(fmt.Errorf("Unknown expression type: %T", expr))
+		log.Printf("Error: Unknown expression type: %T", expr)
+		return nil
 	}
 }
 

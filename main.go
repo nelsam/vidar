@@ -5,6 +5,7 @@ package main
 
 import (
 	"go/token"
+	"log"
 	"os"
 	"path"
 
@@ -219,7 +220,8 @@ func uiMain(driver gxui.Driver) {
 	window.AddChild(commander)
 	workingDir, err := os.Getwd()
 	if err != nil {
-		panic(err)
+		log.Printf("Failed to read working directory: %s", err)
+		workingDir = os.Getenv("HOME")
 	}
 	for _, file := range files {
 		filepath := path.Join(workingDir, file)

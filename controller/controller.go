@@ -4,8 +4,8 @@
 package controller
 
 import (
-	"fmt"
 	"go/token"
+	"log"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
@@ -110,9 +110,7 @@ func (c *Controller) Execute(executor Executor) {
 	}
 	executed, _ := execRecursively(executor, c)
 	if !executed {
-		// TODO: we should probably return an error rather than
-		// panicking.
-		panic(fmt.Errorf("Executor of type %T ran without executing", executor))
+		log.Printf("Warning: Executor of type %T ran without executing", executor)
 	}
 	c.Editor().Focus()
 }

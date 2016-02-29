@@ -6,6 +6,7 @@ package suggestions
 import (
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -36,24 +37,28 @@ func (p *GoCodeProvider) SuggestionsAt(runeIndex int) []gxui.CodeSuggestion {
 	}
 	in, err := cmd.StdinPipe()
 	if err != nil {
-		panic(err)
+		log.Printf("Error: Could not access command's STDIN pipe: %s", err)
+		return nil
 	}
 	out, err := cmd.StdoutPipe()
 	if err != nil {
-		panic(err)
+		log.Printf("Error: Could not access command's STDOUT pipe: %s", err)
+		return nil
 	}
 	cmd.Start()
 	in.Write([]byte(p.editor.Text()))
 	in.Close()
 	outputJSON, err := ioutil.ReadAll(out)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: Could not read command output: %s", err)
+		return nil
 	}
 	cmd.Wait()
 
 	var output []interface{}
 	if err := json.Unmarshal(outputJSON, &output); err != nil {
-		panic(err)
+		log.Printf("Error: Could not unmarshal command output as json: %s", err)
+		return nil
 	}
 	if len(output) < 2 {
 		return nil

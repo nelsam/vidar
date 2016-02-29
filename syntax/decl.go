@@ -5,8 +5,8 @@
 package syntax
 
 import (
-	"fmt"
 	"go/ast"
+	"log"
 
 	"github.com/nelsam/gxui"
 )
@@ -20,9 +20,9 @@ func (l layers) handleDecl(decl ast.Decl) gxui.CodeSyntaxLayers {
 	case *ast.BadDecl:
 		return l.handleBadDecl(src)
 	default:
-		panic(fmt.Sprintf("Unexpected declaration type: %T", decl))
+		log.Printf("Error: Unexpected declaration type: %T", decl)
+		return nil
 	}
-	return nil
 }
 
 func (l layers) handleBadDecl(decl *ast.BadDecl) gxui.CodeSyntaxLayers {
@@ -56,7 +56,8 @@ func (l layers) handleGenDecl(decl *ast.GenDecl) gxui.CodeSyntaxLayers {
 	case decl.Tok.IsKeyword():
 		tokColor = keywordColor
 	default:
-		panic(fmt.Errorf("Don't know how to handle token %v", decl.Tok))
+		log.Printf("Error: Don't know how to handle token %v", decl.Tok)
+		return nil
 	}
 	if decl.Lparen != 0 {
 		layers = append(layers, l.layer(decl.Lparen, 1, defaultRainbow.New()))

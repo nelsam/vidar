@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"log"
 	"os"
 	"strings"
 
@@ -41,23 +42,27 @@ func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {
 	if !editor.LastKnownMTime().IsZero() {
 		finfo, err := os.Stat(filepath)
 		if err != nil {
-			panic(err)
+			log.Printf("Error stating %s: %s", filepath, err)
+			return true, false
 		}
 		if finfo.ModTime().After(editor.LastKnownMTime()) {
 			// TODO: display an error, prompt for override
-			panic("Cannot save file: written since last open")
+			log.Print("Error: Cowardly refusing to overwrite file (modified since last read)")
+			return true, false
 		}
 	}
 	f, err := os.Create(filepath)
 	if err != nil {
-		panic(err)
+		log.Printf("Failed to create %s: %s", filepath, err)
+		return true, false
 	}
 	defer f.Close()
 	if !strings.HasSuffix(editor.Text(), "\n") {
 		editor.SetText(editor.Text() + "\n")
 	}
 	if _, err := f.WriteString(editor.Text()); err != nil {
-		panic(err)
+		log.Printf("Error writing editor text to file %s: %s", filepath, err)
+		return true, false
 	}
 	editor.FlushedChanges()
 	return true, true

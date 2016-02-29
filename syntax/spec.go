@@ -5,8 +5,8 @@
 package syntax
 
 import (
-	"fmt"
 	"go/ast"
+	"log"
 
 	"github.com/nelsam/gxui"
 )
@@ -20,7 +20,8 @@ func (l layers) handleSpec(spec ast.Spec) gxui.CodeSyntaxLayers {
 	case *ast.TypeSpec:
 		return l.handleTypeSpec(src)
 	default:
-		panic(fmt.Errorf("Unknown spec type: %T", spec))
+		log.Printf("Error: Unknown spec type: %T", spec)
+		return nil
 	}
 }
 

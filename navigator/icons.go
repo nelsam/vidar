@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image"
 	"image/draw"
+	"log"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/assets"
@@ -21,12 +22,14 @@ func createIconButton(driver gxui.Driver, theme gxui.Theme, iconPath string) gxu
 
 	fileBytes, err := assets.Asset(iconPath)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: Failed to read asset %s: %s", iconPath, err)
+		return button
 	}
 	f := bytes.NewBuffer(fileBytes)
 	src, _, err := image.Decode(f)
 	if err != nil {
-		panic(err)
+		log.Printf("Error: Failed to decode image %s: %s", iconPath, err)
+		return button
 	}
 	src = resize.Resize(24, 24, src, resize.Bilinear)
 
