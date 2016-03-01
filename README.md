@@ -32,10 +32,10 @@ person who found it useful (as they're indirectly responsible for my death).
 
 It's getting closer to a usable state.  I've removed most of the panics (now, panics are only
 used in cases where I've screwed up completely), so the potential for data loss is low,
-at this point.  It has copy/cut/paste and undo/redo support (although undo/redo is definitely
-buggy right now - I'm working on it), and a lot of the weirder bugs from gxui have been fixed
-in a fork I'm maintaining (gxui got abandoned).  Right now, I do most of my vidar development
-using vidar.  The only things I don't yet use it for revolve around find/replace stuff.
+at this point.  It has copy/cut/paste and undo/redo support, and a lot of the weirder bugs
+from gxui have been fixed in a fork I'm maintaining (gxui got abandoned).  Right now, I do
+most of my vidar development using vidar.  The only things I don't yet use it for revolve
+around find/replace stuff.
 
 I still don't think it's a good replacement for your every day editor, even for Go code, but
 it does have some features that I find lacking in the other editors out there.  If you can
