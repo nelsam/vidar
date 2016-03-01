@@ -33,9 +33,6 @@ func (u *Undo) Exec(target interface{}) (executed, consume bool) {
 	editor := finder.CurrentEditor()
 	history := editor.History()
 	edit := history.Undo()
-	if edit.Delta < 0 {
-		edit.At += 1
-	}
 	text, _ := editor.Controller().ReplaceAt(editor.Runes(), edit.At, edit.At+len(edit.New), edit.Old)
 	editor.Controller().SetTextRunes(text)
 	return true, true
@@ -68,7 +65,7 @@ func (r *Redo) Next() gxui.Focusable {
 
 func (r *Redo) Exec(interface{}) (executed, consume bool) {
 	history := r.editor.History()
-	edit := history.Redo(history.Redos() - 1)
+	edit := history.RedoCurrent()
 	text, _ := r.editor.Controller().ReplaceAt(r.editor.Runes(), edit.At, edit.At+len(edit.Old), edit.New)
 	r.editor.Controller().SetTextRunes(text)
 	return true, true

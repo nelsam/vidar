@@ -2,17 +2,55 @@ package editor
 
 import "github.com/nelsam/gxui"
 
+const editCombineLen = 5
+
 // EditTreeNode is a node within an edit history.  It
 // can have any number of child nodes.  Current contains
 // the currently in-use path.
 type EditTreeNode struct {
-	Edit     gxui.TextBoxEdit
-	Parent   *EditTreeNode
-	Current  *EditTreeNode
-	Children []*EditTreeNode
+	Edit       gxui.TextBoxEdit
+	Parent     *EditTreeNode
+	CurrentIdx int
+	Children   []*EditTreeNode
 }
 
-func (n EditTreeNode) Length() int {
+func (n *EditTreeNode) SequentialWrite(edit gxui.TextBoxEdit) bool {
+	return n.Edit.At+n.Edit.Delta == edit.At &&
+		n.Edit.Delta < editCombineLen &&
+		edit.Delta == 1 &&
+		len(n.Edit.Old) == 0 &&
+		len(edit.Old) == 0
+}
+
+func (n *EditTreeNode) SequentialDelete(edit gxui.TextBoxEdit) bool {
+	return n.Edit.At+edit.Delta == edit.At &&
+		-n.Edit.Delta < editCombineLen &&
+		edit.Delta == -1 &&
+		len(n.Edit.New) == 0 &&
+		len(edit.New) == 0
+}
+
+func (n *EditTreeNode) Add(edit gxui.TextBoxEdit) *EditTreeNode {
+	if n.SequentialWrite(edit) {
+		// Combine multiple instances of new characters into a single event
+		n.Edit.Delta++
+		n.Edit.New = append(n.Edit.New, edit.New...)
+		return n
+	}
+	if n.SequentialDelete(edit) {
+		// Combine multiple instances of deleted characters into a single event
+		n.Edit.At = edit.At
+		n.Edit.Delta--
+		n.Edit.Old = append(edit.Old, n.Edit.Old...)
+		return n
+	}
+	new := &EditTreeNode{Edit: edit, Parent: n}
+	n.Children = append(n.Children, new)
+	n.CurrentIdx = len(n.Children) - 1
+	return new
+}
+
+func (n *EditTreeNode) Length() int {
 	length := 1
 	for _, child := range n.Children {
 		length += child.Length()
@@ -35,16 +73,13 @@ func NewHistory() *History {
 
 func (h *History) Add(edits ...gxui.TextBoxEdit) {
 	for _, edit := range edits {
-		new := &EditTreeNode{Edit: edit, Parent: h.current}
-		h.current.Children = append(h.current.Children, new)
-		h.current.Current = new
-		h.current = new
+		h.current = h.current.Add(edit)
 	}
 }
 
 func (h *History) Shrink(size int) {
 	for h.head.Length() > size {
-		h.head = h.head.Current
+		h.head = h.head.Children[h.head.CurrentIdx]
 		h.head.Parent = nil
 	}
 }
@@ -58,12 +93,12 @@ func (h *History) Undo() gxui.TextBoxEdit {
 	return edit
 }
 
-func (h *History) Redos() uint {
-	return uint(len(h.current.Children))
+func (h *History) RedoCurrent() gxui.TextBoxEdit {
+	return h.Redo(uint(h.current.CurrentIdx))
 }
 
 func (h *History) Redo(index uint) gxui.TextBoxEdit {
-	if index >= h.Redos() {
+	if index >= uint(len(h.current.Children)) {
 		return gxui.TextBoxEdit{}
 	}
 	h.current = h.current.Children[index]
