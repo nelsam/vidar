@@ -23,11 +23,13 @@ import (
 
 type CodeEditor struct {
 	mixins.CodeEditor
-	adapter     *suggestions.Adapter
-	suggestions gxui.List
-	theme       *basic.Theme
-	driver      gxui.Driver
-	history     *History
+	adapter          *suggestions.Adapter
+	suggestions      gxui.List
+	suggestionsChild *gxui.Child
+
+	theme   *basic.Theme
+	driver  gxui.Driver
+	history *History
 
 	lastModified time.Time
 	hasChanges   bool
@@ -216,20 +218,23 @@ func (e *CodeEditor) SetSuggestionProvider(provider gxui.CodeSuggestionProvider)
 }
 
 func (e *CodeEditor) IsSuggestionListShowing() bool {
-	return e.Children().Find(e.suggestions) != nil
+	return e.suggestionsChild != nil
 }
 
 func (e *CodeEditor) SortSuggestionList() {
-	caret := e.Controller().LastCaret()
-	partial := e.WordAt(caret)
-	e.adapter.Sort(partial)
+	e.updateSuggestionList()
 }
 
 func (e *CodeEditor) ShowSuggestionList() {
 	if e.SuggestionProvider() == nil || e.IsSuggestionListShowing() {
 		return
 	}
+	e.showSuggestionList()
 	e.updateSuggestionList()
+}
+
+func (e *CodeEditor) showSuggestionList() {
+	e.suggestionsChild = e.AddChild(e.suggestions)
 }
 
 func (e *CodeEditor) updateSuggestionList() {
@@ -237,11 +242,11 @@ func (e *CodeEditor) updateSuggestionList() {
 
 	suggestions := e.SuggestionProvider().SuggestionsAt(caret)
 	if len(suggestions) == 0 {
-		// TODO: if len(suggestions) == 1, show the completion in-line
-		// instead of in a completion box.
 		e.HideSuggestionList()
 		return
 	}
+	// TODO: if len(suggestions) == 1, show the completion in-line
+	// instead of in a completion box.
 	longest := 0
 	for _, suggestion := range suggestions {
 		suggestionText := suggestion.(fmt.Stringer).String()
@@ -254,25 +259,29 @@ func (e *CodeEditor) updateSuggestionList() {
 	e.adapter.SetSize(size)
 
 	e.adapter.SetSuggestions(suggestions)
-	e.SortSuggestionList()
-	child := e.AddChild(e.suggestions)
+	partial := e.WordAt(caret)
+	e.adapter.Sort(partial)
+	e.suggestions.Select(e.suggestions.Adapter().ItemAt(0))
 
 	// Position the suggestion list below the last caret
 	lineIdx := e.LineIndex(caret)
-	// TODO: What if the last caret is not visible?
 	bounds := e.Size().Rect().Contract(e.Padding())
 	line := e.Line(lineIdx)
 	lineOffset := gxui.ChildToParent(math.ZeroPoint, line, e)
 	target := line.PositionAt(caret).Add(lineOffset)
 	cs := e.suggestions.DesiredSize(math.ZeroSize, bounds.Size())
-	e.suggestions.Select(e.suggestions.Adapter().ItemAt(0))
 	e.suggestions.SetSize(cs)
-	child.Layout(cs.Rect().Offset(target).Intersect(bounds))
+	e.suggestionsChild.Layout(cs.Rect().Offset(target).Intersect(bounds))
+
+	e.suggestions.Redraw()
+	e.Redraw()
 }
 
 func (e *CodeEditor) HideSuggestionList() {
 	if e.IsSuggestionListShowing() {
 		e.RemoveChild(e.suggestions)
+		e.Redraw()
+		e.suggestionsChild = nil
 	}
 }
 
@@ -287,9 +296,16 @@ func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 		}
 	}
 	switch event.Key {
-	case gxui.KeyHome, gxui.KeyEnd, gxui.KeyPageUp, gxui.KeyPageDown,
-		gxui.KeyBackspace, gxui.KeyDelete, gxui.KeyA:
-
+	case gxui.KeyPeriod:
+		e.ShowSuggestionList()
+		return true
+	case gxui.KeyBackspace:
+		result := e.TextBox.KeyPress(event)
+		if e.IsSuggestionListShowing() {
+			e.SortSuggestionList()
+		}
+		return result
+	case gxui.KeyHome, gxui.KeyEnd, gxui.KeyPageUp, gxui.KeyPageDown, gxui.KeyDelete, gxui.KeyA:
 		// These are all bindings that the TextBox handles fine.
 		return e.TextBox.KeyPress(event)
 	case gxui.KeyTab:
@@ -307,7 +323,9 @@ func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 		}
 		return e.TextBox.KeyPress(event)
 	case gxui.KeyLeft, gxui.KeyRight:
-		e.HideSuggestionList()
+		if e.IsSuggestionListShowing() {
+			e.HideSuggestionList()
+		}
 		return e.TextBox.KeyPress(event)
 	case gxui.KeyEnter:
 		controller := e.Controller()
