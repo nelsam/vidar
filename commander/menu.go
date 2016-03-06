@@ -150,7 +150,6 @@ type menuButton struct {
 
 	menuParent gxui.Container
 	theme      *basic.Theme
-	showing    bool
 }
 
 func newMenuButton(menuParent gxui.Container, theme *basic.Theme, name string) *menuButton {
@@ -175,25 +174,23 @@ func newMenuButton(menuParent gxui.Container, theme *basic.Theme, name string) *
 
 func (b *menuButton) SetMenu(boundser Boundser, menu *menu) {
 	b.OnClick(func(gxui.MouseEvent) {
-		if b.showing {
+		if b.menuParent.Children().IndexOf(menu) >= 0 {
 			b.menuParent.RemoveChild(menu)
 			return
 		}
 		bounds := boundser.Bounds()
-		b.showing = true
 		child := b.menuParent.AddChild(menu)
 		offset := math.Point{
 			X: bounds.Min.X,
 			Y: bounds.Max.Y,
 		}
 		child.Offset = offset
-		menu.Relayout()
-		menu.Redraw()
 		gxui.SetFocus(menu)
 	})
 	menu.OnLostFocus(func() {
-		b.menuParent.RemoveChild(menu)
-		b.showing = false
+		if b.menuParent.Children().IndexOf(menu) >= 0 {
+			b.menuParent.RemoveChild(menu)
+		}
 	})
 }
 
