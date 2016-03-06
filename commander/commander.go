@@ -9,7 +9,9 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
-	"github.com/nelsam/gxui/mixins"
+	"github.com/nelsam/gxui/mixins/base"
+	"github.com/nelsam/gxui/mixins/parts"
+	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/controller"
 )
 
@@ -25,36 +27,74 @@ type Controller interface {
 // A commandMapping is a mapping between keyboard shortcuts (if any),
 // a menu name, and a command.  The menu name is required.
 type commandMapping struct {
-	binding  gxui.KeyboardEvent
-	menuName string
-	command  Command
+	binding gxui.KeyboardEvent
+	command Command
 }
 
 // Commander is a gxui.LinearLayout that takes care of displaying the
 // command utilities around a controller.
 type Commander struct {
-	mixins.LinearLayout
+	base.Container
+	parts.BackgroundBorderPainter
+
+	theme *basic.Theme
 
 	controller Controller
 	box        *commandBox
 
 	commands []commandMapping
+	menuBar  *menuBar
 }
 
 // New creates and initializes a *Commander, then returns it.
-func New(theme gxui.Theme, controller Controller) *Commander {
-	commander := new(Commander)
-	commander.LinearLayout.Init(commander, theme)
+func New(theme *basic.Theme, controller Controller) *Commander {
+	commander := &Commander{
+		theme: theme,
+	}
+	commander.Container.Init(commander, theme)
+	commander.BackgroundBorderPainter.Init(commander)
+	commander.SetMouseEventTarget(true)
+	commander.SetBackgroundBrush(gxui.TransparentBrush)
+	commander.SetBorderPen(gxui.TransparentPen)
 
-	commander.SetDirection(gxui.BottomToTop)
-	commander.SetSize(math.MaxSize)
+	mainLayout := theme.CreateLinearLayout()
+
+	mainLayout.SetDirection(gxui.TopToBottom)
+	mainLayout.SetSize(math.MaxSize)
 
 	commander.controller = controller
+	commander.menuBar = newMenuBar(commander, theme)
 	commander.box = newCommandBox(theme, commander.controller)
 
-	commander.AddChild(commander.box)
-	commander.AddChild(commander.controller)
+	mainLayout.AddChild(commander.menuBar)
+
+	subLayout := theme.CreateLinearLayout()
+	subLayout.SetDirection(gxui.BottomToTop)
+	subLayout.AddChild(commander.box)
+	subLayout.AddChild(commander.controller)
+	mainLayout.AddChild(subLayout)
+	commander.AddChild(mainLayout)
 	return commander
+}
+
+func (c *Commander) DesiredSize(_, max math.Size) math.Size {
+	return max
+}
+
+func (c *Commander) LayoutChildren() {
+	maxSize := c.Size().Contract(c.Padding())
+	for _, child := range c.Children() {
+		margin := child.Control.Margin()
+		desiredSize := child.Control.DesiredSize(math.ZeroSize, maxSize.Contract(margin))
+		child.Control.SetSize(desiredSize)
+	}
+}
+
+func (c *Commander) Paint(canvas gxui.Canvas) {
+	rect := c.Size().Rect()
+	c.BackgroundBorderPainter.PaintBackground(canvas, rect)
+	c.PaintChildren.Paint(canvas)
+	c.BackgroundBorderPainter.PaintBorder(canvas, rect)
 }
 
 // Controller returns c's controller.
@@ -67,22 +107,22 @@ func (c *Commander) Map(command Command, menu string, bindings ...gxui.KeyboardE
 	if len(menu) == 0 {
 		return fmt.Errorf("All commands must have a menu entry")
 	}
+	c.menuBar.Add(menu, command, bindings...)
 	for _, binding := range bindings {
-		if err := c.mapBinding(command, menu, binding); err != nil {
+		if err := c.mapBinding(command, binding); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (c *Commander) mapBinding(command Command, menu string, binding gxui.KeyboardEvent) error {
+func (c *Commander) mapBinding(command Command, binding gxui.KeyboardEvent) error {
 	if command := c.Binding(binding); command != nil {
 		return fmt.Errorf("Binding %s is already mapped", binding)
 	}
 	c.commands = append(c.commands, commandMapping{
-		binding:  binding,
-		menuName: menu,
-		command:  command,
+		binding: binding,
+		command: command,
 	})
 	return nil
 }

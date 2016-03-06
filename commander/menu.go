@@ -1,0 +1,238 @@
+// This is free and unencumbered software released into the public
+// domain.  For more information, see <http://unlicense.org> or the
+// accompanying UNLICENSE file.
+
+package commander
+
+import (
+	"github.com/nelsam/gxui"
+	"github.com/nelsam/gxui/math"
+	"github.com/nelsam/gxui/mixins"
+	"github.com/nelsam/gxui/mixins/parts"
+	"github.com/nelsam/gxui/themes/basic"
+)
+
+type Boundser interface {
+	Bounds() math.Rect
+}
+
+type menuBar struct {
+	mixins.LinearLayout
+
+	commander *Commander
+	theme     *basic.Theme
+	menus     map[string]*menu
+}
+
+func newMenuBar(commander *Commander, theme *basic.Theme) *menuBar {
+	m := &menuBar{
+		commander: commander,
+		theme:     theme,
+		menus:     make(map[string]*menu),
+	}
+	m.Init(m, theme)
+	m.SetDirection(gxui.LeftToRight)
+	m.SetBorderPen(theme.ButtonDefaultStyle.Pen)
+	return m
+}
+
+func (m *menuBar) Add(menuName string, command Command, bindings ...gxui.KeyboardEvent) {
+	menu, ok := m.menus[menuName]
+	if !ok {
+		menu = newMenu(m.commander, m.theme)
+		m.menus[menuName] = menu
+		button := newMenuButton(m.commander, m.theme, menuName)
+		child := m.AddChild(button)
+		button.SetMenu(child, menu)
+	}
+	menu.Add(command, bindings...)
+}
+
+func (m *menuBar) Paint(canvas gxui.Canvas) {
+	rect := m.Size().Rect()
+	m.BackgroundBorderPainter.PaintBackground(canvas, rect)
+	m.PaintChildren.Paint(canvas)
+	painterRect := math.Rect{
+		Min: math.Point{
+			X: rect.Min.X,
+			Y: rect.Max.Y - 1,
+		},
+		Max: rect.Max,
+	}
+	m.BackgroundBorderPainter.PaintBorder(canvas, painterRect)
+}
+
+func (m *menuBar) DesiredSize(min, max math.Size) math.Size {
+	size := m.LinearLayout.DesiredSize(min, max)
+	size.W = max.W
+	return size
+}
+
+type menu struct {
+	parts.Focusable
+	mixins.LinearLayout
+
+	commander *Commander
+	theme     *basic.Theme
+}
+
+func newMenu(commander *Commander, theme *basic.Theme) *menu {
+	m := &menu{
+		commander: commander,
+		theme:     theme,
+	}
+	m.Focusable.Init(m)
+	m.LinearLayout.Init(m, theme)
+	m.SetBackgroundBrush(theme.ButtonDefaultStyle.Brush)
+	m.SetBorderPen(theme.ButtonDefaultStyle.Pen)
+	return m
+}
+
+func (m *menu) Add(command Command, bindings ...gxui.KeyboardEvent) {
+	button := newMenuItem(m.theme, command.Name())
+	m.AddChild(button)
+	button.OnClick(func(gxui.MouseEvent) {
+		if m.commander.box.Run(command) {
+			gxui.SetFocus(m.commander.box.input)
+			return
+		}
+		m.commander.Controller().Execute(command)
+		m.commander.box.Clear()
+	})
+}
+
+type menuItem struct {
+	mixins.Button
+
+	theme *basic.Theme
+}
+
+func newMenuItem(theme *basic.Theme, name string) *menuItem {
+	b := &menuItem{
+		theme: theme,
+	}
+	b.Init(b, theme)
+	b.SetText(name)
+	b.SetPadding(math.Spacing{L: 1, R: 1, B: 1, T: 1})
+	b.SetMargin(math.Spacing{L: 2, R: 2})
+	b.OnMouseEnter(func(gxui.MouseEvent) { b.Redraw() })
+	b.OnMouseExit(func(gxui.MouseEvent) { b.Redraw() })
+	b.OnMouseDown(func(gxui.MouseEvent) { b.Redraw() })
+	b.OnMouseUp(func(gxui.MouseEvent) { b.Redraw() })
+	b.OnGainedFocus(b.Redraw)
+	b.OnLostFocus(b.Redraw)
+	return b
+}
+
+func (b *menuItem) Style() basic.Style {
+	if b.IsMouseDown(gxui.MouseButtonLeft) && b.IsMouseOver() {
+		return b.theme.ButtonPressedStyle
+	}
+	if b.IsMouseOver() {
+		return b.theme.ButtonOverStyle
+	}
+	return b.theme.ButtonDefaultStyle
+}
+
+func (b *menuItem) Paint(canvas gxui.Canvas) {
+	style := b.Style()
+	if l := b.Label(); l != nil {
+		l.SetColor(style.FontColor)
+	}
+
+	rect := b.Size().Rect()
+	b.BackgroundBorderPainter.PaintBackground(canvas, rect)
+	b.PaintChildren.Paint(canvas)
+}
+
+type menuButton struct {
+	mixins.Button
+
+	menuParent gxui.Container
+	theme      *basic.Theme
+	showing    bool
+}
+
+func newMenuButton(menuParent gxui.Container, theme *basic.Theme, name string) *menuButton {
+	b := &menuButton{
+		menuParent: menuParent,
+		theme:      theme,
+	}
+	b.Init(b, theme)
+	b.SetText(name)
+	b.SetPadding(math.Spacing{L: 1, R: 1, B: 1, T: 1})
+	b.SetMargin(math.Spacing{L: 3})
+	b.SetBackgroundBrush(b.theme.ButtonDefaultStyle.Brush)
+	b.SetBorderPen(b.theme.ButtonDefaultStyle.Pen)
+	b.OnMouseEnter(func(gxui.MouseEvent) { b.Redraw() })
+	b.OnMouseExit(func(gxui.MouseEvent) { b.Redraw() })
+	b.OnMouseDown(func(gxui.MouseEvent) { b.Redraw() })
+	b.OnMouseUp(func(gxui.MouseEvent) { b.Redraw() })
+	b.OnGainedFocus(b.Redraw)
+	b.OnLostFocus(b.Redraw)
+	return b
+}
+
+func (b *menuButton) SetMenu(boundser Boundser, menu *menu) {
+	b.OnClick(func(gxui.MouseEvent) {
+		if b.showing {
+			b.menuParent.RemoveChild(menu)
+			return
+		}
+		bounds := boundser.Bounds()
+		b.showing = true
+		child := b.menuParent.AddChild(menu)
+		offset := math.Point{
+			X: bounds.Min.X,
+			Y: bounds.Max.Y,
+		}
+		child.Offset = offset
+		menu.Relayout()
+		menu.Redraw()
+		gxui.SetFocus(menu)
+	})
+	menu.OnLostFocus(func() {
+		b.menuParent.RemoveChild(menu)
+		b.showing = false
+	})
+}
+
+func (b *menuButton) Style() basic.Style {
+	if b.IsMouseDown(gxui.MouseButtonLeft) && b.IsMouseOver() {
+		return b.theme.ButtonPressedStyle
+	}
+	if b.IsMouseOver() {
+		return b.theme.ButtonOverStyle
+	}
+	return b.theme.ButtonDefaultStyle
+}
+
+func (b *menuButton) Paint(canvas gxui.Canvas) {
+	style := b.Style()
+	if l := b.Label(); l != nil {
+		l.SetColor(style.FontColor)
+	}
+
+	rect := b.Size().Rect()
+	poly := gxui.Polygon{
+		{Position: math.Point{
+			X: rect.Min.X,
+			Y: rect.Max.Y,
+		}},
+		{Position: math.Point{
+			X: rect.Min.X,
+			Y: rect.Min.Y,
+		}},
+		{Position: math.Point{
+			X: rect.Max.X,
+			Y: rect.Min.Y,
+		}},
+		{Position: math.Point{
+			X: rect.Max.X,
+			Y: rect.Max.Y,
+		}},
+	}
+	canvas.DrawPolygon(poly, gxui.TransparentPen, style.Brush)
+	b.PaintChildren.Paint(canvas)
+	canvas.DrawLines(poly, style.Pen)
+}

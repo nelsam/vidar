@@ -62,8 +62,8 @@ func (c *Cut) Exec(target interface{}) (executed, consume bool) {
 	}
 	editor := target.(EditorFinder).CurrentEditor()
 	selection := editor.Controller().FirstSelection()
-	newRunes, _ := editor.Controller().ReplaceAt(editor.Runes(), selection.Start(), selection.End(), []rune(""))
-	editor.SetText(string(newRunes))
+	newRunes, edit := editor.Controller().ReplaceAt(editor.Runes(), selection.Start(), selection.End(), []rune(""))
+	editor.Controller().SetTextEdits(newRunes, []gxui.TextBoxEdit{edit})
 	editor.Controller().ClearSelections()
 	return true, true
 }

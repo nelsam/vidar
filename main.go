@@ -74,18 +74,47 @@ func uiMain(driver gxui.Driver) {
 
 	commander := commander.New(theme, controller)
 
-	// TODO: Store these in a config file or something
-	openFile := commands.NewFileOpener(driver, theme)
-	ctrlO := gxui.KeyboardEvent{
-		Key:      gxui.KeyO,
-		Modifier: gxui.ModControl,
-	}
-	supO := gxui.KeyboardEvent{
-		Key:      gxui.KeyO,
-		Modifier: gxui.ModSuper,
-	}
-	commander.Map(openFile, "File", ctrlO, supO)
+	// TODO: Check the system's DPI settings for this value
+	window.SetScale(1)
 
+	window.AddChild(commander)
+
+	// TODO: Store these in a config file or something
+	mapFileCommands(commander, driver, theme)
+	mapEditCommands(commander, driver, theme)
+
+	window.OnKeyDown(func(event gxui.KeyboardEvent) {
+		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {
+			os.Exit(0)
+		}
+		if event.Modifier == 0 && event.Key == gxui.KeyF11 {
+			window.SetFullscreen(!window.Fullscreen())
+		}
+		if window.Focus() == nil {
+			commander.KeyDown(event)
+		}
+	})
+	window.OnKeyUp(func(event gxui.KeyboardEvent) {
+		if window.Focus() == nil {
+			commander.KeyPress(event)
+		}
+	})
+
+	workingDir, err := os.Getwd()
+	if err != nil {
+		log.Printf("Failed to read working directory: %s", err)
+		workingDir = os.Getenv("HOME")
+	}
+	for _, file := range files {
+		filepath := path.Join(workingDir, file)
+		commander.Controller().Editor().Open(filepath, token.Position{})
+	}
+
+	window.OnClose(driver.Terminate)
+	window.SetPadding(math.Spacing{L: 10, T: 10, R: 10, B: 10})
+}
+
+func mapFileCommands(commander *commander.Commander, driver gxui.Driver, theme *basic.Theme) {
 	addProject := commands.NewProjectAdder(driver, theme)
 	ctrlShiftN := gxui.KeyboardEvent{
 		Key:      gxui.KeyN,
@@ -108,6 +137,54 @@ func uiMain(driver gxui.Driver) {
 	}
 	commander.Map(openProj, "File", ctrlShiftO, cmdShiftO)
 
+	openFile := commands.NewFileOpener(driver, theme)
+	ctrlO := gxui.KeyboardEvent{
+		Key:      gxui.KeyO,
+		Modifier: gxui.ModControl,
+	}
+	supO := gxui.KeyboardEvent{
+		Key:      gxui.KeyO,
+		Modifier: gxui.ModSuper,
+	}
+	commander.Map(openFile, "File", ctrlO, supO)
+
+	save := commands.NewSave()
+	ctrlS := gxui.KeyboardEvent{
+		Key:      gxui.KeyS,
+		Modifier: gxui.ModControl,
+	}
+	supS := gxui.KeyboardEvent{
+		Key:      gxui.KeyS,
+		Modifier: gxui.ModSuper,
+	}
+	saveAndGoimports := commands.NewMulti(theme, goimports, save)
+	commander.Map(saveAndGoimports, "File", ctrlS, supS)
+
+}
+
+func mapEditCommands(commander *commander.Commander, driver gxui.Driver, theme *basic.Theme) {
+	undo := commands.NewUndo()
+	ctrlZ := gxui.KeyboardEvent{
+		Key:      gxui.KeyZ,
+		Modifier: gxui.ModControl,
+	}
+	supZ := gxui.KeyboardEvent{
+		Key:      gxui.KeyZ,
+		Modifier: gxui.ModSuper,
+	}
+	commander.Map(undo, "Edit", ctrlZ, supZ)
+
+	redo := commands.NewRedo(theme)
+	ctrlR := gxui.KeyboardEvent{
+		Key:      gxui.KeyR,
+		Modifier: gxui.ModControl,
+	}
+	supR := gxui.KeyboardEvent{
+		Key:      gxui.KeyR,
+		Modifier: gxui.ModSuper,
+	}
+	commander.Map(redo, "Edit", ctrlR, supR)
+
 	find := commands.NewFinder(driver, theme)
 	ctrlF := gxui.KeyboardEvent{
 		Key:      gxui.KeyF,
@@ -118,29 +195,6 @@ func uiMain(driver gxui.Driver) {
 		Modifier: gxui.ModSuper,
 	}
 	commander.Map(find, "Edit", ctrlF, supF)
-
-	goimports := commands.NewGoImports()
-	ctrlShiftF := gxui.KeyboardEvent{
-		Key:      gxui.KeyF,
-		Modifier: gxui.ModControl | gxui.ModShift,
-	}
-	supShiftF := gxui.KeyboardEvent{
-		Key:      gxui.KeyF,
-		Modifier: gxui.ModSuper | gxui.ModShift,
-	}
-	commander.Map(goimports, "Edit", ctrlShiftF, supShiftF)
-
-	save := commands.NewSave()
-	ctrlS := gxui.KeyboardEvent{
-		Key:      gxui.KeyS,
-		Modifier: gxui.ModControl,
-	}
-	supS := gxui.KeyboardEvent{
-		Key:      gxui.KeyS,
-		Modifier: gxui.ModControl,
-	}
-	saveAndGoimports := commands.NewMulti(theme, goimports, save)
-	commander.Map(saveAndGoimports, "File", ctrlS, supS)
 
 	copy := commands.NewCopy(driver)
 	ctrlC := gxui.KeyboardEvent{
@@ -175,59 +229,14 @@ func uiMain(driver gxui.Driver) {
 	}
 	commander.Map(paste, "Edit", ctrlV, supV)
 
-	undo := commands.NewUndo()
-	ctrlZ := gxui.KeyboardEvent{
-		Key:      gxui.KeyZ,
-		Modifier: gxui.ModControl,
+	goimports := commands.NewGoImports()
+	ctrlShiftF := gxui.KeyboardEvent{
+		Key:      gxui.KeyF,
+		Modifier: gxui.ModControl | gxui.ModShift,
 	}
-	supZ := gxui.KeyboardEvent{
-		Key:      gxui.KeyZ,
-		Modifier: gxui.ModSuper,
+	supShiftF := gxui.KeyboardEvent{
+		Key:      gxui.KeyF,
+		Modifier: gxui.ModSuper | gxui.ModShift,
 	}
-	commander.Map(undo, "Edit", ctrlZ, supZ)
-
-	redo := commands.NewRedo(theme)
-	ctrlR := gxui.KeyboardEvent{
-		Key:      gxui.KeyR,
-		Modifier: gxui.ModControl,
-	}
-	supR := gxui.KeyboardEvent{
-		Key:      gxui.KeyR,
-		Modifier: gxui.ModSuper,
-	}
-	commander.Map(redo, "Edit", ctrlR, supR)
-
-	window.OnKeyDown(func(event gxui.KeyboardEvent) {
-		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {
-			os.Exit(0)
-		}
-		if event.Modifier == 0 && event.Key == gxui.KeyF11 {
-			window.SetFullscreen(!window.Fullscreen())
-		}
-		if window.Focus() == nil {
-			commander.KeyDown(event)
-		}
-	})
-	window.OnKeyUp(func(event gxui.KeyboardEvent) {
-		if window.Focus() == nil {
-			commander.KeyPress(event)
-		}
-	})
-
-	// TODO: Check the system's DPI settings for this value
-	window.SetScale(1)
-
-	window.AddChild(commander)
-	workingDir, err := os.Getwd()
-	if err != nil {
-		log.Printf("Failed to read working directory: %s", err)
-		workingDir = os.Getenv("HOME")
-	}
-	for _, file := range files {
-		filepath := path.Join(workingDir, file)
-		commander.Controller().Editor().Open(filepath, token.Position{})
-	}
-
-	window.OnClose(driver.Terminate)
-	window.SetPadding(math.Spacing{L: 10, T: 10, R: 10, B: 10})
+	commander.Map(goimports, "Edit", ctrlShiftF, supShiftF)
 }
