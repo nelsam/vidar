@@ -5,6 +5,8 @@
 package commander
 
 import (
+	"strings"
+
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
@@ -89,9 +91,9 @@ func newMenu(commander *Commander, theme *basic.Theme) *menu {
 }
 
 func (m *menu) Add(command Command, bindings ...gxui.KeyboardEvent) {
-	button := newMenuItem(m.theme, command.Name())
-	m.AddChild(button)
-	button.OnClick(func(gxui.MouseEvent) {
+	item := newMenuItem(m.theme, command.Name(), bindings...)
+	m.AddChild(item)
+	item.OnClick(func(gxui.MouseEvent) {
 		if m.commander.box.Run(command) {
 			gxui.SetFocus(m.commander.box.input)
 			return
@@ -107,11 +109,33 @@ type menuItem struct {
 	theme *basic.Theme
 }
 
-func newMenuItem(theme *basic.Theme, name string) *menuItem {
+func newMenuItem(theme *basic.Theme, name string, bindings ...gxui.KeyboardEvent) *menuItem {
 	b := &menuItem{
 		theme: theme,
 	}
 	b.Init(b, theme)
+	for i, binding := range bindings {
+		if i == 0 {
+			name += "   "
+		} else {
+			name += ", "
+		}
+		parts := make([]string, 0, 5)
+		if binding.Modifier.Control() {
+			parts = append(parts, "Ctrl")
+		}
+		if binding.Modifier.Super() {
+			parts = append(parts, "Cmd")
+		}
+		if binding.Modifier.Alt() {
+			parts = append(parts, "Alt")
+		}
+		if binding.Modifier.Shift() {
+			parts = append(parts, "Shift")
+		}
+		parts = append(parts, binding.Key.String())
+		name += strings.Join(parts, "-")
+	}
 	b.SetText(name)
 	b.SetPadding(math.Spacing{L: 1, R: 1, B: 1, T: 1})
 	b.SetMargin(math.Spacing{L: 2, R: 2})
