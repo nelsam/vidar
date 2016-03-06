@@ -80,7 +80,7 @@ func uiMain(driver gxui.Driver) {
 	window.AddChild(commander)
 
 	// TODO: Store these in a config file or something
-	mapFileCommands(commander, driver, theme)
+	mapFileCommands(commander, projTree, driver, theme)
 	mapEditCommands(commander, driver, theme)
 
 	window.OnKeyDown(func(event gxui.KeyboardEvent) {
@@ -114,7 +114,7 @@ func uiMain(driver gxui.Driver) {
 	window.SetPadding(math.Spacing{L: 10, T: 10, R: 10, B: 10})
 }
 
-func mapFileCommands(commander *commander.Commander, driver gxui.Driver, theme *basic.Theme) {
+func mapFileCommands(commander *commander.Commander, projTree *navigator.ProjectTree, driver gxui.Driver, theme *basic.Theme) {
 	addProject := commands.NewProjectAdder(driver, theme)
 	ctrlShiftN := gxui.KeyboardEvent{
 		Key:      gxui.KeyN,
@@ -148,6 +148,7 @@ func mapFileCommands(commander *commander.Commander, driver gxui.Driver, theme *
 	}
 	commander.Map(openFile, "File", ctrlO, supO)
 
+	goimports := commands.NewGoImports()
 	save := commands.NewSave()
 	ctrlS := gxui.KeyboardEvent{
 		Key:      gxui.KeyS,
