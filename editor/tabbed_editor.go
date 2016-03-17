@@ -94,7 +94,14 @@ func (e *TabbedEditor) KeyPress(event gxui.KeyboardEvent) bool {
 }
 
 func (e *TabbedEditor) CloseCurrentTab() {
-	e.RemovePanel(e.CurrentEditor())
+	toRemove := e.CurrentEditor()
+	e.RemovePanel(toRemove)
+	for name, panel := range e.editors {
+		if panel == toRemove {
+			delete(e.editors, name)
+			break
+		}
+	}
 }
 
 func (e *TabbedEditor) CurrentEditor() *CodeEditor {
