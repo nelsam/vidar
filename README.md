@@ -38,10 +38,15 @@ most of my vidar development using vidar.  The only things I don't yet use it fo
 around find/replace stuff.
 
 I still don't think it's a good replacement for your every day editor, even for Go code, but
-it does have some features that I find lacking in the other editors out there.  If you can
-read the key bindings from the main.go file and feel like giving it a shot, be my guest.
+it does have some features that I find lacking in the other editors out there.  If you'd like
+to try it, be my guest.  I've added a file/edit menu (soon to have a view menu) which displays
+commands and their key bindings, so you no longer have to learn key bindings from the source
+code.
 
-Code suggestions still feel clunky, by the way.  I'm working on that too.
+Code suggestions are still a little weird - gocode is doing something I don't expect with
+regard to the potential suggestions in the current package.  Imported packages and the
+current file both work, but other files in the current package ... don't.  I don't know
+why.
 
 ## Requirements
 
