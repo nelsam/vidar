@@ -93,6 +93,10 @@ func (e *TabbedEditor) KeyPress(event gxui.KeyboardEvent) bool {
 	return e.PanelHolder.KeyPress(event)
 }
 
+func (e *TabbedEditor) CloseCurrentTab() {
+	e.RemovePanel(e.CurrentEditor())
+}
+
 func (e *TabbedEditor) CurrentEditor() *CodeEditor {
 	if e.SelectedPanel() == nil {
 		return nil

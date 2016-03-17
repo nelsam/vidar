@@ -50,7 +50,7 @@ func (l layers) layer(pos token.Pos, length int, colors ...gxui.Color) *gxui.Cod
 
 func Layers(filename, text string) (gxui.CodeSyntaxLayers, error) {
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, filename, text, 0)
+	f, err := parser.ParseFile(fset, filename, text, parser.ParseComments)
 	syntaxLayers := make(gxui.CodeSyntaxLayers, 0, 100)
 	layers := layers{
 		syntaxLayers: &syntaxLayers,

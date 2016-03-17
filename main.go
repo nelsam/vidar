@@ -161,6 +161,16 @@ func mapFileCommands(commander *commander.Commander, projTree *navigator.Project
 	saveAndGoimports := commands.NewMulti(theme, goimports, save)
 	commander.Map(saveAndGoimports, "File", ctrlS, supS)
 
+	closeTab := commands.NewCloseTab()
+	ctrlW := gxui.KeyboardEvent{
+		Key:      gxui.KeyW,
+		Modifier: gxui.ModControl,
+	}
+	supW := gxui.KeyboardEvent{
+		Key:      gxui.KeyW,
+		Modifier: gxui.ModSuper,
+	}
+	commander.Map(closeTab, "File", ctrlW, supW)
 }
 
 func mapEditCommands(commander *commander.Commander, driver gxui.Driver, theme *basic.Theme) {
