@@ -90,3 +90,17 @@ func (l layers) handleCompositeLit(src *ast.CompositeLit) gxui.CodeSyntaxLayers 
 	}
 	return append(layers, l.layer(src.Rbrace, 1, defaultRainbow.Pop()))
 }
+
+func (l layers) handleCommClause(src *ast.CommClause) gxui.CodeSyntaxLayers {
+	layers := make(gxui.CodeSyntaxLayers, 0, 5)
+	length := len("case")
+	if src.Comm == nil {
+		length = len("default")
+	}
+	layers = append(layers, l.layer(src.Case, length, keywordColor))
+	layers = append(layers, l.handleStmt(src.Comm)...)
+	for _, stmt := range src.Body {
+		layers = append(layers, l.handleStmt(stmt)...)
+	}
+	return layers
+}

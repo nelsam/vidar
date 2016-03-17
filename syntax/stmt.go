@@ -21,7 +21,7 @@ func (l layers) handleStmt(stmt ast.Stmt) gxui.CodeSyntaxLayers {
 	case *ast.AssignStmt:
 		return l.handleAssignStmt(src)
 	case *ast.CommClause:
-		return nil
+		return l.handleCommClause(src)
 	case *ast.SwitchStmt:
 		return l.handleSwitchStmt(src)
 	case *ast.TypeSwitchStmt:

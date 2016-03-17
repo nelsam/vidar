@@ -36,6 +36,9 @@ func (l layers) handleValueSpec(val *ast.ValueSpec) gxui.CodeSyntaxLayers {
 	if val.Type != nil {
 		layers = append(layers, l.nodeLayer(val.Type, typeColor))
 	}
+	for _, expr := range val.Values {
+		layers = append(layers, l.handleExpr(expr)...)
+	}
 	return layers
 }
 
