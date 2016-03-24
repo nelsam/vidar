@@ -5,7 +5,9 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/ioutil"
 	"log"
+	"os"
 	"path"
 	"strings"
 
@@ -24,6 +26,18 @@ var (
 		R: 0.6,
 		G: 1,
 		B: 0.5,
+		A: 1,
+	}
+	nonGoColor = gxui.Color{
+		R: 0.9,
+		G: 0.9,
+		B: 0.9,
+		A: 1,
+	}
+	errColor = gxui.Color{
+		R: 0.9,
+		G: 0.2,
+		B: 0,
 		A: 1,
 	}
 	skippableColor = gxui.Color{
@@ -133,6 +147,77 @@ func (t skippingTreeNode) Create(theme gxui.Theme) gxui.Control {
 	return t.genericTreeNode.Create(theme)
 }
 
+type packageNode struct {
+	genericTreeNode
+
+	consts, vars, types, funcs *genericTreeNode
+	typeMap                    map[string]*Name
+}
+
+func newPackageNode(name string) *packageNode {
+	node := &packageNode{}
+	node.name = name
+	node.consts = &genericTreeNode{name: "constants", path: name + ".constants", color: genericColor}
+	node.vars = &genericTreeNode{name: "global vars", path: name + ".global vars", color: genericColor}
+	node.types = &genericTreeNode{name: "types", path: name + ".types", color: genericColor}
+	node.funcs = &genericTreeNode{name: "funcs", path: name + ".funcs", color: genericColor}
+	node.typeMap = make(map[string]*Name)
+	node.children = []gxui.TreeNode{node.consts, node.vars, node.types, node.funcs}
+	return node
+}
+
+func (p *packageNode) addConsts(consts ...Name) {
+	for _, c := range consts {
+		c.path = p.consts.path + "." + c.name
+		p.consts.children = append(p.consts.children, c)
+	}
+}
+
+func (p *packageNode) addVars(vars ...Name) {
+	for _, v := range vars {
+		v.path = p.vars.path + "." + v.name
+		p.vars.children = append(p.vars.children, v)
+	}
+}
+
+func (p *packageNode) addTypes(types ...Name) {
+	for _, typ := range types {
+		// Since we can't guarantee that we parsed the type declaration before
+		// any method declarations, we have to check to see if the type already
+		// exists.
+		existingType, ok := p.typeMap[typ.name]
+		if !ok {
+			typ.path = p.types.path + "." + typ.name
+			p.typeMap[typ.name] = &typ
+			p.types.children = append(p.types.children, &typ)
+			continue
+		}
+		existingType.color = typ.color
+		existingType.filepath = typ.filepath
+		existingType.position = typ.position
+	}
+}
+
+func (p *packageNode) addFuncs(funcs ...Name) {
+	for _, f := range funcs {
+		f.path = p.funcs.path + "." + f.name
+		p.funcs.children = append(p.funcs.children, f)
+	}
+}
+
+func (p *packageNode) addMethod(typeName string, method Name) {
+	typ, ok := p.typeMap[typeName]
+	if !ok {
+		typ = &Name{}
+		typ.name = typeName
+		typ.path = p.types.path + "." + typ.name
+		p.typeMap[typeName] = typ
+		p.types.children = append(p.types.children, typ)
+	}
+	method.path = typ.path + "." + method.name
+	typ.children = append(typ.children, method)
+}
+
 type Location struct {
 	filepath string
 	position token.Position
@@ -154,8 +239,9 @@ type Name struct {
 type TOC struct {
 	skippingTreeNode
 
-	path    string
-	fileSet *token.FileSet
+	path       string
+	fileSet    *token.FileSet
+	packageMap map[string]*packageNode
 }
 
 func NewTOC(path string) *TOC {
@@ -171,112 +257,117 @@ func (t *TOC) Init(path string) {
 
 func (t *TOC) Reload() {
 	t.fileSet = token.NewFileSet()
-	pkgs, err := parser.ParseDir(t.fileSet, t.path, nil, parser.ParseComments)
+	t.children = make([]gxui.TreeNode, 0, len(t.children))
+	t.packageMap = make(map[string]*packageNode)
+	allFiles, err := ioutil.ReadDir(t.path)
 	if err != nil {
-		log.Printf("Error parsing dir: %s", err)
+		log.Printf("Received error reading directory %s: %s", t.path, err)
+		return
 	}
-	for _, pkg := range pkgs {
-		t.children = append(t.children, t.parsePkg(pkg))
+	t.parseFiles(t.path, allFiles...)
+}
+
+func (t *TOC) parseFiles(dir string, files ...os.FileInfo) {
+	filesNode := &genericTreeNode{
+		name:  "files",
+		path:  "files",
+		color: skippableColor,
+	}
+	t.children = append(t.children, filesNode)
+	for _, file := range files {
+		fileNode := t.parseFile(dir, file)
+		filesNode.children = append(filesNode.children, fileNode)
 	}
 }
 
-func (t *TOC) parsePkg(pkg *ast.Package) genericTreeNode {
-	var (
-		pkgNode = genericTreeNode{name: pkg.Name, path: pkg.Name, color: skippableColor}
-
-		files   []gxui.TreeNode
-		consts  []gxui.TreeNode
-		vars    []gxui.TreeNode
-		typeMap = make(map[string]*Name)
-		types   []gxui.TreeNode
-		funcs   []gxui.TreeNode
-	)
-	for filepath, f := range pkg.Files {
-		var fileNode Name
-		filename := path.Base(filepath)
-		fileNode.name = filename
-		fileNode.path = pkg.Name + ".files." + filepath
-		fileNode.color = nameColor
-		fileNode.filepath = filepath
-		files = append(files, fileNode)
-
-		buildTags := findBuildTags(filename, f)
-		buildTagLine := strings.Join(buildTags, " ")
-		for _, decl := range f.Decls {
-			switch src := decl.(type) {
-			case *ast.GenDecl:
-				switch src.Tok.String() {
-				case "const":
-					consts = append(consts, t.valueNamesFrom(filepath, buildTagLine, pkg.Name+".constants", src.Specs)...)
-				case "var":
-					vars = append(vars, t.valueNamesFrom(filepath, buildTagLine, pkg.Name+".global vars", src.Specs)...)
-				case "type":
-					// I have yet to see a case where a type declaration has more than one Specs.
-					typeSpec := src.Specs[0].(*ast.TypeSpec)
-					typeName := typeSpec.Name.String()
-
-					// We can't guarantee that the type declaration was found before method
-					// declarations, so the value may already exist in the map.
-					typ, ok := typeMap[typeName]
-					if !ok {
-						typ = &Name{}
-						typeMap[typeName] = typ
-					}
-					typ.name = typeName
-					if buildTagLine != "" {
-						typ.name = fmt.Sprintf("%s (%s)", typ.name, buildTagLine)
-					}
-					typ.path = pkg.Name + ".types." + typ.name
-					typ.color = nameColor
-					typ.filepath = filepath
-					typ.position = t.fileSet.Position(typeSpec.Pos())
-					types = append(types, typ)
-				}
-			case *ast.FuncDecl:
-				if src.Name.String() == "init" {
-					// There can be multiple inits in the package, so this
-					// doesn't really help us in the TOC.
-					continue
-				}
-				var name Name
-				name.name = src.Name.String()
-				if buildTagLine != "" {
-					name.name = fmt.Sprintf("%s (%s)", name.name, buildTagLine)
-				}
-				name.path = pkg.Name + ".funcs." + name.name
-				name.color = nameColor
-				name.filepath = filepath
-				name.position = t.fileSet.Position(src.Pos())
-				if src.Recv == nil {
-					funcs = append(funcs, name)
-					continue
-				}
-				recvTyp := src.Recv.List[0].Type
-				if starExpr, ok := recvTyp.(*ast.StarExpr); ok {
-					recvTyp = starExpr.X
-				}
-				recvTypeName := recvTyp.(*ast.Ident).String()
-				typ, ok := typeMap[recvTypeName]
-				if !ok {
-					typ = &Name{}
-					typeMap[recvTypeName] = typ
-				}
-				name.path = pkg.Name + ".types." + recvTypeName + "." + name.name
-				typ.children = append(typ.children, name)
-			}
-		}
+func (t *TOC) parseFile(dir string, file os.FileInfo) (fileNode Name) {
+	fileNode.name = file.Name()
+	fileNode.filepath = path.Join(dir, fileNode.name)
+	fileNode.path = "files." + fileNode.name
+	if !strings.HasSuffix(file.Name(), ".go") {
+		fileNode.color = nonGoColor
+		return fileNode
 	}
-	pkgNode.children = []gxui.TreeNode{
-		genericTreeNode{name: "files", path: pkg.Name + ".files", color: genericColor, children: files},
-		genericTreeNode{name: "constants", path: pkg.Name + ".constants", color: genericColor, children: consts},
-		genericTreeNode{name: "global vars", path: pkg.Name + ".global vars", color: genericColor, children: vars},
-		genericTreeNode{name: "types", path: pkg.Name + ".types", color: genericColor, children: types},
-		genericTreeNode{name: "funcs", path: pkg.Name + ".funcs", color: genericColor, children: funcs},
+	f, err := parser.ParseFile(t.fileSet, fileNode.filepath, nil, parser.ParseComments)
+	if err != nil {
+		fileNode.color = errColor
+		return fileNode
+	}
+	fileNode.color = nameColor
+	t.parseAstFile(fileNode.filepath, f)
+	return fileNode
+}
+
+func (t *TOC) parseGenDecl(pkgNode *packageNode, decl *ast.GenDecl, filepath, buildTags string) {
+	switch decl.Tok.String() {
+	case "const":
+		pkgNode.addConsts(t.valueNamesFrom(filepath, buildTags, decl.Specs)...)
+	case "var":
+		pkgNode.addVars(t.valueNamesFrom(filepath, buildTags, decl.Specs)...)
+	case "type":
+		// I have yet to see a case where a type declaration has more than one Specs.
+		typeSpec := decl.Specs[0].(*ast.TypeSpec)
+		typeName := typeSpec.Name.String()
+
+		typ := Name{}
+		typ.name = typeName
+		if buildTags != "" {
+			typ.name = fmt.Sprintf("%s (%s)", typ.name, buildTags)
+		}
+		typ.color = nameColor
+		typ.filepath = filepath
+		typ.position = t.fileSet.Position(typeSpec.Pos())
+		pkgNode.addTypes(typ)
+	}
+}
+
+func (t *TOC) parseAstFile(filepath string, file *ast.File) *packageNode {
+	buildTags := findBuildTags(filepath, file)
+	buildTagLine := strings.Join(buildTags, " ")
+
+	packageName := file.Name.String()
+	pkgNode, ok := t.packageMap[packageName]
+	if !ok {
+		pkgNode = newPackageNode(packageName)
+		pkgNode.path = pkgNode.name
+		pkgNode.color = skippableColor
+		t.packageMap[pkgNode.name] = pkgNode
+		t.children = append(t.children, pkgNode)
+	}
+	for _, decl := range file.Decls {
+		switch src := decl.(type) {
+		case *ast.GenDecl:
+			t.parseGenDecl(pkgNode, src, filepath, buildTagLine)
+		case *ast.FuncDecl:
+			if src.Name.String() == "init" {
+				// There can be multiple inits in the package, so this
+				// doesn't really help us in the TOC.
+				continue
+			}
+			var name Name
+			name.name = src.Name.String()
+			if buildTagLine != "" {
+				name.name = fmt.Sprintf("%s (%s)", name.name, buildTagLine)
+			}
+			name.color = nameColor
+			name.filepath = filepath
+			name.position = t.fileSet.Position(src.Pos())
+			if src.Recv == nil {
+				pkgNode.addFuncs(name)
+				continue
+			}
+			recvTyp := src.Recv.List[0].Type
+			if starExpr, ok := recvTyp.(*ast.StarExpr); ok {
+				recvTyp = starExpr.X
+			}
+			recvTypeName := recvTyp.(*ast.Ident).String()
+			pkgNode.addMethod(recvTypeName, name)
+		}
 	}
 	return pkgNode
 }
 
-func (t *TOC) valueNamesFrom(filepath, buildTags, parentName string, specs []ast.Spec) (names []gxui.TreeNode) {
+func (t *TOC) valueNamesFrom(filepath, buildTags string, specs []ast.Spec) (names []Name) {
 	for _, spec := range specs {
 		valSpec, ok := spec.(*ast.ValueSpec)
 		if !ok {
@@ -293,14 +384,13 @@ func (t *TOC) valueNamesFrom(filepath, buildTags, parentName string, specs []ast
 			if buildTags != "" {
 				newName.name = fmt.Sprintf("%s (%s)", newName.name, buildTags)
 			}
-			newName.path = parentName + "." + newName.name
 			newName.color = nameColor
 			newName.filepath = filepath
 			newName.position = t.fileSet.Position(name.Pos())
 			names = append(names, newName)
 		}
 	}
-	return
+	return names
 }
 
 func findBuildTags(filename string, file *ast.File) (tags []string) {
