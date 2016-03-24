@@ -113,6 +113,9 @@ func (e *CodeEditor) watch() {
 
 func (e *CodeEditor) waitForFileCreate() error {
 	dir := filepath.Dir(e.filepath)
+	if err := os.MkdirAll(dir, 0750|os.ModeDir); err != nil {
+		return err
+	}
 	if err := e.watcher.Add(dir); err != nil {
 		return err
 	}
