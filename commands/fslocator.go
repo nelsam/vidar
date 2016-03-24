@@ -1,6 +1,7 @@
 // This is free and unencumbered software released into the public
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
+
 package commands
 
 import (
@@ -18,13 +19,14 @@ import (
 type FSLocator struct {
 	mixins.LinearLayout
 
-	theme *basic.Theme
-	dir   *dirLabel
-	file  *fileBox
+	theme  *basic.Theme
+	driver gxui.Driver
+	dir    *dirLabel
+	file   *fileBox
 }
 
 func NewFSLocator(driver gxui.Driver, theme *basic.Theme) *FSLocator {
-	f := new(FSLocator)
+	f := &FSLocator{}
 	f.Init(driver, theme)
 	return f
 }
@@ -32,6 +34,7 @@ func NewFSLocator(driver gxui.Driver, theme *basic.Theme) *FSLocator {
 func (f *FSLocator) Init(driver gxui.Driver, theme *basic.Theme) {
 	f.LinearLayout.Init(f, theme)
 	f.theme = theme
+	f.driver = driver
 
 	f.SetDirection(gxui.LeftToRight)
 	f.dir = newDirLabel(theme)
@@ -43,8 +46,10 @@ func (f *FSLocator) Init(driver gxui.Driver, theme *basic.Theme) {
 func (f *FSLocator) loadEditorDir(control gxui.Control) {
 	startingPath := findStart(control)
 
-	f.dir.SetText(startingPath)
-	f.file.SetText("")
+	f.driver.Call(func() {
+		f.dir.SetText(startingPath)
+		f.file.SetText("")
+	})
 }
 
 func (f *FSLocator) Path() string {
@@ -53,6 +58,7 @@ func (f *FSLocator) Path() string {
 
 func (f *FSLocator) SetPath(filePath string) {
 	dir, file := filepath.Split(filePath)
+
 	f.dir.SetText(dir)
 	f.file.SetText(file)
 }

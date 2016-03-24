@@ -46,6 +46,8 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 	proj := finder.Project()
 	cmd := exec.Command("goimports", "-srcdir", filepath.Dir(editor.Filepath()))
 	cmd.Stdin = bytes.NewBufferString(editor.Text())
+	errBuffer := &bytes.Buffer{}
+	cmd.Stderr = errBuffer
 	if proj.Gopath != "" {
 		gopathGoimports := path.Join(proj.Gopath, "bin", "goimports")
 		if _, err := os.Stat(gopathGoimports); err == nil {
@@ -61,6 +63,8 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 	if err != nil {
 		// TODO: report this error to the user via the UI
 		log.Printf("Received error from goimports: %s", err)
+		log.Print("Error output:")
+		log.Print(errBuffer.String())
 		return true, true
 	}
 	editor.SetText(string(formatted))
