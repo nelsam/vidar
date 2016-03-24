@@ -187,6 +187,10 @@ func (e *CodeEditor) LastKnownMTime() time.Time {
 	return e.lastModified
 }
 
+func (e *CodeEditor) Filepath() string {
+	return e.filepath
+}
+
 func (e *CodeEditor) FlushedChanges() {
 	e.hasChanges = false
 	e.lastModified = time.Now()

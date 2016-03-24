@@ -115,5 +115,5 @@ func (e *TabbedEditor) CurrentFile() string {
 	if e.SelectedPanel() == nil {
 		return ""
 	}
-	return e.SelectedPanel().(*CodeEditor).filepath
+	return e.SelectedPanel().(*CodeEditor).Filepath()
 }

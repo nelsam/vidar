@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/editor"
@@ -43,10 +44,8 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 	}
 	editor := finder.CurrentEditor()
 	proj := finder.Project()
-	cmd := &exec.Cmd{
-		Path:  "goimports",
-		Stdin: bytes.NewBufferString(editor.Text()),
-	}
+	cmd := exec.Command("goimports", "-srcdir", filepath.Dir(editor.Filepath()))
+	cmd.Stdin = bytes.NewBufferString(editor.Text())
 	if proj.Gopath != "" {
 		gopathGoimports := path.Join(proj.Gopath, "bin", "goimports")
 		if _, err := os.Stat(gopathGoimports); err == nil {
