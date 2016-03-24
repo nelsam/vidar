@@ -4,8 +4,8 @@
 package suggestions
 
 import (
+	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -15,45 +15,37 @@ import (
 	"github.com/nelsam/gxui"
 )
 
-// GoCodeProvider is a gocode-based implementation of gxui.CodeSyntaxProvider.
-type GoCodeProvider struct {
-	Path   string
-	editor gxui.CodeEditor
-	gopath string
+// FileContainer is any type that contains information about a file.
+type FileContainer interface {
+	Filepath() string
+	Text() string
 }
 
-func NewGoCodeProvider(editor gxui.CodeEditor, gopath string) *GoCodeProvider {
+// GoCodeProvider is a gocode-based implementation of gxui.CodeSyntaxProvider.
+type GoCodeProvider struct {
+	fileContainer FileContainer
+	gopath        string
+}
+
+func NewGoCodeProvider(fileContainer FileContainer, gopath string) *GoCodeProvider {
 	return &GoCodeProvider{
-		editor: editor,
-		gopath: gopath,
+		fileContainer: fileContainer,
+		gopath:        gopath,
 	}
 }
 
 func (p *GoCodeProvider) SuggestionsAt(runeIndex int) []gxui.CodeSuggestion {
-	cmd := exec.Command("gocode", "-f", "json", "autocomplete", p.Path, strconv.Itoa(runeIndex))
+	cmd := exec.Command("gocode", "-f", "json", "autocomplete", p.fileContainer.Filepath(), strconv.Itoa(runeIndex))
 	cmd.Env = []string{
 		"PATH=" + os.Getenv("PATH") + ":" + path.Join(p.gopath, "bin"),
 		"GOPATH=" + p.gopath,
 	}
-	in, err := cmd.StdinPipe()
+	cmd.Stdin = bytes.NewBufferString(p.fileContainer.Text())
+	outputJSON, err := cmd.Output()
 	if err != nil {
-		log.Printf("Error: Could not access command's STDIN pipe: %s", err)
+		log.Printf("Error: gocode failed: %s", err)
 		return nil
 	}
-	out, err := cmd.StdoutPipe()
-	if err != nil {
-		log.Printf("Error: Could not access command's STDOUT pipe: %s", err)
-		return nil
-	}
-	cmd.Start()
-	in.Write([]byte(p.editor.Text()))
-	in.Close()
-	outputJSON, err := ioutil.ReadAll(out)
-	if err != nil {
-		log.Printf("Error: Could not read command output: %s", err)
-		return nil
-	}
-	cmd.Wait()
 
 	var output []interface{}
 	if err := json.Unmarshal(outputJSON, &output); err != nil {
