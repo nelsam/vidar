@@ -48,16 +48,10 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 	cmd.Stdin = bytes.NewBufferString(editor.Text())
 	errBuffer := &bytes.Buffer{}
 	cmd.Stderr = errBuffer
+	cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
 	if proj.Gopath != "" {
-		gopathGoimports := path.Join(proj.Gopath, "bin", "goimports")
-		if _, err := os.Stat(gopathGoimports); err == nil {
-			cmd.Path = gopathGoimports
-		}
-		envPath := os.Getenv("PATH")
-		cmd.Env = []string{
-			"GOPATH=" + proj.Gopath,
-			"PATH=" + envPath + ":" + path.Join(proj.Gopath, "/bin"),
-		}
+		cmd.Env[0] += ":" + path.Join(proj.Gopath, "/bin")
+		cmd.Env = append(cmd.Env, "GOPATH="+proj.Gopath)
 	}
 	formatted, err := cmd.Output()
 	if err != nil {
