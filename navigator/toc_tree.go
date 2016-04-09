@@ -304,6 +304,13 @@ func (t *TOC) watchErrors() {
 	}
 }
 
+func (t *TOC) Close() error {
+	if t.watcher != nil {
+		return t.watcher.Close()
+	}
+	return nil
+}
+
 func (t *TOC) Reload() {
 	t.lock.Lock()
 	defer t.lock.Unlock()

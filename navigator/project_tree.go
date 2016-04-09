@@ -79,6 +79,7 @@ func NewProjectTree(driver gxui.Driver, theme *basic.Theme) *ProjectTree {
 
 	tree.dirs.OnSelectionChanged(func(selection gxui.AdapterItem) {
 		tree.dirs.Show(selection)
+		tree.projectAdapter.Close()
 		tree.projectAdapter = NewTOC(selection.(string))
 		tree.project.SetAdapter(tree.projectAdapter)
 		tree.project.ExpandAll()
@@ -102,6 +103,7 @@ func (p *ProjectTree) SetRoot(path string) {
 	p.dirsAdapter.dirs = true
 	p.dirs.SetAdapter(p.dirsAdapter)
 
+	p.projectAdapter.Close()
 	p.projectAdapter = NewTOC(path)
 	p.project.SetAdapter(p.projectAdapter)
 
