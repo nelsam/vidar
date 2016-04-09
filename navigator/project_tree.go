@@ -1,3 +1,7 @@
+// This is free and unencumbered software released into the public
+// domain.  For more information, see <http://unlicense.org> or the
+// accompanying UNLICENSE file.
+
 package navigator
 
 import (
@@ -83,44 +87,44 @@ func NewProjectTree(driver gxui.Driver, theme *basic.Theme) *ProjectTree {
 	return tree
 }
 
-func (d *ProjectTree) SetHeight(height int) {
-	d.project.height = height - d.dirs.height
-	d.project.SizeChanged()
+func (p *ProjectTree) SetHeight(height int) {
+	p.project.height = height - p.dirs.height
+	p.project.SizeChanged()
 }
 
-func (d *ProjectTree) Button() gxui.Button {
-	return d.button
+func (p *ProjectTree) Button() gxui.Button {
+	return p.button
 }
 
-func (d *ProjectTree) SetRoot(path string) {
-	d.dirsAdapter = &dirTreeAdapter{}
-	d.dirsAdapter.children = []string{path}
-	d.dirsAdapter.dirs = true
-	d.dirs.SetAdapter(d.dirsAdapter)
+func (p *ProjectTree) SetRoot(path string) {
+	p.dirsAdapter = &dirTreeAdapter{}
+	p.dirsAdapter.children = []string{path}
+	p.dirsAdapter.dirs = true
+	p.dirs.SetAdapter(p.dirsAdapter)
 
-	d.projectAdapter = NewTOC(path)
-	d.project.SetAdapter(d.projectAdapter)
+	p.projectAdapter = NewTOC(path)
+	p.project.SetAdapter(p.projectAdapter)
 
-	d.project.ExpandAll()
+	p.project.ExpandAll()
 }
 
-func (d *ProjectTree) SetProject(project settings.Project) {
-	d.SetRoot(project.Path)
+func (p *ProjectTree) SetProject(project settings.Project) {
+	p.SetRoot(project.Path)
 }
 
-func (d *ProjectTree) Open(filePath string) {
+func (p *ProjectTree) Open(filePath string) {
 	dir, _ := filepath.Split(filePath)
-	d.dirs.Select(dir)
+	p.dirs.Select(dir)
 }
 
-func (d *ProjectTree) Frame() gxui.Control {
-	return d.layout
+func (p *ProjectTree) Frame() gxui.Control {
+	return p.layout
 }
 
-func (d *ProjectTree) OnComplete(onComplete func(controller.Executor)) {
-	cmd := commands.NewFileOpener(d.driver, d.theme)
-	d.project.OnSelectionChanged(func(selected gxui.AdapterItem) {
-		var node gxui.TreeNode = d.projectAdapter
+func (p *ProjectTree) OnComplete(onComplete func(controller.Executor)) {
+	cmd := commands.NewFileOpener(p.driver, p.theme)
+	p.project.OnSelectionChanged(func(selected gxui.AdapterItem) {
+		var node gxui.TreeNode = p.projectAdapter
 		for i := node.ItemIndex(selected); i != -1; i = node.ItemIndex(selected) {
 			node = node.NodeAt(i)
 		}

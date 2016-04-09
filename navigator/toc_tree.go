@@ -10,7 +10,9 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 
+	"github.com/go-fsnotify/fsnotify"
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 )
@@ -242,20 +244,69 @@ type TOC struct {
 	path       string
 	fileSet    *token.FileSet
 	packageMap map[string]*packageNode
+	watcher    *fsnotify.Watcher
+
+	lock sync.Mutex
 }
 
 func NewTOC(path string) *TOC {
-	toc := &TOC{}
-	toc.Init(path)
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Printf("TOC: Could not create watcher")
+	}
+	toc := &TOC{
+		path:    path,
+		watcher: watcher,
+	}
+	toc.path = path
+	if watcher != nil {
+		toc.watch()
+	}
+	toc.Reload()
 	return toc
 }
 
-func (t *TOC) Init(path string) {
-	t.path = path
-	t.Reload()
+func (t *TOC) watch() {
+	allFiles, err := ioutil.ReadDir(t.path)
+	if err != nil {
+		log.Printf("Received error reading directory %s for watching: %s", t.path, err)
+		return
+	}
+	t.watcher.Add(t.path)
+	for _, f := range allFiles {
+		if f.IsDir() {
+			continue
+		}
+		fPath := path.Join(t.path, f.Name())
+		if err := t.watcher.Add(fPath); err != nil {
+			log.Printf("Could not watch file %s: %s", fPath, err)
+		}
+	}
+	go t.watchEvents()
+	go t.watchErrors()
+}
+
+func (t *TOC) watchEvents() {
+	for event := range t.watcher.Events {
+		switch event.Op {
+		case fsnotify.Remove:
+			t.watcher.Remove(event.Name)
+		case fsnotify.Create:
+			t.watcher.Add(event.Name)
+		}
+		t.Reload()
+	}
+}
+
+func (t *TOC) watchErrors() {
+	for err := range t.watcher.Errors {
+		log.Printf("Received error %s from watcher", err)
+	}
 }
 
 func (t *TOC) Reload() {
+	t.lock.Lock()
+	defer t.lock.Unlock()
 	t.fileSet = token.NewFileSet()
 	t.children = make([]gxui.TreeNode, 0, len(t.children))
 	t.packageMap = make(map[string]*packageNode)
