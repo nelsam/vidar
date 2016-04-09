@@ -1,6 +1,7 @@
 // This is free and unencumbered software released into the public
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
+
 package settings
 
 import (
@@ -10,17 +11,13 @@ import (
 	"os"
 	"path"
 
+	"github.com/casimir/xdg-go"
 	"gopkg.in/yaml.v2"
 )
 
 var (
-	DefaultProject = Project{
-		Name:   "*default*",
-		Path:   "/",
-		Gopath: os.Getenv("GOPATH"),
-	}
-	settingsDir  = path.Join(os.Getenv("HOME"), ".config", "vidar")
-	projectsPath = path.Join(settingsDir, "projects")
+	App          = xdg.App{Name: "vidar"}
+	projectsPath = App.ConfigPath("projects")
 )
 
 type Project struct {
