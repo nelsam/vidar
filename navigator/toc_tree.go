@@ -275,6 +275,9 @@ func (t *TOC) parseFiles(dir string, files ...os.FileInfo) {
 	}
 	t.children = append(t.children, filesNode)
 	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
 		fileNode := t.parseFile(dir, file)
 		filesNode.children = append(filesNode.children, fileNode)
 	}
