@@ -103,7 +103,9 @@ func (p *ProjectTree) SetRoot(path string) {
 	p.dirsAdapter.dirs = true
 	p.dirs.SetAdapter(p.dirsAdapter)
 
-	p.projectAdapter.Close()
+	if p.projectAdapter != nil {
+		p.projectAdapter.Close()
+	}
 	p.projectAdapter = NewTOC(path)
 	p.project.SetAdapter(p.projectAdapter)
 
