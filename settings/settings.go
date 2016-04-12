@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/casimir/xdg-go"
@@ -68,9 +67,9 @@ func AddProject(project Project) {
 		return
 	}
 	if _, err := os.Stat(filepath.Dir(projectsPath)); os.IsNotExist(err) {
-		err = os.MkdirAll(path.Dir(projectsPath), 0777)
+		err = os.MkdirAll(filepath.Dir(projectsPath), 0777)
 		if err != nil {
-			log.Printf("Error: Could not create %s: %s", path.Dir(projectsPath), err)
+			log.Printf("Error: Could not create %s: %s", filepath.Dir(projectsPath), err)
 			return
 		}
 	}
