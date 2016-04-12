@@ -29,7 +29,7 @@ func (p *ProjectEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.F
 func (p *ProjectEditor) Open(path string, cursor token.Position) {
 	name := strings.TrimPrefix(path, p.project.Path)
 	if name[0] == filepath.Separator {
-		name := name[1:]
+		name = name[1:]
 	}
 	editor := p.TabbedEditor.New(name, path, p.project.Gopath)
 	p.driver.Call(func() {
