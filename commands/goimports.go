@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 
 	"github.com/nelsam/gxui"
@@ -50,7 +49,7 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 	cmd.Stderr = errBuffer
 	cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
 	if proj.Gopath != "" {
-		cmd.Env[0] += ":" + path.Join(proj.Gopath, "/bin")
+		cmd.Env[0] += ":" + filepath.Join(proj.Gopath, "bin")
 		cmd.Env = append(cmd.Env, "GOPATH="+proj.Gopath)
 	}
 	formatted, err := cmd.Output()

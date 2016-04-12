@@ -5,6 +5,7 @@ package editor
 
 import (
 	"go/token"
+	"path/filepath"
 	"strings"
 
 	"github.com/nelsam/gxui"
@@ -26,7 +27,10 @@ func (p *ProjectEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.F
 }
 
 func (p *ProjectEditor) Open(path string, cursor token.Position) {
-	name := strings.TrimPrefix(strings.TrimPrefix(path, p.project.Path), "/")
+	name := strings.TrimPrefix(path, p.project.Path)
+	if name[0] == filepath.Separator {
+		name := name[1:]
+	}
 	editor := p.TabbedEditor.New(name, path, p.project.Gopath)
 	p.driver.Call(func() {
 		editor.Controller().SetCaret(cursor.Offset)

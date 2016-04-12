@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -277,7 +277,7 @@ func (t *TOC) watch() {
 		if f.IsDir() {
 			continue
 		}
-		fPath := path.Join(t.path, f.Name())
+		fPath := filepath.Join(t.path, f.Name())
 		if err := t.watcher.Add(fPath); err != nil {
 			log.Printf("Could not watch file %s: %s", fPath, err)
 		}
@@ -343,7 +343,7 @@ func (t *TOC) parseFiles(dir string, files ...os.FileInfo) {
 
 func (t *TOC) parseFile(dir string, file os.FileInfo) (fileNode Name) {
 	fileNode.name = file.Name()
-	fileNode.filepath = path.Join(dir, fileNode.name)
+	fileNode.filepath = filepath.Join(dir, fileNode.name)
 	fileNode.path = "files." + fileNode.name
 	if !strings.HasSuffix(file.Name(), ".go") {
 		fileNode.color = nonGoColor

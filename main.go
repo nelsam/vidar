@@ -8,7 +8,7 @@ import (
 	"go/token"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/drivers/gl"
@@ -107,7 +107,7 @@ func uiMain(driver gxui.Driver) {
 		workingDir = os.Getenv("HOME")
 	}
 	for _, file := range files {
-		filepath := path.Join(workingDir, file)
+		filepath := filepath.Join(workingDir, file)
 		commander.Controller().Editor().Open(filepath, token.Position{})
 	}
 
