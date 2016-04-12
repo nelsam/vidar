@@ -5,12 +5,15 @@ package commands
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/settings"
 )
+
+const srcDir = string(filepath.Separator) + "src" + string(filepath.Separator)
 
 type projectPane interface {
 	Add(settings.Project)
@@ -64,9 +67,9 @@ func (p *ProjectAdder) Next() gxui.Focusable {
 		p.status.SetText(fmt.Sprintf("Name for %s", p.path.Path()))
 	case p.gopath:
 		startPath := p.path.Path()
-		lastSrc := strings.LastIndex(startPath, "/src/")
+		lastSrc := strings.LastIndex(startPath, srcDir)
 		if lastSrc != -1 {
-			startPath = startPath[:lastSrc] + "/"
+			startPath = startPath[:lastSrc] + string(filepath.Separator)
 		}
 		p.gopath.SetPath(startPath)
 		p.status.SetText(fmt.Sprintf("GOPATH for %s", p.name.Text()))

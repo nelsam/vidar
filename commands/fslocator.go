@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
@@ -86,7 +85,7 @@ func (f *FSLocator) KeyPress(event gxui.KeyboardEvent) bool {
 			if len(f.file.Text()) == 0 {
 				newDir := filepath.Dir(f.dir.Text())
 				if newDir == f.dir.Text() {
-					newDir = "/"
+					newDir = systemRoot
 				}
 				f.dir.SetText(newDir)
 				return true
@@ -105,7 +104,7 @@ func (f *FSLocator) KeyUp(event gxui.KeyboardEvent) {
 }
 
 func (f *FSLocator) KeyStroke(event gxui.KeyStrokeEvent) bool {
-	if event.Character == '/' {
+	if event.Character == filepath.Separator {
 		return false
 	}
 	return f.file.KeyStroke(event)
@@ -161,14 +160,18 @@ func newDirLabel(theme *basic.Theme) *dirLabel {
 }
 
 func (l *dirLabel) SetText(dir string) {
-	if !strings.HasSuffix(dir, "/") {
-		dir = dir + "/"
+	if dir[len(dir)-1] != filepath.Separator {
+		dir += string(filepath.Separator)
 	}
 	l.Label.SetText(dir)
 }
 
 func (l *dirLabel) Text() string {
-	return strings.TrimSuffix(l.Label.Text(), "/")
+	text := l.Label.Text()
+	if text[len(text)-1] == filepath.Separator {
+		text = text[:len(text)-1]
+	}
+	return text
 }
 
 type fileBox struct {
@@ -199,7 +202,7 @@ type currentFiler interface {
 func findStart(control gxui.Control) string {
 	startingPath := findCurrentFile(control)
 	if startingPath == "" {
-		return os.Getenv("HOME")
+		return userHome
 	}
 	return filepath.Dir(startingPath)
 }
