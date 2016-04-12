@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/casimir/xdg-go"
 	"gopkg.in/yaml.v2"
@@ -66,15 +67,14 @@ func AddProject(project Project) {
 		log.Printf("Error: Could not convert project to yaml: %s", err)
 		return
 	}
-	projects, err := os.Create(projectsPath)
-	if os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Dir(projectsPath)); os.IsNotExist(err) {
 		err = os.MkdirAll(path.Dir(projectsPath), 0777)
 		if err != nil {
 			log.Printf("Error: Could not create %s: %s", path.Dir(projectsPath), err)
 			return
 		}
-		projects, err = os.Create(projectsPath)
 	}
+	projects, err := os.Create(projectsPath)
 	if err != nil {
 		log.Printf("Could not open %s for writing: %s", projectsPath, err)
 		return
