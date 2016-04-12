@@ -1,9 +1,12 @@
 // This is free and unencumbered software released into the public
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
+
 package editor
 
 import (
+	"log"
+
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
@@ -21,6 +24,12 @@ type TabbedEditor struct {
 	font   gxui.Font
 }
 
+func NewTabbedEditor(driver gxui.Driver, theme *basic.Theme, font gxui.Font) *TabbedEditor {
+	editor := &TabbedEditor{}
+	editor.Init(editor, driver, theme, font)
+	return editor
+}
+
 func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, theme *basic.Theme, font gxui.Font) {
 	e.editors = make(map[string]*CodeEditor)
 	e.driver = driver
@@ -30,8 +39,10 @@ func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, t
 	e.SetMargin(math.Spacing{L: 0, T: 2, R: 0, B: 0})
 }
 
-func (e *TabbedEditor) New(name, path, gopath string) *CodeEditor {
+func (e *TabbedEditor) Open(name, path, gopath string) *CodeEditor {
+	log.Printf("TabbedEditor: opening %s", name)
 	if editor, ok := e.editors[name]; ok {
+		log.Printf("Found existing editor for %s", name)
 		e.Select(e.PanelIndex(editor))
 		e.Focus()
 		return editor
@@ -41,12 +52,15 @@ func (e *TabbedEditor) New(name, path, gopath string) *CodeEditor {
 	editor.SetTabWidth(4)
 	suggester := suggestions.NewGoCodeProvider(editor, gopath)
 	editor.SetSuggestionProvider(suggester)
+	e.Add(name, editor)
+	return editor
+}
 
+func (e *TabbedEditor) Add(name string, editor *CodeEditor) {
 	e.editors[name] = editor
 	e.AddPanel(editor, name)
 	e.Select(e.PanelIndex(editor))
 	e.Focus()
-	return editor
 }
 
 func (e *TabbedEditor) Focus() {
@@ -61,6 +75,10 @@ func (e *TabbedEditor) Files() []string {
 		files = append(files, file)
 	}
 	return files
+}
+
+func (e *TabbedEditor) Editors() uint {
+	return uint(len(e.editors))
 }
 
 func (e *TabbedEditor) CreatePanelTab() mixins.PanelTab {
@@ -93,18 +111,19 @@ func (e *TabbedEditor) KeyPress(event gxui.KeyboardEvent) bool {
 	return e.PanelHolder.KeyPress(event)
 }
 
-func (e *TabbedEditor) CloseCurrentTab() {
+func (e *TabbedEditor) CloseCurrentEditor() (name string, editor *CodeEditor) {
 	toRemove := e.CurrentEditor()
 	if toRemove == nil {
-		return
+		return "", nil
 	}
 	e.RemovePanel(toRemove)
 	for name, panel := range e.editors {
 		if panel == toRemove {
 			delete(e.editors, name)
-			break
+			return name, toRemove
 		}
 	}
+	return "", nil
 }
 
 func (e *TabbedEditor) CurrentEditor() *CodeEditor {

@@ -83,6 +83,7 @@ func uiMain(driver gxui.Driver) {
 	// TODO: Store these in a config file or something
 	mapFileCommands(commander, projTree, driver, theme)
 	mapEditCommands(commander, driver, theme)
+	mapViewCommands(commander)
 
 	window.OnKeyDown(func(event gxui.KeyboardEvent) {
 		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {
@@ -251,4 +252,20 @@ func mapEditCommands(commander *commander.Commander, driver gxui.Driver, theme *
 		Modifier: gxui.ModSuper | gxui.ModShift,
 	}
 	commander.Map(goimports, "Edit", ctrlShiftF, supShiftF)
+}
+
+func mapViewCommands(commander *commander.Commander) {
+	horizSplit := commands.NewHorizontalSplit()
+	altH := gxui.KeyboardEvent{
+		Key:      gxui.KeyH,
+		Modifier: gxui.ModAlt,
+	}
+	commander.Map(horizSplit, "View", altH)
+
+	vertSplit := commands.NewVerticalSplit()
+	altV := gxui.KeyboardEvent{
+		Key:      gxui.KeyV,
+		Modifier: gxui.ModAlt,
+	}
+	commander.Map(vertSplit, "View", altV)
 }

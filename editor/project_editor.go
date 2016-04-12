@@ -1,6 +1,7 @@
 // This is free and unencumbered software released into the public
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
+
 package editor
 
 import (
@@ -15,15 +16,24 @@ import (
 )
 
 type ProjectEditor struct {
-	TabbedEditor
+	SplitEditor
 
-	project  settings.Project
-	origPath string
+	editor MultiEditor
+	driver gxui.Driver
+	theme  gxui.Theme
+
+	project settings.Project
 }
 
 func (p *ProjectEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, project settings.Project) {
-	p.TabbedEditor.Init(p, driver, theme, font)
+	p.SplitEditor.Init(p, driver, theme, font)
+	p.SetOrientation(gxui.Horizontal)
+	p.driver = driver
+	p.theme = theme
+	p.editor = NewTabbedEditor(driver, theme, font)
+	p.AddChild(p.editor)
 	p.project = project
+	p.SetMouseEventTarget(true)
 }
 
 func (p *ProjectEditor) Open(path string, cursor token.Position) {
@@ -31,19 +41,23 @@ func (p *ProjectEditor) Open(path string, cursor token.Position) {
 	if name[0] == filepath.Separator {
 		name = name[1:]
 	}
-	editor := p.TabbedEditor.New(name, path, p.project.Gopath)
+	editor := p.SplitEditor.Open(name, path, p.project.Gopath)
 	p.driver.Call(func() {
 		editor.Controller().SetCaret(cursor.Offset)
 		editor.ScrollToRune(cursor.Offset)
 	})
 }
 
-func (p *ProjectEditor) Attach() {
-	p.TabbedEditor.Attach()
+func (p *ProjectEditor) CurrentEditor() *CodeEditor {
+	return p.editor.CurrentEditor()
 }
 
-func (p *ProjectEditor) Detach() {
-	p.TabbedEditor.Detach()
+func (p *ProjectEditor) CurrentFile() string {
+	return p.editor.CurrentFile()
+}
+
+func (p *ProjectEditor) Focus() {
+	p.editor.Focus()
 }
 
 func (p *ProjectEditor) Project() settings.Project {

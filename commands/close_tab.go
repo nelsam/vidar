@@ -4,10 +4,13 @@
 
 package commands
 
-import "github.com/nelsam/gxui"
+import (
+	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/editor"
+)
 
-type CurrentTabCloser interface {
-	CloseCurrentTab()
+type CurrentEditorCloser interface {
+	CloseCurrentEditor() (string, *editor.CodeEditor)
 }
 
 type CloseTab struct{}
@@ -29,10 +32,10 @@ func (s *CloseTab) Next() gxui.Focusable {
 }
 
 func (s *CloseTab) Exec(target interface{}) (executed, consume bool) {
-	closer, ok := target.(CurrentTabCloser)
+	closer, ok := target.(CurrentEditorCloser)
 	if !ok {
 		return false, false
 	}
-	closer.CloseCurrentTab()
+	closer.CloseCurrentEditor()
 	return true, true
 }
