@@ -53,6 +53,7 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 	e.suggestions.SetAdapter(e.adapter)
 
 	e.CodeEditor.Init(e, driver, theme, font)
+	e.CodeEditor.SetScrollBarEnabled(true)
 	e.SetDesiredWidth(math.MaxSize.W)
 
 	e.OnTextChanged(func(changes []gxui.TextBoxEdit) {
