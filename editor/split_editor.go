@@ -80,15 +80,21 @@ func (e *SplitEditor) Split(orientation gxui.Orientation) {
 		}
 	}
 	e.RemoveChildAt(index)
-	e.AddChildAt(index, newSplitter)
 	newSplitter.AddChild(e.current)
 	e.current = newSplitter
-	e.current.Focus()
+	e.AddChildAt(index, e.current)
 	newSplitter.Split(orientation)
 }
 
-func (e *SplitEditor) Editors() uint {
-	return e.current.Editors()
+func (e *SplitEditor) Editors() (count uint) {
+	for _, child := range e.Children() {
+		editor, ok := child.Control.(MultiEditor)
+		if !ok {
+			continue
+		}
+		count += editor.Editors()
+	}
+	return count
 }
 
 func (e *SplitEditor) CloseCurrentEditor() (name string, editor *CodeEditor) {
