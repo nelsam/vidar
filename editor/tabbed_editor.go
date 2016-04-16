@@ -5,8 +5,6 @@
 package editor
 
 import (
-	"log"
-
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
@@ -40,9 +38,7 @@ func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, t
 }
 
 func (e *TabbedEditor) Open(name, path, gopath string) *CodeEditor {
-	log.Printf("TabbedEditor: opening %s", name)
 	if editor, ok := e.editors[name]; ok {
-		log.Printf("Found existing editor for %s", name)
 		e.Select(e.PanelIndex(editor))
 		e.Focus()
 		return editor

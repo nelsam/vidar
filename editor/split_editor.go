@@ -5,6 +5,8 @@
 package editor
 
 import (
+	"fmt"
+
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/mixins/outer"
@@ -103,14 +105,34 @@ func (e *SplitEditor) Add(name string, editor *CodeEditor) {
 	e.current.Add(name, editor)
 }
 
+func (e *SplitEditor) AddChild(child gxui.Control) *gxui.Child {
+	editor, ok := child.(MultiEditor)
+	if !ok {
+		panic(fmt.Errorf("SplitEditor: Non-MultiEditor type %T sent to AddChild", child))
+	}
+	if e.current == nil {
+		e.current = editor
+	}
+	return e.SplitterLayout.AddChild(child)
+}
+
 func (e *SplitEditor) Focus() {
 	e.current.Focus()
 }
 
-func (e *SplitEditor) Open(name, path, gopath string) *CodeEditor {
-	if e.current == nil {
-		e.current = NewTabbedEditor(e.driver, e.theme, e.font)
+func (e *SplitEditor) MouseUp(event gxui.MouseEvent) {
+	for _, child := range e.Children() {
+		offsetPoint := event.Point.AddX(-child.Offset.X).AddY(-child.Offset.Y)
+		if child.Control.ContainsPoint(offsetPoint) {
+			e.current = child.Control.(MultiEditor)
+			e.current.Focus()
+			break
+		}
 	}
+	e.SplitterLayout.MouseUp(event)
+}
+
+func (e *SplitEditor) Open(name, path, gopath string) *CodeEditor {
 	return e.current.Open(name, path, gopath)
 }
 

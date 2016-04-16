@@ -18,7 +18,6 @@ import (
 type ProjectEditor struct {
 	SplitEditor
 
-	editor MultiEditor
 	driver gxui.Driver
 	theme  gxui.Theme
 
@@ -30,10 +29,10 @@ func (p *ProjectEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.F
 	p.SetOrientation(gxui.Horizontal)
 	p.driver = driver
 	p.theme = theme
-	p.editor = NewTabbedEditor(driver, theme, font)
-	p.AddChild(p.editor)
 	p.project = project
 	p.SetMouseEventTarget(true)
+
+	p.AddChild(NewTabbedEditor(driver, theme, font))
 }
 
 func (p *ProjectEditor) Open(path string, cursor token.Position) {
@@ -46,18 +45,6 @@ func (p *ProjectEditor) Open(path string, cursor token.Position) {
 		editor.Controller().SetCaret(cursor.Offset)
 		editor.ScrollToRune(cursor.Offset)
 	})
-}
-
-func (p *ProjectEditor) CurrentEditor() *CodeEditor {
-	return p.editor.CurrentEditor()
-}
-
-func (p *ProjectEditor) CurrentFile() string {
-	return p.editor.CurrentFile()
-}
-
-func (p *ProjectEditor) Focus() {
-	p.editor.Focus()
 }
 
 func (p *ProjectEditor) Project() settings.Project {
