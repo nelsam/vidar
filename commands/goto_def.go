@@ -94,7 +94,3 @@ func parseGodef(output []byte) (path string, line, column int) {
 	}
 	return string(pathBytes), oneToZeroBased(line), oneToZeroBased(col)
 }
-
-func oneToZeroBased(value int) int {
-	return value - 1
-}
