@@ -36,15 +36,28 @@ func (p *ProjectEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.F
 }
 
 func (p *ProjectEditor) Open(path string, cursor token.Position) {
-	name := strings.TrimPrefix(path, p.project.Path)
-	if name[0] == filepath.Separator {
-		name = name[1:]
-	}
-	editor := p.SplitEditor.Open(name, path, p.project.Gopath)
+	editor := p.open(path)
 	p.driver.Call(func() {
 		editor.Controller().SetCaret(cursor.Offset)
 		editor.ScrollToRune(cursor.Offset)
 	})
+}
+
+func (p *ProjectEditor) OpenLine(path string, line, col int) {
+	editor := p.open(path)
+	p.driver.Call(func() {
+		lineOffset := editor.LineStart(line)
+		editor.Controller().SetCaret(lineOffset + col)
+		editor.ScrollToLine(line)
+	})
+}
+
+func (p *ProjectEditor) open(path string) *CodeEditor {
+	name := strings.TrimPrefix(path, p.project.Path)
+	if name[0] == filepath.Separator {
+		name = name[1:]
+	}
+	return p.SplitEditor.Open(name, path, p.project.Gopath)
 }
 
 func (p *ProjectEditor) Project() settings.Project {

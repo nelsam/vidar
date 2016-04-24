@@ -242,6 +242,17 @@ func mapEditCommands(commander *commander.Commander, driver gxui.Driver, theme *
 	}
 	commander.Map(paste, "Edit", ctrlV, supV)
 
+	godef := commands.NewGotoDef()
+	ctrlShiftG := gxui.KeyboardEvent{
+		Key:      gxui.KeyG,
+		Modifier: gxui.ModControl | gxui.ModShift,
+	}
+	supShiftG := gxui.KeyboardEvent{
+		Key:      gxui.KeyG,
+		Modifier: gxui.ModSuper | gxui.ModShift,
+	}
+	commander.Map(godef, "Edit", ctrlShiftG, supShiftG)
+
 	goimports := commands.NewGoImports()
 	ctrlShiftF := gxui.KeyboardEvent{
 		Key:      gxui.KeyF,
