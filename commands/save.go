@@ -38,6 +38,9 @@ func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {
 		return false, false
 	}
 	editor := finder.CurrentEditor()
+	if editor == nil {
+		return true, true
+	}
 	filepath := finder.CurrentFile()
 	if !editor.LastKnownMTime().IsZero() {
 		finfo, err := os.Stat(filepath)

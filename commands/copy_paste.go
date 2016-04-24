@@ -34,6 +34,9 @@ func (c *Copy) Exec(target interface{}) (executed, consume bool) {
 		return false, false
 	}
 	editor := finder.CurrentEditor()
+	if editor == nil {
+		return true, true
+	}
 	if editor.Controller().SelectionCount() != 1 {
 		log.Print("Warning: copy can currently only copy the first selection")
 	}
@@ -61,6 +64,9 @@ func (c *Cut) Exec(target interface{}) (executed, consume bool) {
 		return executed, consume
 	}
 	editor := target.(EditorFinder).CurrentEditor()
+	if editor == nil {
+		return true, true
+	}
 	selection := editor.Controller().FirstSelection()
 	newRunes, edit := editor.Controller().ReplaceAt(editor.Runes(), selection.Start(), selection.End(), []rune(""))
 	editor.Controller().SetTextEdits(newRunes, []gxui.TextBoxEdit{edit})
@@ -95,12 +101,15 @@ func (p *Paste) Exec(target interface{}) (executed, consume bool) {
 	if !ok {
 		return false, false
 	}
+	editor := finder.CurrentEditor()
+	if editor == nil {
+		return true, true
+	}
 	contents, err := p.driver.GetClipboard()
 	if err != nil {
 		log.Printf("Error reading clipboard: %s", err)
 		return true, false
 	}
-	editor := finder.CurrentEditor()
 	editor.Controller().Replace(func(sel gxui.TextSelection) string {
 		return contents
 	})

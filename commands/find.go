@@ -22,7 +22,7 @@ type EditorFinder interface {
 type Find struct {
 	driver  gxui.Driver
 	theme   *basic.Theme
-	editor  gxui.CodeEditor
+	editor  *editor.CodeEditor
 	display gxui.Label
 	pattern *findBox
 
@@ -42,6 +42,9 @@ func (f *Find) Init(driver gxui.Driver, theme *basic.Theme) {
 
 func (f *Find) Start(control gxui.Control) gxui.Control {
 	f.editor = findEditor(control)
+	if f.editor == nil {
+		return nil
+	}
 	f.display = f.theme.CreateLabel()
 	f.display.SetText("Start typing to search")
 	f.pattern = newFindBox(f.driver, f.theme, f.editor)

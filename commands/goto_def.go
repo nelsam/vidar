@@ -48,6 +48,9 @@ func (gi *GotoDef) Exec(on interface{}) (executed, consume bool) {
 		return false, false
 	}
 	editor := opener.CurrentEditor()
+	if editor == nil {
+		return true, true
+	}
 	proj := opener.Project()
 	lastCaret := editor.Controller().LastCaret()
 	cmd := exec.Command("godef", "-f", editor.Filepath(), "-o", strconv.Itoa(lastCaret), "-i")

@@ -39,6 +39,9 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 		return false, false
 	}
 	editor := finder.CurrentEditor()
+	if editor == nil {
+		return true, true
+	}
 	proj := finder.Project()
 	cmd := exec.Command("goimports", "-srcdir", filepath.Dir(editor.Filepath()))
 	cmd.Stdin = bytes.NewBufferString(editor.Text())
