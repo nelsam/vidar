@@ -43,8 +43,9 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 		return true, true
 	}
 	proj := finder.Project()
+	text := editor.Text()
 	cmd := exec.Command("goimports", "-srcdir", filepath.Dir(editor.Filepath()))
-	cmd.Stdin = bytes.NewBufferString(editor.Text())
+	cmd.Stdin = bytes.NewBufferString(text)
 	errBuffer := &bytes.Buffer{}
 	cmd.Stderr = errBuffer
 	cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
@@ -60,6 +61,14 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 		log.Print(errBuffer.String())
 		return true, true
 	}
-	editor.SetText(string(formatted))
+	edits := []gxui.TextBoxEdit{
+		{
+			At:    0,
+			Delta: len(formatted) - len(text),
+			Old:   []rune(text),
+			New:   []rune(string(formatted)),
+		},
+	}
+	editor.Controller().SetTextEdits([]rune(string(formatted)), edits)
 	return true, true
 }
