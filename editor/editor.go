@@ -356,6 +356,9 @@ func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 			e.HideSuggestionList()
 			return true
 		}
+		// TODO: Keep track of some sort of concept of a "focused" caret and
+		// focus that.
+		e.Controller().SetCaret(e.Controller().FirstCaret())
 	}
 	return false
 }
