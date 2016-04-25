@@ -150,6 +150,7 @@ func (l layers) handleForStmt(stmt *ast.ForStmt) gxui.CodeSyntaxLayers {
 	layers = append(layers, l.handleStmt(stmt.Init)...)
 	layers = append(layers, l.handleExpr(stmt.Cond)...)
 	layers = append(layers, l.handleStmt(stmt.Post)...)
+	layers = append(layers, l.handleBlockStmt(stmt.Body)...)
 	return layers
 }
 
