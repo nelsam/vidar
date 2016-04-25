@@ -57,15 +57,15 @@ func (f *Find) Start(control gxui.Control) gxui.Control {
 			return
 		}
 		haystack := f.editor.Text()
-		moveCursor := true
 		start := 0
+		var selections gxui.TextSelectionList
 		for next := strings.Index(haystack, needle); next != -1; next = strings.Index(haystack[start:], needle) {
 			start += next
-			selection := gxui.CreateTextSelection(start, start+len(needle), moveCursor)
-			moveCursor = false
-			f.editor.Controller().AddSelection(selection)
+			selection := gxui.CreateTextSelection(start, start+len(needle), false)
+			selections = append(selections, selection)
 			start++
 		}
+		f.editor.Select(selections)
 		f.display.SetText(fmt.Sprintf("%s: %d results found", needle, f.editor.Controller().SelectionCount()))
 	})
 	return f.display
