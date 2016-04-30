@@ -17,6 +17,7 @@ import (
 	"github.com/nelsam/gxui/themes/dark"
 	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/commands"
+
 	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/navigator"
@@ -173,6 +174,7 @@ func mapFileCommands(commander *commander.Commander, projTree *navigator.Project
 		Modifier: gxui.ModSuper,
 	}
 	commander.Map(closeTab, "File", ctrlW, supW)
+
 }
 
 func mapEditCommands(commander *commander.Commander, driver gxui.Driver, theme *basic.Theme) {
@@ -274,6 +276,17 @@ func mapEditCommands(commander *commander.Commander, driver gxui.Driver, theme *
 		Modifier: gxui.ModSuper | gxui.ModShift,
 	}
 	commander.Map(goimports, "Edit", ctrlShiftF, supShiftF)
+
+	togglecomments := commands.NewComments(driver)
+	ctrlComments := gxui.KeyboardEvent{
+		Key:      gxui.KeySlash,
+		Modifier: gxui.ModControl,
+	}
+	supComments := gxui.KeyboardEvent{
+		Key:      gxui.KeySlash,
+		Modifier: gxui.ModSuper,
+	}
+	commander.Map(togglecomments, "Edit", ctrlComments, supComments)
 }
 
 func mapViewCommands(commander *commander.Commander) {
