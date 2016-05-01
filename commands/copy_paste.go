@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bytes"
 	"log"
 
 	"github.com/nelsam/gxui"
@@ -37,11 +38,15 @@ func (c *Copy) Exec(target interface{}) (executed, consume bool) {
 	if editor == nil {
 		return true, true
 	}
-	if editor.Controller().SelectionCount() != 1 {
-		log.Print("Warning: copy can currently only copy the first selection")
+
+	selections := editor.Controller().Selections()
+	var buffer bytes.Buffer
+	for i := 0; i < selections.Len(); i++ {
+		buffer.WriteString(editor.Controller().SelectionText(i))
+		buffer.WriteString("\n")
 	}
-	selection := editor.Controller().SelectionText(0)
-	c.driver.SetClipboard(selection)
+
+	c.driver.SetClipboard(buffer.String())
 	return true, true
 }
 
