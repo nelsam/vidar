@@ -66,7 +66,7 @@ func (f *Find) Start(control gxui.Control) gxui.Control {
 			start++
 		}
 		f.editor.Select(selections)
-		f.display.SetText(fmt.Sprintf("%s: %d results found", needle, f.editor.Controller().SelectionCount()))
+		f.display.SetText(fmt.Sprintf("%s: %d results found", needle, len(selections)))
 	})
 	return f.display
 }
