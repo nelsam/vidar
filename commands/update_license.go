@@ -35,9 +35,23 @@ func (u *LicenseHeaderUpdate) Exec(on interface{}) (executed, consume bool) {
 	if !ok {
 		return false, false
 	}
+	edit := u.LicenseEdit(finder)
+	if edit == nil {
+		return true, true
+	}
+	editor := finder.CurrentEditor()
+	runes := editor.Controller().TextRunes()
+	runes = append(runes[:len(edit.New)], runes[len(edit.Old):]...)
+	copy(runes, edit.New)
+
+	editor.Controller().SetTextEdits(runes, []gxui.TextBoxEdit{*edit})
+	return true, true
+}
+
+func (u *LicenseHeaderUpdate) LicenseEdit(finder ProjectFinder) *gxui.TextBoxEdit {
 	editor := finder.CurrentEditor()
 	if editor == nil {
-		return true, true
+		return nil
 	}
 	licenseHeader := strings.TrimSpace(finder.Project().LicenseHeader())
 	if licenseHeader != "" {
@@ -57,27 +71,19 @@ func (u *LicenseHeaderUpdate) Exec(on interface{}) (executed, consume bool) {
 			break
 		}
 	}
-	runes := editor.Controller().TextRunes()
-	commentText := string(runes[:firstCommentBlockEnd])
+	commentText := editor.Text()[:firstCommentBlockEnd]
 	if strings.Contains(commentText, "// +build ") {
 		commentText = ""
 		firstCommentBlockEnd = 0
 	}
 	if commentText == licenseHeader {
 		log.Printf("License header update: license is already set correctly")
-		return true, true
+		return nil
 	}
-	runes = append(runes[:len(licenseHeader)], runes[len(commentText):]...)
-	copy(runes, []rune(licenseHeader))
-
-	edits := []gxui.TextBoxEdit{
-		{
-			At:    0,
-			Delta: len(licenseHeader) - len(commentText),
-			Old:   []rune(commentText),
-			New:   []rune(licenseHeader),
-		},
+	return &gxui.TextBoxEdit{
+		At:    0,
+		Delta: len(licenseHeader) - len(commentText),
+		Old:   []rune(commentText),
+		New:   []rune(licenseHeader),
 	}
-	editor.Controller().SetTextEdits(runes, edits)
-	return true, true
 }

@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-fsnotify/fsnotify"
@@ -42,7 +43,7 @@ type CodeEditor struct {
 	loading chan bool
 }
 
-func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, file, initialText string) {
+func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, file, headerText string) {
 	e.theme = theme
 	e.driver = driver
 	e.loading = make(chan bool, 5)
@@ -66,7 +67,7 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 		e.history.Add(changes...)
 	})
 	e.filepath = file
-	e.open(initialText)
+	e.open(headerText)
 
 	e.SetTextColor(theme.TextBoxDefaultStyle.FontColor)
 	e.SetMargin(math.Spacing{L: 3, T: 3, R: 3, B: 3})
@@ -74,7 +75,7 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 	e.SetBorderPen(gxui.TransparentPen)
 }
 
-func (e *CodeEditor) open(initialText string) {
+func (e *CodeEditor) open(headerText string) {
 	if e.filepath == "" {
 		e.SetText(`// Scratch
 // This buffer is for jotting down quick notes, but is not saved to disk.
@@ -82,7 +83,7 @@ func (e *CodeEditor) open(initialText string) {
 		return
 	}
 	go e.watch()
-	e.load(initialText)
+	e.load(headerText)
 }
 
 func (e *CodeEditor) watch() {
@@ -140,14 +141,14 @@ func (e *CodeEditor) inotifyWait(eventFunc func(fsnotify.Event) (done bool)) err
 	}
 }
 
-func (e *CodeEditor) load(initialText string) {
+func (e *CodeEditor) load(headerText string) {
 	e.loading <- true
 	defer func() {
 		<-e.loading
 	}()
 	f, err := os.Open(e.filepath)
 	if os.IsNotExist(err) {
-		e.SetText(initialText)
+		e.SetText(headerText)
 		return
 	}
 	if err != nil {
@@ -166,6 +167,10 @@ func (e *CodeEditor) load(initialText string) {
 		log.Printf("Error reading file %s: %s", e.filepath, err)
 		return
 	}
+	newText := string(b)
+	if !strings.HasPrefix(newText, headerText) {
+		log.Printf("%s: header text does not match requested header text", e.filepath)
+	}
 	e.driver.Call(func() {
 		if len(e.loading) > 1 {
 			return
@@ -174,7 +179,7 @@ func (e *CodeEditor) load(initialText string) {
 			return
 		}
 		location := e.Controller().FirstCaret()
-		e.SetText(string(b))
+		e.SetText(newText)
 		e.Controller().SetCaret(location)
 	})
 }
