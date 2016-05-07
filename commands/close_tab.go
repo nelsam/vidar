@@ -1,6 +1,6 @@
 // This is free and unencumbered software released into the public
 // domain.  For more information, see <http://unlicense.org> or the
-// accompanying UNLICloseTabCENCloseTabSE file.
+// accompanying UNLICENSE file.
 
 package commands
 
