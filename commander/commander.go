@@ -155,10 +155,12 @@ func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 		}
 		cmdDone = true
 	}
-	if cmdDone {
-		c.controller.Execute(c.box.Current())
-		c.box.Clear()
-		return true
+	if !cmdDone {
+		return false
 	}
-	return false
+	if executor, ok := c.box.Current().(Executor); ok {
+		c.controller.Execute(executor)
+	}
+	c.box.Clear()
+	return true
 }

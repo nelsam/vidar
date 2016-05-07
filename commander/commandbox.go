@@ -34,34 +34,59 @@ type Completer interface {
 	Complete(gxui.KeyboardEvent) bool
 }
 
-// A Command is any command that can be run by the commandBox.
+// A Command is any command that can be run by the commandBox.  Commands
+// have many optional interfaces they can implement - see other
+// interfaces in this package for what else can be implemented by a
+// command.
 type Command interface {
-	// Start starts the command.  The returned gxui.Control can be
-	// used to display the status of the command.
-	//
-	// If no display element is necessary, or if display will be taken
-	// care of by the input elements, Start should return nil.
-	Start(gxui.Control) gxui.Control
-
 	// Name returns the name of the command
 	Name() string
+}
 
-	// Next returns the next control element for reading user input.
-	// By default, this is called every time the commander receives a
+// A Starter is a type of command which needs to initialize itself
+// whenever the command is started.
+type Starter interface {
+	// Start starts the command.  The element that the command is
+	// targetting will be passed in as target.  If the returned
+	// status element is non-nil, it will be displayed as an
+	// element to display the current status of the command to
+	// the user.
+	Start(target gxui.Control) (status gxui.Control)
+}
+
+// An InputQueue is a type of command which needs to read user input
+// before executing a command.
+type InputQueue interface {
+	// Next returns the next element for reading user input. By
+	// default, this is called every time the commander receives a
 	// gxui.KeyEnter event in KeyPress.  If there are situations where
 	// this is not the desired behavior, the returned gxui.Focusable
-	// can consume the event.  If more keys are required to signal the
-	// end of input, the gxui.Focusable can implement Completer.
+	// can consume the gxui.KeyboardEvent.  If the input element has
+	// other keyboard events that would trigger completion, it can
+	// implement Completer, which will allow it to define when it
+	// is complete.
 	//
 	// Next will continue to be called until it returns nil, at which
 	// point the command is assumed to be done.
 	Next() gxui.Focusable
+}
 
-	// Exec implements controller.Executor
+// An Executor is a type of command that needs to execute some
+// operation on one or more elements.  It will continue to be
+// called for every element currently in the UI until it returns
+// true for consume.
+//
+// If executed is never returned as true, an error will be
+// displayed to the user stating that the command never
+// executed.
+type Executor interface {
 	Exec(interface{}) (executed, consume bool)
 }
 
-type colorSetter interface {
+// ColorSetter is a type that can have its color set.
+type ColorSetter interface {
+	// SetColor is called when a command element is displayed, so
+	// that it matches the color theme of the commander.
 	SetColor(gxui.Color)
 }
 
@@ -101,14 +126,23 @@ func (b *commandBox) Run(command Command) (needsInput bool) {
 	b.current = command
 
 	b.label.SetText(b.current.Name())
-	b.display = b.current.Start(b.controller)
-	if b.display != nil {
-		if colorSetter, ok := b.display.(colorSetter); ok {
-			colorSetter.SetColor(displayColor)
-		}
-		b.AddChild(b.display)
-	}
+	b.startCurrent()
 	return b.nextInput()
+}
+
+func (b *commandBox) startCurrent() {
+	starter, ok := b.current.(Starter)
+	if !ok {
+		return
+	}
+	b.display = starter.Start(b.controller)
+	if b.display == nil {
+		return
+	}
+	if colorSetter, ok := b.display.(ColorSetter); ok {
+		colorSetter.SetColor(displayColor)
+	}
+	b.AddChild(b.display)
 }
 
 func (b *commandBox) Current() Command {
@@ -157,7 +191,11 @@ type debuggable interface {
 }
 
 func (b *commandBox) nextInput() (more bool) {
-	next := b.current.Next()
+	queue, ok := b.current.(InputQueue)
+	if !ok {
+		return false
+	}
+	next := queue.Next()
 	if next == nil {
 		return false
 	}

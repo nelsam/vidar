@@ -7,9 +7,18 @@ package commands
 import "github.com/nelsam/gxui"
 
 type Command interface {
-	Start(gxui.Control) gxui.Control
 	Name() string
+}
+
+type Starter interface {
+	Start(gxui.Control) gxui.Control
+}
+
+type InputQueue interface {
 	Next() gxui.Focusable
+}
+
+type Executor interface {
 	Exec(interface{}) (executed, consume bool)
 }
 
@@ -20,7 +29,7 @@ type MultiCommand struct {
 	control        gxui.Control
 
 	all      []Command
-	needExec []Command
+	needExec []Executor
 	executed []bool
 	current  Command
 	incoming chan Command
@@ -40,7 +49,7 @@ func NewMulti(theme gxui.Theme, commands ...Command) *MultiCommand {
 
 func (c *MultiCommand) Start(control gxui.Control) gxui.Control {
 	c.display = c.theme.CreateLinearLayout()
-	c.needExec = append([]Command{}, c.all...)
+	c.needExec = findExecutors(c.all)
 	c.executed = make([]bool, len(c.all))
 	c.incoming = make(chan Command, len(c.all))
 	for _, cmd := range c.all {
@@ -59,7 +68,11 @@ func (c *MultiCommand) nextCommand() {
 	if c.current == nil {
 		return
 	}
-	c.currentDisplay = c.current.Start(c.control)
+	starter, ok := c.current.(Starter)
+	if !ok {
+		return
+	}
+	c.currentDisplay = starter.Start(c.control)
 	if c.currentDisplay != nil {
 		c.display.AddChild(c.currentDisplay)
 	}
@@ -80,7 +93,12 @@ func (c *MultiCommand) Next() gxui.Focusable {
 	if c.current == nil {
 		return nil
 	}
-	currentNext := c.current.Next()
+
+	nexter, ok := c.current.(InputQueue)
+	if !ok {
+		return nil
+	}
+	currentNext := nexter.Next()
 	if currentNext == nil {
 		c.nextCommand()
 		return c.Next()
@@ -106,4 +124,14 @@ func (c *MultiCommand) Exec(target interface{}) (executed, consume bool) {
 		}
 	}
 	return allExecuted, len(c.needExec) == 0
+}
+
+func findExecutors(cmds []Command) []Executor {
+	executors := make([]Executor, 0, len(cmds))
+	for _, cmd := range cmds {
+		if executor, ok := cmd.(Executor); ok {
+			executors = append(executors, executor)
+		}
+	}
+	return executors
 }

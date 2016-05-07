@@ -288,7 +288,7 @@ func mapEditCommands(commander *commander.Commander, driver gxui.Driver, theme *
 	}
 	commander.Map(goimports, "Edit", ctrlShiftF, supShiftF)
 
-	togglecomments := commands.NewComments(driver)
+	togglecomments := commands.NewComments()
 	ctrlComments := gxui.KeyboardEvent{
 		Key:      gxui.KeySlash,
 		Modifier: gxui.ModControl,

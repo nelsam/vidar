@@ -98,7 +98,9 @@ func (m *menu) Add(command Command, bindings ...gxui.KeyboardEvent) {
 			gxui.SetFocus(m.commander.box.input)
 			return
 		}
-		m.commander.Controller().Execute(command)
+		if executor, ok := command.(Executor); ok {
+			m.commander.Controller().Execute(executor)
+		}
 		m.commander.box.Clear()
 	})
 }

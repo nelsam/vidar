@@ -18,16 +18,8 @@ func NewLicenseHeaderUpdate() *LicenseHeaderUpdate {
 	return &LicenseHeaderUpdate{}
 }
 
-func (u *LicenseHeaderUpdate) Start(gxui.Control) gxui.Control {
-	return nil
-}
-
 func (u *LicenseHeaderUpdate) Name() string {
 	return "goimports"
-}
-
-func (u *LicenseHeaderUpdate) Next() gxui.Focusable {
-	return nil
 }
 
 func (u *LicenseHeaderUpdate) Exec(on interface{}) (executed, consume bool) {

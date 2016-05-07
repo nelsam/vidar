@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/settings"
 )
@@ -30,16 +29,8 @@ func NewGotoDef() *GotoDef {
 	return &GotoDef{}
 }
 
-func (gi *GotoDef) Start(gxui.Control) gxui.Control {
-	return nil
-}
-
 func (gi *GotoDef) Name() string {
 	return "goto-definition"
-}
-
-func (gi *GotoDef) Next() gxui.Focusable {
-	return nil
 }
 
 func (gi *GotoDef) Exec(on interface{}) (executed, consume bool) {

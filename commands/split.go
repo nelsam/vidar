@@ -30,10 +30,6 @@ func NewVerticalSplit() *Split {
 	}
 }
 
-func (s *Split) Start(gxui.Control) gxui.Control {
-	return nil
-}
-
 func (s *Split) Name() string {
 	switch s.orientation {
 	case gxui.Horizontal:
@@ -43,10 +39,6 @@ func (s *Split) Name() string {
 	default:
 		panic(fmt.Errorf("Orientation %d is invalid", s.orientation))
 	}
-}
-
-func (s *Split) Next() gxui.Focusable {
-	return nil
 }
 
 func (s *Split) Exec(target interface{}) (executed, consume bool) {

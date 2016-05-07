@@ -17,16 +17,8 @@ func NewUndo() *Undo {
 	return &Undo{}
 }
 
-func (u *Undo) Start(gxui.Control) gxui.Control {
-	return nil
-}
-
 func (u *Undo) Name() string {
 	return "undo-last-edit"
-}
-
-func (u *Undo) Next() gxui.Focusable {
-	return nil
 }
 
 func (u *Undo) Exec(target interface{}) (executed, consume bool) {

@@ -11,25 +11,14 @@ import (
 )
 
 type Comments struct {
-	driver gxui.Driver
 }
 
-func NewComments(driver gxui.Driver) *Comments {
-	return &Comments{
-		driver: driver,
-	}
+func NewComments() *Comments {
+	return &Comments{}
 }
 
 func (c *Comments) Name() string {
 	return "toggle-comments"
-}
-
-func (c *Comments) Start(gxui.Control) gxui.Control {
-	return nil
-}
-
-func (c *Comments) Next() gxui.Focusable {
-	return nil
 }
 
 func (c *Comments) Exec(target interface{}) (executed, consume bool) {

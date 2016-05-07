@@ -21,18 +21,9 @@ func NewCopy(driver gxui.Driver) *Copy {
 	}
 }
 
-func (c *Copy) Start(gxui.Control) gxui.Control {
-	return nil
-}
-
 func (c *Copy) Name() string {
 	return "copy-selection"
 }
-
-func (c *Copy) Next() gxui.Focusable {
-	return nil
-}
-
 func (c *Copy) Exec(target interface{}) (executed, consume bool) {
 	finder, ok := target.(EditorFinder)
 	if !ok {
@@ -73,13 +64,13 @@ func (c *Cut) Exec(target interface{}) (executed, consume bool) {
 	}
 	editor := target.(EditorFinder).CurrentEditor()
 	if editor == nil {
-		return true, true
+		return true, consume
 	}
 	selection := editor.Controller().FirstSelection()
 	newRunes, edit := editor.Controller().ReplaceAt(editor.Runes(), selection.Start(), selection.End(), []rune(""))
 	editor.Controller().SetTextEdits(newRunes, []gxui.TextBoxEdit{edit})
 	editor.Controller().ClearSelections()
-	return true, true
+	return true, consume
 }
 
 type Paste struct {
@@ -94,14 +85,6 @@ func NewPaste(driver gxui.Driver) *Paste {
 
 func (p *Paste) Name() string {
 	return "paste"
-}
-
-func (p *Paste) Start(gxui.Control) gxui.Control {
-	return nil
-}
-
-func (p *Paste) Next() gxui.Focusable {
-	return nil
 }
 
 func (p *Paste) Exec(target interface{}) (executed, consume bool) {

@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/editor"
 )
 
@@ -24,16 +23,8 @@ func NewSave() *SaveCurrent {
 	return &SaveCurrent{}
 }
 
-func (s *SaveCurrent) Start(gxui.Control) gxui.Control {
-	return nil
-}
-
 func (s *SaveCurrent) Name() string {
 	return "save-current-file"
-}
-
-func (s *SaveCurrent) Next() gxui.Focusable {
-	return nil
 }
 
 func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {

@@ -21,16 +21,8 @@ func NewGoImports() *GoImports {
 	return &GoImports{}
 }
 
-func (gi *GoImports) Start(gxui.Control) gxui.Control {
-	return nil
-}
-
 func (gi *GoImports) Name() string {
 	return "goimports"
-}
-
-func (gi *GoImports) Next() gxui.Focusable {
-	return nil
 }
 
 func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {

@@ -81,12 +81,6 @@ func (f *Find) Next() gxui.Focusable {
 	return next
 }
 
-// Exec is a noop on a Find command.  It is unnecessary because Find will be
-// searching as a user types.
-func (f *Find) Exec(target interface{}) (executed, consume bool) {
-	return true, true
-}
-
 type findBox struct {
 	mixins.TextBox
 	editor gxui.CodeEditor
