@@ -57,7 +57,7 @@ func (p *ProjectEditor) open(path string) *CodeEditor {
 	if name[0] == filepath.Separator {
 		name = name[1:]
 	}
-	return p.SplitEditor.Open(name, path, p.project.Gopath)
+	return p.SplitEditor.Open(name, path, p.project.Gopath, p.project.LicenseHeader())
 }
 
 func (p *ProjectEditor) Project() settings.Project {

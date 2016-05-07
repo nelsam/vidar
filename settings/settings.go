@@ -15,6 +15,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	LicenseHeaderFilename = ".license-header"
+)
+
 var (
 	App          = xdg.App{Name: "vidar"}
 	projectsPath = App.ConfigPath("projects")
@@ -24,6 +28,24 @@ type Project struct {
 	Name   string
 	Path   string
 	Gopath string
+}
+
+func (p Project) LicenseHeader() string {
+	f, err := os.Open(filepath.Join(p.Path, LicenseHeaderFilename))
+	if os.IsNotExist(err) {
+		return ""
+	}
+	if err != nil {
+		log.Printf("Error opening license header file: %s", err)
+		return ""
+	}
+	defer f.Close()
+	header, err := ioutil.ReadAll(f)
+	if err != nil {
+		log.Printf("Error reading license header file: %s", err)
+		return ""
+	}
+	return string(header)
 }
 
 func (p Project) String() string {

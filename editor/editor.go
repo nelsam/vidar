@@ -42,7 +42,7 @@ type CodeEditor struct {
 	loading chan bool
 }
 
-func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, file string) {
+func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, file, initialText string) {
 	e.theme = theme
 	e.driver = driver
 	e.loading = make(chan bool, 5)
@@ -66,7 +66,7 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 		e.history.Add(changes...)
 	})
 	e.filepath = file
-	e.open()
+	e.open(initialText)
 
 	e.SetTextColor(theme.TextBoxDefaultStyle.FontColor)
 	e.SetMargin(math.Spacing{L: 3, T: 3, R: 3, B: 3})
@@ -74,7 +74,7 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 	e.SetBorderPen(gxui.TransparentPen)
 }
 
-func (e *CodeEditor) open() {
+func (e *CodeEditor) open(initialText string) {
 	if e.filepath == "" {
 		e.SetText(`// Scratch
 // This buffer is for jotting down quick notes, but is not saved to disk.
@@ -82,7 +82,7 @@ func (e *CodeEditor) open() {
 		return
 	}
 	go e.watch()
-	e.load()
+	e.load(initialText)
 }
 
 func (e *CodeEditor) watch() {
@@ -102,7 +102,7 @@ func (e *CodeEditor) watch() {
 	}
 	err = e.inotifyWait(func(event fsnotify.Event) bool {
 		if event.Op&fsnotify.Write == fsnotify.Write {
-			e.load()
+			e.load("")
 		}
 		return false
 	})
@@ -140,14 +140,14 @@ func (e *CodeEditor) inotifyWait(eventFunc func(fsnotify.Event) (done bool)) err
 	}
 }
 
-func (e *CodeEditor) load() {
+func (e *CodeEditor) load(initialText string) {
 	e.loading <- true
 	defer func() {
 		<-e.loading
 	}()
 	f, err := os.Open(e.filepath)
 	if os.IsNotExist(err) {
-		e.SetText("")
+		e.SetText(initialText)
 		return
 	}
 	if err != nil {
