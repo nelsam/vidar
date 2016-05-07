@@ -43,7 +43,6 @@ func (c *Copy) Exec(target interface{}) (executed, consume bool) {
 	var buffer bytes.Buffer
 	for i := 0; i < selections.Len(); i++ {
 		buffer.WriteString(editor.Controller().SelectionText(i))
-		buffer.WriteString("\n")
 	}
 
 	c.driver.SetClipboard(buffer.String())
