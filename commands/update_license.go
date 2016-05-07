@@ -39,7 +39,10 @@ func (u *LicenseHeaderUpdate) Exec(on interface{}) (executed, consume bool) {
 	if editor == nil {
 		return true, true
 	}
-	licenseHeader := strings.TrimSpace(finder.Project().LicenseHeader()) + "\n\n"
+	licenseHeader := strings.TrimSpace(finder.Project().LicenseHeader())
+	if licenseHeader != "" {
+		licenseHeader += "\n\n"
+	}
 
 	// License headers should be the first comment block on a file,
 	// should have an empty line following them, and should not
