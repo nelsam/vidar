@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"log"
 	"regexp"
 
 	"github.com/nelsam/gxui"
@@ -38,20 +37,20 @@ func (c *Comments) Exec(target interface{}) (executed, consume bool) {
 	if editor == nil {
 		return true, true
 	}
-	if editor.Controller().SelectionCount() != 1 {
-		log.Print("Warning: toggle comments can currently only comments the first selection")
+
+	selections := editor.Controller().Selections()
+
+	for i := selections.Len(); i != 0; i-- {
+		begin, end := selections.GetInterval(i - 1)
+		str := string(editor.Runes()[begin:end])
+		re, replace := getRegexpAndReplace(str)
+		newstr := re.ReplaceAllString(str, replace)
+		newRunes, edit := editor.Controller().ReplaceAt(
+			editor.Runes(), int(begin), int(end), []rune(newstr))
+
+		editor.Controller().SetTextEdits(newRunes, []gxui.TextBoxEdit{edit})
+
 	}
-
-	selection := editor.Controller().FirstSelection()
-	begin, end := selection.Start(), selection.End()
-	str := string(editor.Runes()[begin:end])
-	re, replace := getRegexpAndReplace(str)
-	newstr := re.ReplaceAllString(str, replace)
-	newRunes, edit := editor.Controller().ReplaceAt(
-		editor.Runes(), begin, end, []rune(newstr))
-
-	editor.Controller().SetTextEdits(newRunes, []gxui.TextBoxEdit{edit})
-
 	return true, true
 
 }
