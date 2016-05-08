@@ -38,15 +38,13 @@ type CodeEditor struct {
 
 	watcher *fsnotify.Watcher
 
-	// loading is a channel keeping track of a count of
-	// threads that are (re)loading the file.
-	loading chan bool
+	selections      gxui.TextSelectionList
+	scrollPositions math.Point
 }
 
 func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, file, headerText string) {
 	e.theme = theme
 	e.driver = driver
-	e.loading = make(chan bool, 5)
 	e.history = NewHistory()
 
 	e.adapter = &suggestions.Adapter{}
@@ -142,10 +140,6 @@ func (e *CodeEditor) inotifyWait(eventFunc func(fsnotify.Event) (done bool)) err
 }
 
 func (e *CodeEditor) load(headerText string) {
-	e.loading <- true
-	defer func() {
-		<-e.loading
-	}()
 	f, err := os.Open(e.filepath)
 	if os.IsNotExist(err) {
 		e.SetText(headerText)
@@ -172,15 +166,11 @@ func (e *CodeEditor) load(headerText string) {
 		log.Printf("%s: header text does not match requested header text", e.filepath)
 	}
 	e.driver.Call(func() {
-		if len(e.loading) > 1 {
-			return
-		}
 		if e.Text() == string(b) {
 			return
 		}
-		location := e.Controller().FirstCaret()
 		e.SetText(newText)
-		e.Controller().SetCaret(location)
+		e.restorePositions()
 	})
 }
 
@@ -298,7 +288,22 @@ func (e *CodeEditor) HideSuggestionList() {
 	}
 }
 
+func (e *CodeEditor) storePositions() {
+	e.selections = e.Controller().Selections()
+	e.scrollPositions = math.Point{
+		X: e.HorizOffset(),
+		Y: e.ScrollOffset(),
+	}
+}
+
+func (e *CodeEditor) restorePositions() {
+	e.Controller().SetSelections(e.selections)
+	e.SetHorizOffset(e.scrollPositions.X)
+	e.SetScrollOffset(e.scrollPositions.Y)
+}
+
 func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
+	defer e.storePositions()
 	if event.Modifier.Control() || event.Modifier.Super() {
 		switch event.Key {
 		case gxui.KeySpace:
