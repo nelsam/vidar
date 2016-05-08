@@ -5,9 +5,13 @@
 package commander
 
 import (
+	"time"
+
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 )
+
+const maxStatusAge = 5 * time.Second
 
 var (
 	cmdColor = gxui.Color{
@@ -20,6 +24,25 @@ var (
 		R: 0.3,
 		G: 1,
 		B: 0.6,
+		A: 1,
+	}
+
+	ColorErr = gxui.Color{
+		R: 1.0,
+		G: 0.2,
+		B: 0,
+		A: 1,
+	}
+	ColorWarn = gxui.Color{
+		R: 0.8,
+		G: 0.7,
+		B: 0.1,
+		A: 1,
+	}
+	ColorInfo = gxui.Color{
+		R: 0.1,
+		G: 1,
+		B: 0,
 		A: 1,
 	}
 )
@@ -83,6 +106,16 @@ type Executor interface {
 	Exec(interface{}) (executed, consume bool)
 }
 
+// A Statuser is a type that needs to display its status after being
+// run.  The commands should use their discretion for status colors,
+// but colors for some common message types are exported by this
+// package to keep things consistent.
+type Statuser interface {
+	// Status returns the element to display for the command's status.
+	// The element will be removed after some time.
+	Status() gxui.Control
+}
+
 // ColorSetter is a type that can have its color set.
 type ColorSetter interface {
 	// SetColor is called when a command element is displayed, so
@@ -93,18 +126,24 @@ type ColorSetter interface {
 type commandBox struct {
 	mixins.LinearLayout
 
+	driver     gxui.Driver
 	controller Controller
 
 	label   gxui.Label
 	current Command
 	display gxui.Control
 	input   gxui.Focusable
+	status  gxui.Control
+
+	statusTimer *time.Timer
 }
 
-func newCommandBox(theme gxui.Theme, controller Controller) *commandBox {
-	box := &commandBox{}
+func newCommandBox(driver gxui.Driver, theme gxui.Theme, controller Controller) *commandBox {
+	box := &commandBox{
+		driver:     driver,
+		controller: controller,
+	}
 
-	box.controller = controller
 	box.label = theme.CreateLabel()
 	box.label.SetColor(cmdColor)
 
@@ -115,14 +154,39 @@ func newCommandBox(theme gxui.Theme, controller Controller) *commandBox {
 	return box
 }
 
+func (b *commandBox) Finish() {
+	statuser, ok := b.current.(Statuser)
+	if !ok {
+		b.Clear()
+		return
+	}
+	b.status = statuser.Status()
+	if b.status == nil {
+		b.Clear()
+		return
+	}
+	b.clearDisplay()
+	b.clearInput()
+	b.AddChild(b.status)
+	b.statusTimer = time.AfterFunc(maxStatusAge, func() {
+		b.driver.CallSync(func() {
+			b.Clear()
+		})
+	})
+}
+
 func (b *commandBox) Clear() {
 	b.label.SetText("none")
 	b.clearDisplay()
 	b.clearInput()
+	b.clearStatus()
 	b.current = nil
 }
 
 func (b *commandBox) Run(command Command) (needsInput bool) {
+	if b.statusTimer != nil {
+		b.statusTimer.Stop()
+	}
 	b.current = command
 
 	b.label.SetText(b.current.Name())
@@ -173,21 +237,27 @@ func (b *commandBox) HasFocus() bool {
 }
 
 func (b *commandBox) clearDisplay() {
-	if b.display != nil {
-		b.RemoveChild(b.display)
-		b.display = nil
+	if b.display == nil {
+		return
 	}
+	b.RemoveChild(b.display)
+	b.display = nil
 }
 
 func (b *commandBox) clearInput() {
-	if b.input != nil {
-		b.RemoveChild(b.input)
-		b.input = nil
+	if b.input == nil {
+		return
 	}
+	b.RemoveChild(b.input)
+	b.input = nil
 }
 
-type debuggable interface {
-	SetDebug(bool)
+func (b *commandBox) clearStatus() {
+	if b.status == nil {
+		return
+	}
+	b.RemoveChild(b.status)
+	b.status = nil
 }
 
 func (b *commandBox) nextInput() (more bool) {

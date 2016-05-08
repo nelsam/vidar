@@ -22,17 +22,22 @@ type Executor interface {
 	Exec(interface{}) (executed, consume bool)
 }
 
+type Statuser interface {
+	Status() gxui.Control
+}
+
 type MultiCommand struct {
 	theme          gxui.Theme
 	display        gxui.LinearLayout
 	currentDisplay gxui.Control
 	control        gxui.Control
 
-	all      []Command
-	needExec []Executor
-	executed []bool
-	current  Command
-	incoming chan Command
+	all        []Command
+	needExec   []Executor
+	needStatus []Statuser
+	executed   []bool
+	current    Command
+	incoming   chan Command
 
 	prev []interface{}
 }
@@ -50,6 +55,7 @@ func NewMulti(theme gxui.Theme, commands ...Command) *MultiCommand {
 func (c *MultiCommand) Start(control gxui.Control) gxui.Control {
 	c.display = c.theme.CreateLinearLayout()
 	c.needExec = findExecutors(c.all)
+	c.needStatus = findStatusers(c.all)
 	c.executed = make([]bool, len(c.all))
 	c.incoming = make(chan Command, len(c.all))
 	for _, cmd := range c.all {
@@ -126,6 +132,28 @@ func (c *MultiCommand) Exec(target interface{}) (executed, consume bool) {
 	return allExecuted, len(c.needExec) == 0
 }
 
+func (c *MultiCommand) Status() gxui.Control {
+	if len(c.needStatus) == 0 {
+		return nil
+	}
+	statuses := make([]gxui.Control, 0, len(c.needStatus))
+	for _, command := range c.needStatus {
+		status := command.Status()
+		if status != nil {
+			statuses = append(statuses, status)
+		}
+	}
+	if len(statuses) == 0 {
+		return nil
+	}
+	layout := c.theme.CreateLinearLayout()
+	layout.SetDirection(gxui.LeftToRight)
+	for _, status := range statuses {
+		layout.AddChild(status)
+	}
+	return layout
+}
+
 func findExecutors(cmds []Command) []Executor {
 	executors := make([]Executor, 0, len(cmds))
 	for _, cmd := range cmds {
@@ -134,4 +162,14 @@ func findExecutors(cmds []Command) []Executor {
 		}
 	}
 	return executors
+}
+
+func findStatusers(cmds []Command) []Statuser {
+	statusers := make([]Statuser, 0, len(cmds))
+	for _, cmd := range cmds {
+		if statuser, ok := cmd.(Statuser); ok {
+			statusers = append(statusers, statuser)
+		}
+	}
+	return statusers
 }

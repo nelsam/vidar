@@ -47,7 +47,7 @@ type Commander struct {
 }
 
 // New creates and initializes a *Commander, then returns it.
-func New(theme *basic.Theme, controller Controller) *Commander {
+func New(driver gxui.Driver, theme *basic.Theme, controller Controller) *Commander {
 	commander := &Commander{
 		theme: theme,
 	}
@@ -64,7 +64,7 @@ func New(theme *basic.Theme, controller Controller) *Commander {
 
 	commander.controller = controller
 	commander.menuBar = newMenuBar(commander, theme)
-	commander.box = newCommandBox(theme, commander.controller)
+	commander.box = newCommandBox(driver, theme, commander.controller)
 
 	mainLayout.AddChild(commander.menuBar)
 
@@ -161,6 +161,6 @@ func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 	if executor, ok := c.box.Current().(Executor); ok {
 		c.controller.Execute(executor)
 	}
-	c.box.Clear()
+	c.box.Finish()
 	return true
 }

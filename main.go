@@ -74,7 +74,7 @@ func uiMain(driver gxui.Driver) {
 		nav.Resize(window.Size().H)
 	})
 
-	commander := commander.New(theme, controller)
+	commander := commander.New(driver, theme, controller)
 
 	// TODO: Check the system's DPI settings for this value
 	window.SetScale(1)
@@ -152,7 +152,7 @@ func mapFileCommands(commander *commander.Commander, projTree *navigator.Project
 	commander.Map(openFile, "File", ctrlO, supO)
 
 	goimports := commands.NewGoImports()
-	save := commands.NewSave()
+	save := commands.NewSave(theme)
 	ctrlS := gxui.KeyboardEvent{
 		Key:      gxui.KeyS,
 		Modifier: gxui.ModControl,
