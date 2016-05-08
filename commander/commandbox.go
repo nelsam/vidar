@@ -28,7 +28,7 @@ var (
 	}
 
 	ColorErr = gxui.Color{
-		R: 1.0,
+		R: 1,
 		G: 0.2,
 		B: 0,
 		A: 1,
@@ -41,7 +41,7 @@ var (
 	}
 	ColorInfo = gxui.Color{
 		R: 0.1,
-		G: 1,
+		G: 0.8,
 		B: 0,
 		A: 1,
 	}
