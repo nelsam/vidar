@@ -74,12 +74,6 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 }
 
 func (e *CodeEditor) open(headerText string) {
-	if e.filepath == "" {
-		e.SetText(`// Scratch
-// This buffer is for jotting down quick notes, but is not saved to disk.
-// Use at your own risk!`)
-		return
-	}
 	go e.watch()
 	e.load(headerText)
 }
