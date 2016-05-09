@@ -57,7 +57,6 @@ func font(driver gxui.Driver) gxui.Font {
 	if len(desiredFonts) == 0 {
 		return nil
 	}
-	log.Printf("Loaded fonts %v from settings", desiredFonts)
 	fontReader, err := fonts.Load(desiredFonts...)
 	if err != nil {
 		log.Printf("Error searching for fonts %v: %s", desiredFonts, err)
