@@ -21,6 +21,8 @@ type projectPane interface {
 }
 
 type ProjectAdder struct {
+	statusKeeper
+
 	status gxui.Label
 
 	path   *FSLocator
@@ -30,12 +32,13 @@ type ProjectAdder struct {
 }
 
 func NewProjectAdder(driver gxui.Driver, theme *basic.Theme) *ProjectAdder {
-	projectAdder := new(ProjectAdder)
+	projectAdder := &ProjectAdder{}
 	projectAdder.Init(driver, theme)
 	return projectAdder
 }
 
 func (p *ProjectAdder) Init(driver gxui.Driver, theme *basic.Theme) {
+	p.theme = theme
 	p.status = theme.CreateLabel()
 	p.path = NewFSLocator(driver, theme)
 	p.name = theme.CreateTextBox()
@@ -89,6 +92,13 @@ func (p *ProjectAdder) Project() settings.Project {
 func (p *ProjectAdder) Exec(element interface{}) (executed, consume bool) {
 	if projects, ok := element.(projectPane); ok {
 		project := p.Project()
+		for _, prevProject := range settings.Projects() {
+			if prevProject.Name == project.Name {
+				// TODO: Let the user choose a new name
+				p.err = fmt.Sprintf("There is already a project named %s", project.Name)
+				return true, true
+			}
+		}
 		settings.AddProject(project)
 		projects.Add(project)
 		return true, true

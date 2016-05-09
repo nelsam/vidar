@@ -5,6 +5,7 @@
 package commands
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 	"unicode"
@@ -14,6 +15,8 @@ import (
 )
 
 type GotoLine struct {
+	statusKeeper
+
 	editor       *editor.CodeEditor
 	lineNumInput gxui.TextBox
 	input        gxui.Focusable
@@ -35,6 +38,7 @@ func NewGotoLine(theme gxui.Theme) *GotoLine {
 		}
 	})
 	return &GotoLine{
+		statusKeeper: statusKeeper{theme: theme},
 		lineNumInput: input,
 	}
 }
@@ -62,15 +66,19 @@ func (g *GotoLine) Next() gxui.Focusable {
 func (g *GotoLine) Exec(on interface{}) (executed, consume bool) {
 	lineStr := g.lineNumInput.Text()
 	if lineStr == "" {
+		g.warn = "No line number provided"
 		return true, true
 	}
 	line, err := strconv.Atoi(lineStr)
 	if err != nil {
-		log.Printf("goto-line: failed to parse %s as a line number", g.lineNumInput.Text())
+		// This shouldn't ever happen, but in the interests of avoiding data loss,
+		// we just log that it did.
+		log.Printf("ERR: goto-line: failed to parse %s as a line number", g.lineNumInput.Text())
 		return true, true
 	}
 	line = oneToZeroBased(line)
 	if line >= g.editor.Controller().LineCount() {
+		g.err = fmt.Sprintf("Line %d is past the end of the file", line)
 		return true, true
 	}
 	g.editor.Controller().SetCaret(g.editor.LineStart(line))

@@ -5,17 +5,19 @@
 package commands
 
 import (
-	"log"
 	"strings"
 
 	"github.com/nelsam/gxui"
 )
 
 type LicenseHeaderUpdate struct {
+	statusKeeper
 }
 
-func NewLicenseHeaderUpdate() *LicenseHeaderUpdate {
-	return &LicenseHeaderUpdate{}
+func NewLicenseHeaderUpdate(theme gxui.Theme) *LicenseHeaderUpdate {
+	return &LicenseHeaderUpdate{
+		statusKeeper: statusKeeper{theme: theme},
+	}
 }
 
 func (u *LicenseHeaderUpdate) Name() string {
@@ -69,7 +71,7 @@ func (u *LicenseHeaderUpdate) LicenseEdit(finder ProjectFinder) *gxui.TextBoxEdi
 		firstCommentBlockEnd = 0
 	}
 	if commentText == licenseHeader {
-		log.Printf("License header update: license is already set correctly")
+		u.info = "license is already set correctly"
 		return nil
 	}
 	return &gxui.TextBoxEdit{

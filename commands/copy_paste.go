@@ -6,7 +6,7 @@ package commands
 
 import (
 	"bytes"
-	"log"
+	"fmt"
 
 	"github.com/nelsam/gxui"
 )
@@ -24,6 +24,7 @@ func NewCopy(driver gxui.Driver) *Copy {
 func (c *Copy) Name() string {
 	return "copy-selection"
 }
+
 func (c *Copy) Exec(target interface{}) (executed, consume bool) {
 	finder, ok := target.(EditorFinder)
 	if !ok {
@@ -74,12 +75,15 @@ func (c *Cut) Exec(target interface{}) (executed, consume bool) {
 }
 
 type Paste struct {
+	statusKeeper
+
 	driver gxui.Driver
 }
 
-func NewPaste(driver gxui.Driver) *Paste {
+func NewPaste(driver gxui.Driver, theme gxui.Theme) *Paste {
 	return &Paste{
-		driver: driver,
+		statusKeeper: statusKeeper{theme: theme},
+		driver:       driver,
 	}
 }
 
@@ -98,7 +102,7 @@ func (p *Paste) Exec(target interface{}) (executed, consume bool) {
 	}
 	contents, err := p.driver.GetClipboard()
 	if err != nil {
-		log.Printf("Error reading clipboard: %s", err)
+		p.err = fmt.Sprintf("Error reading clipboard: %s", err)
 		return true, false
 	}
 	editor.Controller().Replace(func(sel gxui.TextSelection) string {

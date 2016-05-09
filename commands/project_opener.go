@@ -5,6 +5,8 @@
 package commands
 
 import (
+	"fmt"
+
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/settings"
 )
@@ -18,6 +20,8 @@ type projectSetter interface {
 }
 
 type ProjectOpener struct {
+	statusKeeper
+
 	name     gxui.TextBox
 	input    <-chan gxui.Focusable
 	projPane gxui.Control
@@ -25,8 +29,9 @@ type ProjectOpener struct {
 
 func NewProjectOpener(theme gxui.Theme, projPane gxui.Control) *ProjectOpener {
 	return &ProjectOpener{
-		name:     theme.CreateTextBox(),
-		projPane: projPane,
+		statusKeeper: statusKeeper{theme: theme},
+		name:         theme.CreateTextBox(),
+		projPane:     projPane,
 	}
 }
 
@@ -70,6 +75,7 @@ func (p *ProjectOpener) Exec(element interface{}) (executed, consume bool) {
 		}
 	}
 	if proj.Name != p.name.Text() {
+		p.err = fmt.Sprintf("No project by the name of %s found", p.name.Text())
 		return false, false
 	}
 	setter.SetProject(proj)

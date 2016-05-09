@@ -113,7 +113,6 @@ func (c *Controller) Execute(executor Executor) {
 	if !executed {
 		log.Printf("Warning: Executor of type %T ran without executing", executor)
 	}
-	c.Editor().Focus()
 }
 
 func execRecursively(executor Executor, element interface{}) (executed, consume bool) {

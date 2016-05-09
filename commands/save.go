@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/editor"
 )
 
@@ -20,13 +19,15 @@ type CurrentFileFinder interface {
 }
 
 type SaveCurrent struct {
-	theme    gxui.Theme
-	execErr  error
+	statusKeeper
+
 	filepath string
 }
 
 func NewSave(theme gxui.Theme) *SaveCurrent {
-	return &SaveCurrent{theme: theme}
+	return &SaveCurrent{
+		statusKeeper: statusKeeper{theme: theme},
+	}
 }
 
 func (s *SaveCurrent) Name() string {
@@ -46,18 +47,18 @@ func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {
 	if !editor.LastKnownMTime().IsZero() {
 		finfo, err := os.Stat(s.filepath)
 		if err != nil {
-			s.execErr = fmt.Errorf("Could not stat file %s: %s", s.filepath, err)
+			s.err = fmt.Sprintf("Could not stat file %s: %s", s.filepath, err)
 			return true, false
 		}
 		if finfo.ModTime().After(editor.LastKnownMTime()) {
 			// TODO: prompt for override
-			s.execErr = fmt.Errorf("File %s changed on disk.  Cowardly refusing to overwrite.", s.filepath)
+			s.err = fmt.Sprintf("File %s changed on disk.  Cowardly refusing to overwrite.", s.filepath)
 			return true, false
 		}
 	}
 	f, err := os.Create(s.filepath)
 	if err != nil {
-		s.execErr = fmt.Errorf("Could not open %s for writing: %s", s.filepath, err)
+		s.err = fmt.Sprintf("Could not open %s for writing: %s", s.filepath, err)
 		return true, false
 	}
 	defer f.Close()
@@ -65,25 +66,9 @@ func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {
 		editor.SetText(editor.Text() + "\n")
 	}
 	if _, err := f.WriteString(editor.Text()); err != nil {
-		s.execErr = fmt.Errorf("Could not write to file %s: %s", s.filepath, err)
+		s.err = fmt.Sprintf("Could not write to file %s: %s", s.filepath, err)
 		return true, false
 	}
-	s.execErr = nil
 	editor.FlushedChanges()
 	return true, true
-}
-
-func (s *SaveCurrent) statusInfo() (gxui.Color, string) {
-	if s.execErr != nil {
-		return commander.ColorErr, s.execErr.Error()
-	}
-	return commander.ColorInfo, fmt.Sprintf("Successfully saved %s", s.filepath)
-}
-
-func (s *SaveCurrent) Status() gxui.Control {
-	label := s.theme.CreateLabel()
-	color, message := s.statusInfo()
-	label.SetColor(color)
-	label.SetText(message)
-	return label
 }

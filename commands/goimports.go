@@ -6,19 +6,23 @@ package commands
 
 import (
 	"bytes"
-	"log"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/nelsam/gxui"
 )
 
+const stdinPathPattern = "<standard input>:"
+
 type GoImports struct {
+	statusKeeper
 }
 
-func NewGoImports() *GoImports {
-	return &GoImports{}
+func NewGoImports(theme gxui.Theme) *GoImports {
+	return &GoImports{statusKeeper: statusKeeper{theme: theme}}
 }
 
 func (gi *GoImports) Name() string {
@@ -47,10 +51,9 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 	}
 	formatted, err := cmd.Output()
 	if err != nil {
-		// TODO: report this error to the user via the UI
-		log.Printf("Received error from goimports: %s", err)
-		log.Print("Error output:")
-		log.Print(errBuffer.String())
+		msg := errBuffer.String()
+		pathEnd := strings.Index(msg, stdinPathPattern) + len(stdinPathPattern)
+		gi.err = fmt.Sprintf("goimports error: %s", msg[pathEnd:])
 		return true, true
 	}
 	edits := []gxui.TextBoxEdit{

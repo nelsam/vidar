@@ -155,6 +155,7 @@ func newCommandBox(driver gxui.Driver, theme gxui.Theme, controller Controller) 
 }
 
 func (b *commandBox) Finish() {
+	defer b.controller.Editor().Focus()
 	statuser, ok := b.current.(Statuser)
 	if !ok {
 		b.Clear()

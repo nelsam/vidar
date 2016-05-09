@@ -186,7 +186,7 @@ func mapFileCommands(commander *commander.Commander, projTree *navigator.Project
 	}
 	commander.Map(openFile, "File", ctrlO, supO)
 
-	goimports := commands.NewGoImports()
+	goimports := commands.NewGoImports(theme)
 	save := commands.NewSave(theme)
 	ctrlS := gxui.KeyboardEvent{
 		Key:      gxui.KeyS,
@@ -268,7 +268,7 @@ func mapEditCommands(commander *commander.Commander, driver gxui.Driver, theme *
 	}
 	commander.Map(cut, "Edit", ctrlX, supX)
 
-	paste := commands.NewPaste(driver)
+	paste := commands.NewPaste(driver, theme)
 	ctrlV := gxui.KeyboardEvent{
 		Key:      gxui.KeyV,
 		Modifier: gxui.ModControl,
@@ -290,7 +290,7 @@ func mapEditCommands(commander *commander.Commander, driver gxui.Driver, theme *
 	}
 	commander.Map(gotoLine, "Edit", ctrlG, supG)
 
-	godef := commands.NewGotoDef()
+	godef := commands.NewGotoDef(theme)
 	ctrlShiftG := gxui.KeyboardEvent{
 		Key:      gxui.KeyG,
 		Modifier: gxui.ModControl | gxui.ModShift,
@@ -301,7 +301,7 @@ func mapEditCommands(commander *commander.Commander, driver gxui.Driver, theme *
 	}
 	commander.Map(godef, "Edit", ctrlShiftG, supShiftG)
 
-	licenseUpdate := commands.NewLicenseHeaderUpdate()
+	licenseUpdate := commands.NewLicenseHeaderUpdate(theme)
 	ctrlShiftL := gxui.KeyboardEvent{
 		Key:      gxui.KeyL,
 		Modifier: gxui.ModControl | gxui.ModShift,
@@ -312,7 +312,7 @@ func mapEditCommands(commander *commander.Commander, driver gxui.Driver, theme *
 	}
 	commander.Map(licenseUpdate, "Edit", ctrlShiftL, supShiftL)
 
-	goimports := commands.NewGoImports()
+	goimports := commands.NewGoImports(theme)
 	ctrlShiftF := gxui.KeyboardEvent{
 		Key:      gxui.KeyF,
 		Modifier: gxui.ModControl | gxui.ModShift,
