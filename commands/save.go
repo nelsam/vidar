@@ -51,7 +51,7 @@ func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {
 		}
 		if finfo.ModTime().After(editor.LastKnownMTime()) {
 			// TODO: prompt for override
-			s.execErr = fmt.Errorf("File %s changed on disk.  Cowardly refusing to overwrite.")
+			s.execErr = fmt.Errorf("File %s changed on disk.  Cowardly refusing to overwrite.", s.filepath)
 			return true, false
 		}
 	}
