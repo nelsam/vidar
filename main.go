@@ -6,6 +6,8 @@ package main
 
 import (
 	"go/token"
+	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -17,6 +19,8 @@ import (
 	"github.com/nelsam/gxui/themes/dark"
 	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/commands"
+	"github.com/nelsam/vidar/settings"
+	"github.com/tmc/fonts"
 
 	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/editor"
@@ -48,9 +52,41 @@ func main() {
 	cmd.Execute()
 }
 
+func font(driver gxui.Driver) gxui.Font {
+	desiredFonts := settings.DesiredFonts()
+	if len(desiredFonts) == 0 {
+		return nil
+	}
+	log.Printf("Loaded fonts %v from settings", desiredFonts)
+	fontReader, err := fonts.Load(desiredFonts...)
+	if err != nil {
+		log.Printf("Error searching for fonts %v: %s", desiredFonts, err)
+		return nil
+	}
+	if closer, ok := fontReader.(io.Closer); ok {
+		defer closer.Close()
+	}
+	fontBytes, err := ioutil.ReadAll(fontReader)
+	if err != nil {
+		log.Printf("Failed to read font file: %s", err)
+		return nil
+	}
+	font, err := driver.CreateFont(fontBytes, 12)
+	if err != nil {
+		log.Printf("Could not parse font: %s", err)
+		return nil
+	}
+	return font
+}
+
 func uiMain(driver gxui.Driver) {
 	theme := dark.CreateTheme(driver).(*basic.Theme)
-	theme.SetDefaultFont(theme.DefaultMonospaceFont())
+	font := font(driver)
+	if font == nil {
+		font = theme.DefaultMonospaceFont()
+	}
+	theme.SetDefaultMonospaceFont(font)
+	theme.SetDefaultFont(font)
 	theme.WindowBackground = background
 
 	// TODO: figure out a better way to get this resolution

@@ -22,7 +22,31 @@ const (
 var (
 	App          = xdg.App{Name: "vidar"}
 	projectsPath = App.ConfigPath("projects")
+	settingsPath = App.ConfigPath("settings")
+
+	appSettings settings
 )
+
+func init() {
+	f, err := os.Open(settingsPath)
+	if os.IsNotExist(err) {
+		return
+	}
+	if err != nil {
+		log.Printf("Could not open settings file: %s", err)
+		return
+	}
+	defer f.Close()
+	settingsBytes, err := ioutil.ReadAll(f)
+	if err != nil {
+		log.Printf("Could not read settings file: %s", err)
+		return
+	}
+	if err := yaml.Unmarshal(settingsBytes, &appSettings); err != nil {
+		log.Printf("Error: Could not parse %s as yaml: %s", settingsPath, err)
+		return
+	}
+}
 
 type Project struct {
 	Name   string
@@ -102,4 +126,12 @@ func AddProject(project Project) {
 	}
 	defer projects.Close()
 	projects.Write(bytes)
+}
+
+func DesiredFonts() []string {
+	return appSettings.Fonts
+}
+
+type settings struct {
+	Fonts []string
 }
