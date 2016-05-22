@@ -41,6 +41,10 @@ func (s *Split) Name() string {
 	}
 }
 
+func (s *Split) Menu() string {
+	return "View"
+}
+
 func (s *Split) Exec(target interface{}) (executed, consume bool) {
 	splitter, ok := target.(Splitter)
 	if !ok {

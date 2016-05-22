@@ -29,6 +29,10 @@ func (gi *GoImports) Name() string {
 	return "goimports"
 }
 
+func (gi *GoImports) Menu() string {
+	return "Edit"
+}
+
 func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 	finder, ok := on.(ProjectFinder)
 	if !ok {

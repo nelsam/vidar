@@ -64,6 +64,10 @@ type Completer interface {
 type Command interface {
 	// Name returns the name of the command
 	Name() string
+
+	// Menu returns the name of the menu that the command should be
+	// displayed under.
+	Menu() string
 }
 
 // A Starter is a type of command which needs to initialize itself

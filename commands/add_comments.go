@@ -21,6 +21,10 @@ func (c *Comments) Name() string {
 	return "toggle-comments"
 }
 
+func (c *Comments) Menu() string {
+	return "Edit"
+}
+
 func (c *Comments) Exec(target interface{}) (executed, consume bool) {
 	finder, ok := target.(EditorFinder)
 	if !ok {

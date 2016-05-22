@@ -57,6 +57,10 @@ func (g *GotoLine) Name() string {
 	return "goto-line"
 }
 
+func (g *GotoLine) Menu() string {
+	return "Edit"
+}
+
 func (g *GotoLine) Next() gxui.Focusable {
 	input := g.input
 	g.input = nil

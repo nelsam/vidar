@@ -34,6 +34,10 @@ func (s *SaveCurrent) Name() string {
 	return "save-current-file"
 }
 
+func (s *SaveCurrent) Menu() string {
+	return "File"
+}
+
 func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {
 	finder, ok := target.(CurrentFileFinder)
 	if !ok {

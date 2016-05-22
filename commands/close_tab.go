@@ -20,6 +20,10 @@ func (s *CloseTab) Name() string {
 	return "close-current-tab"
 }
 
+func (s *CloseTab) Menu() string {
+	return "File"
+}
+
 func (s *CloseTab) Exec(target interface{}) (executed, consume bool) {
 	closer, ok := target.(CurrentEditorCloser)
 	if !ok {

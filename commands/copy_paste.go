@@ -25,6 +25,10 @@ func (c *Copy) Name() string {
 	return "copy-selection"
 }
 
+func (c *Copy) Menu() string {
+	return "Edit"
+}
+
 func (c *Copy) Exec(target interface{}) (executed, consume bool) {
 	finder, ok := target.(EditorFinder)
 	if !ok {
@@ -89,6 +93,10 @@ func NewPaste(driver gxui.Driver, theme gxui.Theme) *Paste {
 
 func (p *Paste) Name() string {
 	return "paste"
+}
+
+func (p *Paste) Menu() string {
+	return "Edit"
 }
 
 func (p *Paste) Exec(target interface{}) (executed, consume bool) {

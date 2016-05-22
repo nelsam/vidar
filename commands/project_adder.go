@@ -49,6 +49,10 @@ func (p *ProjectAdder) Name() string {
 	return "add-project"
 }
 
+func (p *ProjectAdder) Menu() string {
+	return "File"
+}
+
 func (p *ProjectAdder) Start(control gxui.Control) gxui.Control {
 	p.path.loadEditorDir(control)
 

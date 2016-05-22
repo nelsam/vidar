@@ -35,6 +35,10 @@ func (gi *GotoDef) Name() string {
 	return "goto-definition"
 }
 
+func (gi *GotoDef) Menu() string {
+	return "Edit"
+}
+
 func (gi *GotoDef) Exec(on interface{}) (executed, consume bool) {
 	opener, ok := on.(LineOpener)
 	if !ok {

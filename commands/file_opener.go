@@ -40,6 +40,10 @@ func (f *FileOpener) Name() string {
 	return "open-file"
 }
 
+func (f *FileOpener) Menu() string {
+	return "File"
+}
+
 func (f *FileOpener) Start(control gxui.Control) gxui.Control {
 	f.file.loadEditorDir(control)
 	input := make(chan gxui.Focusable, 1)

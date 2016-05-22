@@ -21,6 +21,10 @@ func (u *Undo) Name() string {
 	return "undo-last-edit"
 }
 
+func (u *Undo) Menu() string {
+	return "Edit"
+}
+
 func (u *Undo) Exec(target interface{}) (executed, consume bool) {
 	finder, ok := target.(EditorFinder)
 	if !ok {
@@ -56,6 +60,10 @@ func (r *Redo) Start(target gxui.Control) gxui.Control {
 
 func (r *Redo) Name() string {
 	return "redo-next-edit"
+}
+
+func (r *Redo) Menu() string {
+	return "Edit"
 }
 
 func (r *Redo) Next() gxui.Focusable {

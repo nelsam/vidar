@@ -39,6 +39,10 @@ func (p *ProjectOpener) Name() string {
 	return "open-project"
 }
 
+func (p *ProjectOpener) Menu() string {
+	return "File"
+}
+
 func (p *ProjectOpener) Start(gxui.Control) gxui.Control {
 	input := make(chan gxui.Focusable, 1)
 	p.input = input

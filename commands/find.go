@@ -75,6 +75,10 @@ func (f *Find) Name() string {
 	return "find"
 }
 
+func (f *Find) Menu() string {
+	return "Edit"
+}
+
 func (f *Find) Next() gxui.Focusable {
 	next := f.next
 	f.next = nil

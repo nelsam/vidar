@@ -101,6 +101,9 @@ func (e *TabbedEditor) KeyPress(event gxui.KeyboardEvent) bool {
 				next = panels - 1
 			}
 			e.Select(next)
+			e.driver.Call(func() {
+				e.Focus()
+			})
 			return true
 		}
 	}

@@ -8,6 +8,7 @@ import "github.com/nelsam/gxui"
 
 type Command interface {
 	Name() string
+	Menu() string
 }
 
 type Starter interface {
@@ -28,6 +29,7 @@ type Statuser interface {
 
 type MultiCommand struct {
 	theme          gxui.Theme
+	menu           string
 	display        gxui.LinearLayout
 	currentDisplay gxui.Control
 	control        gxui.Control
@@ -42,12 +44,13 @@ type MultiCommand struct {
 	prev []interface{}
 }
 
-func NewMulti(theme gxui.Theme, commands ...Command) *MultiCommand {
+func NewMulti(theme gxui.Theme, menu string, commands ...Command) *MultiCommand {
 	if len(commands) == 0 {
 		panic("commands.NewMulti called without any commands")
 	}
 	return &MultiCommand{
 		theme: theme,
+		menu:  menu,
 		all:   commands,
 	}
 }
@@ -93,6 +96,10 @@ func (c *MultiCommand) Name() string {
 		name += cmd.Name()
 	}
 	return name
+}
+
+func (c *MultiCommand) Menu() string {
+	return c.menu
 }
 
 func (c *MultiCommand) Next() gxui.Focusable {

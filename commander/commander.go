@@ -103,11 +103,8 @@ func (c *Commander) Controller() Controller {
 }
 
 // Map maps a Command to a menu and an optional key binding.
-func (c *Commander) Map(command Command, menu string, bindings ...gxui.KeyboardEvent) error {
-	if len(menu) == 0 {
-		return fmt.Errorf("All commands must have a menu entry")
-	}
-	c.menuBar.Add(menu, command, bindings...)
+func (c *Commander) Map(command Command, bindings ...gxui.KeyboardEvent) error {
+	c.menuBar.Add(command.Menu(), command, bindings...)
 	for _, binding := range bindings {
 		if err := c.mapBinding(command, binding); err != nil {
 			return err

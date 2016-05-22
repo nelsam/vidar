@@ -21,7 +21,11 @@ func NewLicenseHeaderUpdate(theme gxui.Theme) *LicenseHeaderUpdate {
 }
 
 func (u *LicenseHeaderUpdate) Name() string {
-	return "goimports"
+	return "update-license"
+}
+
+func (u *LicenseHeaderUpdate) Menu() string {
+	return "Edit"
 }
 
 func (u *LicenseHeaderUpdate) Exec(on interface{}) (executed, consume bool) {
