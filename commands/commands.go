@@ -28,6 +28,7 @@ func Commands(driver gxui.Driver, theme *basic.Theme, projPane gxui.Control) []c
 		NewCopy(driver),
 		NewCut(driver),
 		NewPaste(driver, theme),
+		NewShowSuggestions(),
 		NewGotoLine(theme),
 		NewGotoDef(theme),
 		NewLicenseHeaderUpdate(theme),

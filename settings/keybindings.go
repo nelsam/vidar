@@ -97,6 +97,7 @@ func setDefaultBindings() {
 	Keybindings.SetDefault("Ctrl-C", "copy-selection")
 	Keybindings.SetDefault("Ctrl-X", "cut-selection")
 	Keybindings.SetDefault("Ctrl-V", "paste")
+	Keybindings.SetDefault("Ctrl-Space", "show-suggestions")
 	Keybindings.SetDefault("Ctrl-G", "goto-line")
 	Keybindings.SetDefault("Ctrl-Shift-G", "goto-definition")
 	Keybindings.SetDefault("Ctrl-Shift-L", "update-license")

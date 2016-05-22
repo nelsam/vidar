@@ -310,15 +310,6 @@ func (e *CodeEditor) restorePositions() {
 
 func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 	defer e.storePositions()
-	if event.Modifier.Control() || event.Modifier.Super() {
-		switch event.Key {
-		case gxui.KeySpace:
-			e.ShowSuggestionList()
-			return true
-		case gxui.KeyTab:
-			return false
-		}
-	}
 	switch event.Key {
 	case gxui.KeyPeriod:
 		e.ShowSuggestionList()
