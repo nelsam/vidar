@@ -78,7 +78,11 @@ func (e *TabbedEditor) Editors() uint {
 }
 
 func (e *TabbedEditor) CreatePanelTab() mixins.PanelTab {
-	return basic.CreatePanelTab(e.theme)
+	tab := basic.CreatePanelTab(e.theme)
+	tab.OnMouseUp(func(gxui.MouseEvent) {
+		e.driver.Call(e.Focus)
+	})
+	return tab
 }
 
 func (e *TabbedEditor) ShiftTab(delta int) {
