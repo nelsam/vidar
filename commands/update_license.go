@@ -72,7 +72,6 @@ func (u *LicenseHeaderUpdate) LicenseEdit(finder ProjectFinder) *gxui.TextBoxEdi
 	commentText := editor.Text()[:firstCommentBlockEnd]
 	if strings.Contains(commentText, "// +build ") {
 		commentText = ""
-		firstCommentBlockEnd = 0
 	}
 	if commentText == licenseHeader {
 		u.info = "license is already set correctly"

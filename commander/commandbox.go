@@ -74,7 +74,7 @@ type Command interface {
 // whenever the command is started.
 type Starter interface {
 	// Start starts the command.  The element that the command is
-	// targetting will be passed in as target.  If the returned
+	// targeting will be passed in as target.  If the returned
 	// status element is non-nil, it will be displayed as an
 	// element to display the current status of the command to
 	// the user.
