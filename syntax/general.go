@@ -60,9 +60,11 @@ func (l layers) handleMapType(src *ast.MapType) gxui.CodeSyntaxLayers {
 }
 
 func (l layers) handleArrayType(src *ast.ArrayType) gxui.CodeSyntaxLayers {
-	layers := gxui.CodeSyntaxLayers{l.layer(src.Lbrack, 1, defaultRainbow.New())}
+	layers := gxui.CodeSyntaxLayers{
+		l.layer(src.Lbrack, 1, defaultRainbow.New()),
+		l.layer(src.Lbrack+1, 1, defaultRainbow.Pop()),
+	}
 	layers = append(layers, l.handleExpr(src.Len)...)
-	layers = append(layers, l.layer(src.End(), 1, defaultRainbow.Pop()))
 	layers = append(layers, l.handleExpr(src.Elt)...)
 	return layers
 }
