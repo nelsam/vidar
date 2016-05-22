@@ -55,8 +55,13 @@ var (
 
 	// Since the const values aren't exported by go/build, I've just copied them
 	// from https://github.com/golang/go/blob/master/src/go/build/syslist.go
-	gooses   = []string{"android", "darwin", "dragonfly", "freebsd", "linux", "nacl", "netbsd", "openbsd", "plan9", "solaris", "windows"}
-	goarches = []string{"386", "amd64", "amd64p32", "arm", "armbe", "arm64", "arm64be", "ppc64", "ppc64le", "mips", "mipsle", "mips64", "mips64le", "mips64p32", "mips64p32le", "ppc", "s390", "s390x", "sparc", "sparc64"}
+	gooses = []string{
+		"android", "darwin", "dragonfly", "freebsd", "linux", "nacl", "netbsd", "openbsd", "plan9", "solaris", "windows",
+	}
+	goarches = []string{
+		"386", "amd64", "amd64p32", "arm", "armbe", "arm64", "arm64be", "ppc64", "ppc64le", "mips", "mipsle", "mips64",
+		"mips64le", "mips64p32", "mips64p32le", "ppc", "s390", "s390x", "sparc", "sparc64",
+	}
 )
 
 func zeroBasedPos(pos token.Pos) int {
