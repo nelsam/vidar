@@ -236,6 +236,19 @@ func (e *CodeEditor) showSuggestionList() {
 
 func (e *CodeEditor) updateSuggestionList() {
 	caret := e.Controller().LastCaret()
+	lineIdx := e.LineIndex(caret)
+	text := e.Controller().Line(lineIdx)
+
+	// TODO: This only skips suggestions on line comments, not block comments
+	// (/* ... */).  Since block comments seem to be pretty uncommon in Go,
+	// I'm not going to worry about it just yet.  Ideally, this would be solved
+	// by having the syntax highlighting logic provide some context details to
+	// the editor, so it knows some information about the context surrounding
+	// the caret.
+	if comment := strings.Index(text, "//"); comment != -1 && comment <= caret {
+		e.HideSuggestionList()
+		return
+	}
 
 	suggestions := e.SuggestionProvider().SuggestionsAt(caret)
 	if len(suggestions) == 0 {
@@ -261,7 +274,6 @@ func (e *CodeEditor) updateSuggestionList() {
 	e.suggestions.Select(e.suggestions.Adapter().ItemAt(0))
 
 	// Position the suggestion list below the last caret
-	lineIdx := e.LineIndex(caret)
 	bounds := e.Size().Rect().Contract(e.Padding())
 	line := e.Line(lineIdx)
 	lineOffset := gxui.ChildToParent(math.ZeroPoint, line, e)
