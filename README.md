@@ -64,16 +64,14 @@ person who found it useful (as they're indirectly responsible for my death).
 
 ## Currently
 
-It's getting closer to a usable state.  The potential for data loss is low.  It supports most
-of what you'd expect from a basic text editor, there are some extra features thrown in, and
-I'm maintaining some fixes for gxui bugs in a fork (I plan to make PRs when I can, but upstream
+It's in a fairly usable state.  The potential for data loss is low.  It supports most of what
+you'd expect from a basic text editor, there are some extra features thrown in, and I'm
+maintaining some fixes for gxui bugs in a fork (I plan to make PRs when I can, but upstream
 is unmaintained, so it's not my highest priority at the moment).
 
-The biggest blocker, from my perspective, is the fact that errors are mostly silent.  I haven't
-yet hooked up an error or warning UI, so the only notice you get is from STDERR output.
-
-If that's not a huge issue for you, feel free to give it a shot.  I welcome issues and pull
-requests.
+I doubt it will replace your favorite text editor or IDE in its current state, but if you're
+curious or just unhappy with all of the Go editors out there, feel free to give it a shot.
+I welcome issues and pull requests.
 
 ## Requirements
 
