@@ -23,14 +23,14 @@ to check out the issues.
 - Split view (both horizontal and vertical)
 - Watch filesystem for changes
   - Events trigger editor elements to reload their text
-  - Since I don't trust this to be fully reliable, vidar will refuse to write a file that has
-    been changed on disk since the last reload; but this doesn't happen often.
+  - Since this has shown itself to be a bit unreliable, vidar will refuse to write a file that
+    has been changed on disk since the last reload; but this doesn't happen often.
 - Manage the license header of files (defined in a `.license-header` file in the project root)
   - If you're like me and always forget to add the license blurb at the top of every Go file,
     this is for you.
   - New files will be opened with the license blurb as the initial text.
-  - There is a command (`ctrl+shift+l` or `cmd+shift+l`, currently) which will update the license
-    blurb of the current file with the text from the `.license-header` file.
+  - There is a command (`ctrl+shift+l` or `cmd+shift+l` by default) which will update the
+    license blurb of the current file with the text from the `.license-header` file.
 - Syntax highlighting
 - Rainbow parens
 - Most of the basic stuff you expect from a text editor (copy/paste, undo/redo, etc)
@@ -40,9 +40,9 @@ to check out the issues.
 These are all planned, but have yet to be implemented.
 
 - Configurability
-  - When you open a new project, you can set up some basic configuration, but other than that...
-  - For example: key bindings are hardcoded, project settings cannot be changed after adding
-    the project unless you edit the config file, you can't edit the font or theme, etc.
+  - When you open a new project, you can set up some basic configuration in the UI, but very
+    little else.
+  - Most settings will require editing a config file manually, at the moment.
 - Polish
   - There are some frustrating, but difficult-to-solve, bugs lingering around.  I squash them
     when I can, but some of the less annoying ones that either have difficult solutions or are
@@ -67,7 +67,7 @@ person who found it useful (as they're indirectly responsible for my death).
 It's in a fairly usable state.  The potential for data loss is low.  It supports most of what
 you'd expect from a basic text editor, there are some extra features thrown in, and I'm
 maintaining some fixes for gxui bugs in a fork (I plan to make PRs when I can, but upstream
-is unmaintained, so it's not my highest priority at the moment).
+is mostly unmaintained, so it's not my highest priority at the moment).
 
 I doubt it will replace your favorite text editor or IDE in its current state, but if you're
 curious or just unhappy with all of the Go editors out there, feel free to give it a shot.
@@ -79,3 +79,30 @@ If you do decide to try it, it should be noted that you'll have a better time if
 gocode (for suggestions), godef (for go-to-definition), and goimports (for formatting the
 file automatically on save) in your $PATH.  It should work without them, but it'll work a
 lot nicer with them.
+
+## Installation
+
+`go get github.com/nelsam/vidar`
+
+I don't believe in vendoring source code, so this may break from time to time.  I plan
+to have a build system that builds `.deb`, `.rpm`, `.dmg`, and `.exe` files in CI, but
+it's not yet in place.
+
+## Configuration
+
+Vidar uses [xdg-go](https://github.com/casimir/xdg-go) to decide where to save config
+files.  On linux systems, this will probably end up in `~/.config/vidar/`; for Windows
+and OS X, you'll likely need to check the xdg-go package to see what it uses.
+
+Config files are written as `toml` by default, but can be parsed from any format that
+[viper](https://github.com/spf13/viper) supports.  Currently, there are three config
+files:
+- settings: Only used to configure a `fonts` list, which should be a list of names
+  of fonts installed on your system in order of preference.  Note that only truetype
+  fonts are supported right now, and many of those display incorrectly.  My current
+  favorites are `Inconsolata-Regular` and `PTM55F`.
+- projects: A list of projects with `name`, `path`, and `gopath` keys.  This can be
+  added to with the `add-project` command (`ctrl-shift-n` by default).
+- keys: The key bindings.  This file will be written on first startup with the default
+  key bindings, so you can edit the file with any changes or aliases you'd like.
+  Multiple bindings per command are supported.
