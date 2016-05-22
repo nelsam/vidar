@@ -88,6 +88,7 @@ func setDefaultBindings() {
 	Keybindings.SetDefault("Ctrl-Shift-N", "add-project")
 	Keybindings.SetDefault("Ctrl-Shift-O", "open-project")
 	Keybindings.SetDefault("Ctrl-O", "open-file")
+	Keybindings.SetDefault("Ctrl-A", "select-all")
 	Keybindings.SetDefault("Ctrl-S", "goimports, save-current-file")
 	Keybindings.SetDefault("Ctrl-W", "close-current-tab")
 

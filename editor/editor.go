@@ -310,6 +310,11 @@ func (e *CodeEditor) restorePositions() {
 
 func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 	defer e.storePositions()
+	if event.Modifier != 0 && event.Modifier != gxui.ModShift {
+		// ctrl-, alt-, and cmd-/super- keybindings should be dealt
+		// with by the commands mapped to key bindings.
+		return false
+	}
 	switch event.Key {
 	case gxui.KeyPeriod:
 		e.ShowSuggestionList()
@@ -320,7 +325,7 @@ func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 			e.SortSuggestionList()
 		}
 		return result
-	case gxui.KeyHome, gxui.KeyEnd, gxui.KeyPageUp, gxui.KeyPageDown, gxui.KeyDelete, gxui.KeyA:
+	case gxui.KeyHome, gxui.KeyEnd, gxui.KeyPageUp, gxui.KeyPageDown, gxui.KeyDelete:
 		// These are all bindings that the TextBox handles fine.
 		return e.TextBox.KeyPress(event)
 	case gxui.KeyTab:
@@ -351,12 +356,13 @@ func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 			controller.ReplaceAll(text)
 			controller.Deselect(false)
 			e.HideSuggestionList()
-		} else {
-			// TODO: implement electric braces.  See
-			// http://www.emacswiki.org/emacs/AutoPairs under
-			// "Electric-RET".
-			e.Controller().ReplaceWithNewlineKeepIndent()
+			return true
 		}
+		// TODO: implement electric braces.  See
+		// http://www.emacswiki.org/emacs/AutoPairs under
+		// "Electric-RET".
+		e.Controller().ReplaceWithNewlineKeepIndent()
+		e.ScrollToRune(e.Controller().FirstCaret())
 		return true
 	case gxui.KeyEscape:
 		if e.IsSuggestionListShowing() {

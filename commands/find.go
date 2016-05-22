@@ -29,7 +29,7 @@ type Find struct {
 	next gxui.Focusable
 }
 
-func NewFinder(driver gxui.Driver, theme *basic.Theme) *Find {
+func NewFind(driver gxui.Driver, theme *basic.Theme) *Find {
 	finder := &Find{}
 	finder.Init(driver, theme)
 	return finder

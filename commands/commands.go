@@ -18,13 +18,14 @@ func Commands(driver gxui.Driver, theme *basic.Theme, projPane gxui.Control) []c
 		NewProjectAdder(driver, theme),
 		NewProjectOpener(theme, projPane),
 		NewFileOpener(driver, theme),
+		NewSelectAll(),
 		NewMulti(theme, "File", NewGoImports(theme), NewSave(theme)),
 		NewCloseTab(),
 
 		// Edit menu
 		NewUndo(),
 		NewRedo(theme),
-		NewFinder(driver, theme),
+		NewFind(driver, theme),
 		NewCopy(driver),
 		NewCut(driver),
 		NewPaste(driver, theme),
