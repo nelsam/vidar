@@ -69,6 +69,7 @@ func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {
 		s.err = fmt.Sprintf("Could not write to file %s: %s", s.filepath, err)
 		return true, false
 	}
+	s.info = fmt.Sprintf("Successfully saved %s", s.filepath)
 	editor.FlushedChanges()
 	return true, true
 }
