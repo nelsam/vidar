@@ -45,19 +45,19 @@ func Bindings(commandName string) (bindings []gxui.KeyboardEvent) {
 }
 
 func parseBinding(eventPattern string) []gxui.KeyboardEvent {
-	eventPattern = strings.ToUpper(eventPattern)
+	eventPattern = strings.ToLower(eventPattern)
 	keys := strings.Split(eventPattern, "-")
 	modifiers, key := keys[:len(keys)-1], keys[len(keys)-1]
 	var event gxui.KeyboardEvent
 	for _, key := range modifiers {
 		switch key {
-		case "CTRL", "CMD":
+		case "ctrl", "cmd":
 			event.Modifier |= gxui.ModControl
-		case "ALT":
+		case "alt":
 			event.Modifier |= gxui.ModAlt
-		case "SHIFT":
+		case "shift":
 			event.Modifier |= gxui.ModShift
-		case "SUPER":
+		case "super":
 			log.Printf("Error: %s: Super cannot be bound directly; use ctrl or cmd instead.", eventPattern)
 			return nil
 		default:
@@ -67,7 +67,7 @@ func parseBinding(eventPattern string) []gxui.KeyboardEvent {
 	// TODO: This is making an assumption about keys supported in gxui
 	// and the order they are defined in.  I'd rather not do that.
 	for k := gxui.KeyboardKey(0); k < gxui.KeyLast; k++ {
-		if k.String() == key {
+		if strings.ToLower(k.String()) == key {
 			event.Key = k
 			events := []gxui.KeyboardEvent{event}
 			if event.Modifier.Control() {
@@ -105,6 +105,8 @@ func setDefaultBindings() {
 
 	Keybindings.SetDefault("Alt-H", "split-view-horizontally")
 	Keybindings.SetDefault("Alt-V", "split-view-vertically")
+	Keybindings.SetDefault("Ctrl-Tab", "next-tab")
+	Keybindings.SetDefault("Ctrl-Shift-Tab", "prev-tab")
 }
 
 func writeDefaultBindings() {

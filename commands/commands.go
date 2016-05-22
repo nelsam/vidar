@@ -10,14 +10,18 @@ import (
 	"github.com/nelsam/vidar/commander"
 )
 
+// Commands returns all known commands, in the order they should be
+// added to the menu.
 func Commands(driver gxui.Driver, theme *basic.Theme, projPane gxui.Control) []commander.Command {
 	return []commander.Command{
+		// File menu
 		NewProjectAdder(driver, theme),
 		NewProjectOpener(theme, projPane),
 		NewFileOpener(driver, theme),
 		NewMulti(theme, "File", NewGoImports(theme), NewSave(theme)),
 		NewCloseTab(),
 
+		// Edit menu
 		NewUndo(),
 		NewRedo(theme),
 		NewFinder(driver, theme),
@@ -30,7 +34,10 @@ func Commands(driver gxui.Driver, theme *basic.Theme, projPane gxui.Control) []c
 		NewGoImports(theme),
 		NewComments(),
 
+		// View menu
 		NewHorizontalSplit(),
 		NewVerticalSplit(),
+		NewNextTab(),
+		NewPrevTab(),
 	}
 }

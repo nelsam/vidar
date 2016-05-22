@@ -81,33 +81,21 @@ func (e *TabbedEditor) CreatePanelTab() mixins.PanelTab {
 	return basic.CreatePanelTab(e.theme)
 }
 
-func (e *TabbedEditor) KeyPress(event gxui.KeyboardEvent) bool {
-	if event.Modifier.Control() || event.Modifier.Super() {
-		switch event.Key {
-		case gxui.KeyTab:
-			panels := e.PanelCount()
-			if panels < 2 {
-				return true
-			}
-			current := e.PanelIndex(e.SelectedPanel())
-			next := current + 1
-			if event.Modifier.Shift() {
-				next = current - 1
-			}
-			if next >= panels {
-				next = 0
-			}
-			if next < 0 {
-				next = panels - 1
-			}
-			e.Select(next)
-			e.driver.Call(func() {
-				e.Focus()
-			})
-			return true
-		}
+func (e *TabbedEditor) ShiftTab(delta int) {
+	panels := e.PanelCount()
+	if panels < 2 {
+		return
 	}
-	return e.PanelHolder.KeyPress(event)
+	current := e.PanelIndex(e.SelectedPanel())
+	next := current + delta
+	for next < 0 {
+		next = panels - next
+	}
+	next = next % panels
+	e.Select(next)
+	e.driver.Call(func() {
+		e.Focus()
+	})
 }
 
 func (e *TabbedEditor) CloseCurrentEditor() (name string, editor *CodeEditor) {
