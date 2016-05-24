@@ -109,6 +109,13 @@ func setDefaultBindings() {
 	Keybindings.SetDefault("Alt-V", "split-view-vertically")
 	Keybindings.SetDefault("Ctrl-Tab", "next-tab")
 	Keybindings.SetDefault("Ctrl-Shift-Tab", "prev-tab")
+
+	Keybindings.SetDefault("Left", "prev-char")
+	Keybindings.SetDefault("Right", "next-char")
+	Keybindings.SetDefault("Up", "prev-line")
+	Keybindings.SetDefault("Down", "next-line")
+	Keybindings.SetDefault("End", "end-of-line")
+	Keybindings.SetDefault("Home", "beginning-of-line")
 }
 
 func writeDefaultBindings() {

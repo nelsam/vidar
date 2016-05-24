@@ -325,7 +325,7 @@ func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 			e.SortSuggestionList()
 		}
 		return result
-	case gxui.KeyHome, gxui.KeyEnd, gxui.KeyPageUp, gxui.KeyPageDown, gxui.KeyDelete:
+	case gxui.KeyPageUp, gxui.KeyPageDown, gxui.KeyDelete:
 		// These are all bindings that the TextBox handles fine.
 		return e.TextBox.KeyPress(event)
 	case gxui.KeyTab:
@@ -341,12 +341,12 @@ func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 		if e.IsSuggestionListShowing() {
 			return e.suggestions.KeyPress(event)
 		}
-		return e.TextBox.KeyPress(event)
+		return false
 	case gxui.KeyLeft, gxui.KeyRight:
 		if e.IsSuggestionListShowing() {
 			e.HideSuggestionList()
 		}
-		return e.TextBox.KeyPress(event)
+		return false
 	case gxui.KeyEnter:
 		controller := e.Controller()
 		if e.IsSuggestionListShowing() {

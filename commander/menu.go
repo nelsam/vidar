@@ -101,7 +101,7 @@ func (m *menu) Add(command Command, bindings ...gxui.KeyboardEvent) {
 		if executor, ok := command.(Executor); ok {
 			m.commander.Controller().Execute(executor)
 		}
-		m.commander.box.Clear()
+		m.commander.box.Finish()
 	})
 }
 
