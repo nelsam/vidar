@@ -34,6 +34,10 @@ func init() {
 		log.Printf("Error: Could not create config directory %s: %s", filepath.Dir(projectsPath), err)
 		return
 	}
+	if err := readBindings(); err != nil {
+		log.Printf("Error reading key bindings: %s", err)
+		return
+	}
 	f, err := os.Open(settingsPath)
 	if os.IsNotExist(err) {
 		return

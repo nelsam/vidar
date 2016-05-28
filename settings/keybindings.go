@@ -25,24 +25,6 @@ func init() {
 	bindings.AddConfigPath(defaultConfigDir)
 	bindings.SetConfigName(keysFilename)
 	setDefaultBindings()
-
-	// TODO: this is a bit of a messy way to set up the bindings; it needs
-	// a cleanup.
-	err := bindings.ReadInConfig()
-	if _, unsupported := err.(viper.UnsupportedConfigError); unsupported {
-		err = writeBindings()
-		if err != nil {
-			log.Printf("Error writing default key bindings: %s", err)
-			return
-		}
-	}
-	if err != nil {
-		log.Printf("Error reading keybindings: %s", err)
-		return
-	}
-	if err = updateBindings(); err != nil {
-		log.Printf("Error updating keybindings: %s", err)
-	}
 }
 
 func Bindings(commandName string) (events []gxui.KeyboardEvent) {
@@ -169,6 +151,17 @@ func updateBindings() error {
 		return updateBindingConfigBytes(b)
 	}
 	return nil
+}
+
+func readBindings() error {
+	err := bindings.ReadInConfig()
+	if _, unsupported := err.(viper.UnsupportedConfigError); unsupported {
+		err = writeBindings()
+	}
+	if err != nil {
+		return err
+	}
+	return updateBindings()
 }
 
 func bindingConfigBytes() ([]byte, error) {
