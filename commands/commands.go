@@ -44,10 +44,16 @@ func Commands(driver gxui.Driver, theme *basic.Theme, projPane gxui.Control) []c
 
 		// Navigation menu
 		NewPrevLine(),
+		NewSelectPrevLine(),
 		NewNextLine(),
+		NewSelectNextLine(),
 		NewPrevChar(),
+		NewSelectPrevChar(),
 		NewNextChar(),
-		NewBeginningOfLine(),
-		NewEndOfLine(),
+		NewSelectNextChar(),
+		NewLineStart(),
+		NewSelectLineStart(),
+		NewLineEnd(),
+		NewSelectLineEnd(),
 	}
 }

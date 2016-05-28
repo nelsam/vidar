@@ -111,11 +111,17 @@ func setDefaultBindings() {
 	Keybindings.SetDefault("Ctrl-Shift-Tab", "prev-tab")
 
 	Keybindings.SetDefault("Left", "prev-char")
+	Keybindings.SetDefault("Shift-Left", "select-prev-char")
 	Keybindings.SetDefault("Right", "next-char")
+	Keybindings.SetDefault("Shift-Right", "select-next-char")
 	Keybindings.SetDefault("Up", "prev-line")
+	Keybindings.SetDefault("Shift-Up", "select-prev-line")
 	Keybindings.SetDefault("Down", "next-line")
-	Keybindings.SetDefault("End", "end-of-line")
-	Keybindings.SetDefault("Home", "beginning-of-line")
+	Keybindings.SetDefault("Shift-Down", "select-next-line")
+	Keybindings.SetDefault("End", "line-end")
+	Keybindings.SetDefault("Shift-End", "select-to-line-end")
+	Keybindings.SetDefault("Home", "line-start")
+	Keybindings.SetDefault("Shift-Home", "select-to-line-start")
 }
 
 func writeDefaultBindings() {

@@ -4,11 +4,64 @@
 
 package commands
 
+import "github.com/nelsam/vidar/editor"
+
+type EditorCommand interface {
+	Name() string
+	Menu() string
+	Exec(*editor.CodeEditor)
+}
+
+type EditorExecutor struct {
+	EditorCommand
+}
+
+func (e EditorExecutor) Exec(target interface{}) (executed, consume bool) {
+	finder, ok := target.(EditorFinder)
+	if !ok {
+		return false, false
+	}
+	e.EditorCommand.Exec(finder.CurrentEditor())
+	return true, true
+}
+
+type Scroller struct {
+	EditorCommand
+}
+
+func NewScroller(cmd EditorCommand) EditorExecutor {
+	return EditorExecutor{
+		EditorCommand: Scroller{
+			EditorCommand: cmd,
+		},
+	}
+}
+
+func (s Scroller) Exec(editor *editor.CodeEditor) {
+	s.EditorCommand.Exec(editor)
+	editor.ScrollToRune(editor.Controller().FirstCaret())
+}
+
+type Mover struct {
+	EditorCommand
+}
+
+func NewMover(cmd EditorCommand) EditorExecutor {
+	return NewScroller(Mover{EditorCommand: cmd})
+}
+
+func (m Mover) Exec(editor *editor.CodeEditor) {
+	if editor.Controller().Deselect(true) {
+		return
+	}
+	m.EditorCommand.Exec(editor)
+}
+
 type PrevLine struct {
 }
 
-func NewPrevLine() *PrevLine {
-	return &PrevLine{}
+func NewPrevLine() EditorExecutor {
+	return NewMover(PrevLine{})
 }
 
 func (PrevLine) Name() string {
@@ -19,20 +72,34 @@ func (PrevLine) Menu() string {
 	return "Navigation"
 }
 
-func (PrevLine) Exec(target interface{}) (executed, consume bool) {
-	finder, ok := target.(EditorFinder)
-	if !ok {
-		return false, false
-	}
-	finder.CurrentEditor().Controller().MoveUp()
-	return true, true
+func (PrevLine) Exec(editor *editor.CodeEditor) {
+	editor.Controller().MoveUp()
+}
+
+type SelectPrevLine struct {
+}
+
+func NewSelectPrevLine() EditorExecutor {
+	return NewScroller(SelectPrevLine{})
+}
+
+func (SelectPrevLine) Name() string {
+	return "select-prev-line"
+}
+
+func (SelectPrevLine) Menu() string {
+	return "Navigation"
+}
+
+func (SelectPrevLine) Exec(editor *editor.CodeEditor) {
+	editor.Controller().SelectUp()
 }
 
 type NextLine struct {
 }
 
-func NewNextLine() *NextLine {
-	return &NextLine{}
+func NewNextLine() EditorExecutor {
+	return NewMover(NextLine{})
 }
 
 func (NextLine) Name() string {
@@ -43,20 +110,34 @@ func (NextLine) Menu() string {
 	return "Navigation"
 }
 
-func (NextLine) Exec(target interface{}) (executed, consume bool) {
-	finder, ok := target.(EditorFinder)
-	if !ok {
-		return false, false
-	}
-	finder.CurrentEditor().Controller().MoveDown()
-	return true, true
+func (NextLine) Exec(editor *editor.CodeEditor) {
+	editor.Controller().MoveDown()
+}
+
+type SelectNextLine struct {
+}
+
+func NewSelectNextLine() EditorExecutor {
+	return NewScroller(SelectNextLine{})
+}
+
+func (SelectNextLine) Name() string {
+	return "select-next-line"
+}
+
+func (SelectNextLine) Menu() string {
+	return "Navigation"
+}
+
+func (SelectNextLine) Exec(editor *editor.CodeEditor) {
+	editor.Controller().SelectDown()
 }
 
 type PrevChar struct {
 }
 
-func NewPrevChar() *PrevChar {
-	return &PrevChar{}
+func NewPrevChar() EditorExecutor {
+	return NewMover(PrevChar{})
 }
 
 func (PrevChar) Name() string {
@@ -67,20 +148,34 @@ func (PrevChar) Menu() string {
 	return "Navigation"
 }
 
-func (PrevChar) Exec(target interface{}) (executed, consume bool) {
-	finder, ok := target.(EditorFinder)
-	if !ok {
-		return false, false
-	}
-	finder.CurrentEditor().Controller().MoveLeft()
-	return true, true
+func (PrevChar) Exec(editor *editor.CodeEditor) {
+	editor.Controller().MoveLeft()
+}
+
+type SelectPrevChar struct {
+}
+
+func NewSelectPrevChar() EditorExecutor {
+	return NewScroller(SelectPrevChar{})
+}
+
+func (SelectPrevChar) Name() string {
+	return "select-prev-char"
+}
+
+func (SelectPrevChar) Menu() string {
+	return "Navigation"
+}
+
+func (SelectPrevChar) Exec(editor *editor.CodeEditor) {
+	editor.Controller().SelectLeft()
 }
 
 type NextChar struct {
 }
 
-func NewNextChar() *NextChar {
-	return &NextChar{}
+func NewNextChar() EditorExecutor {
+	return NewMover(NextChar{})
 }
 
 func (NextChar) Name() string {
@@ -91,59 +186,101 @@ func (NextChar) Menu() string {
 	return "Navigation"
 }
 
-func (NextChar) Exec(target interface{}) (executed, consume bool) {
-	finder, ok := target.(EditorFinder)
-	if !ok {
-		return false, false
-	}
-	finder.CurrentEditor().Controller().MoveRight()
-	return true, true
+func (NextChar) Exec(editor *editor.CodeEditor) {
+	editor.Controller().MoveRight()
 }
 
-type EndOfLine struct {
+type SelectNextChar struct {
 }
 
-func NewEndOfLine() *EndOfLine {
-	return &EndOfLine{}
+func NewSelectNextChar() EditorExecutor {
+	return NewScroller(SelectNextChar{})
 }
 
-func (EndOfLine) Name() string {
-	return "end-of-line"
+func (SelectNextChar) Name() string {
+	return "select-next-char"
 }
 
-func (EndOfLine) Menu() string {
+func (SelectNextChar) Menu() string {
 	return "Navigation"
 }
 
-func (EndOfLine) Exec(target interface{}) (executed, consume bool) {
-	finder, ok := target.(EditorFinder)
-	if !ok {
-		return false, false
-	}
-	finder.CurrentEditor().Controller().MoveEnd()
-	return true, true
+func (SelectNextChar) Exec(editor *editor.CodeEditor) {
+	editor.Controller().SelectRight()
 }
 
-type BeginningOfLine struct {
+type LineEnd struct {
 }
 
-func NewBeginningOfLine() *BeginningOfLine {
-	return &BeginningOfLine{}
+func NewLineEnd() EditorExecutor {
+	return NewMover(LineEnd{})
 }
 
-func (BeginningOfLine) Name() string {
-	return "beginning-of-line"
+func (LineEnd) Name() string {
+	return "line-end"
 }
 
-func (BeginningOfLine) Menu() string {
+func (LineEnd) Menu() string {
 	return "Navigation"
 }
 
-func (BeginningOfLine) Exec(target interface{}) (executed, consume bool) {
-	finder, ok := target.(EditorFinder)
-	if !ok {
-		return false, false
-	}
-	finder.CurrentEditor().Controller().MoveHome()
-	return true, true
+func (LineEnd) Exec(editor *editor.CodeEditor) {
+	editor.Controller().MoveEnd()
+}
+
+type SelectLineEnd struct {
+}
+
+func NewSelectLineEnd() EditorExecutor {
+	return NewScroller(SelectLineEnd{})
+}
+
+func (SelectLineEnd) Name() string {
+	return "select-to-line-end"
+}
+
+func (SelectLineEnd) Menu() string {
+	return "Navigation"
+}
+
+func (SelectLineEnd) Exec(editor *editor.CodeEditor) {
+	editor.Controller().SelectEnd()
+}
+
+type LineStart struct {
+}
+
+func NewLineStart() EditorExecutor {
+	return NewMover(LineStart{})
+}
+
+func (LineStart) Name() string {
+	return "line-start"
+}
+
+func (LineStart) Menu() string {
+	return "Navigation"
+}
+
+func (LineStart) Exec(editor *editor.CodeEditor) {
+	editor.Controller().MoveHome()
+}
+
+type SelectLineStart struct {
+}
+
+func NewSelectLineStart() EditorExecutor {
+	return NewScroller(SelectLineStart{})
+}
+
+func (SelectLineStart) Name() string {
+	return "select-to-line-start"
+}
+
+func (SelectLineStart) Menu() string {
+	return "Navigation"
+}
+
+func (SelectLineStart) Exec(editor *editor.CodeEditor) {
+	editor.Controller().SelectHome()
 }
