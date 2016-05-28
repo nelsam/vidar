@@ -64,8 +64,6 @@ func parseBinding(eventPattern string) []gxui.KeyboardEvent {
 			log.Printf("Error parsing key bindings: Modifier %s not understood", key)
 		}
 	}
-	// TODO: This is making an assumption about keys supported in gxui
-	// and the order they are defined in.  I'd rather not do that.
 	for k := gxui.KeyboardKey(0); k < gxui.KeyLast; k++ {
 		if strings.ToLower(k.String()) == key {
 			event.Key = k
