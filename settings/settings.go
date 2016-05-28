@@ -20,14 +20,20 @@ const (
 )
 
 var (
-	App          = xdg.App{Name: "vidar"}
-	projectsPath = App.ConfigPath("projects")
-	settingsPath = App.ConfigPath("settings")
+	App              = xdg.App{Name: "vidar"}
+	defaultConfigDir = filepath.Join(xdg.ConfigHome(), App.Name)
+	projectsPath     = App.ConfigPath("projects")
+	settingsPath     = App.ConfigPath("settings")
 
 	appSettings settings
 )
 
 func init() {
+	err := os.MkdirAll(filepath.Dir(projectsPath), 0777)
+	if err != nil {
+		log.Printf("Error: Could not create config directory %s: %s", filepath.Dir(projectsPath), err)
+		return
+	}
 	f, err := os.Open(settingsPath)
 	if os.IsNotExist(err) {
 		return
@@ -111,13 +117,6 @@ func AddProject(project Project) {
 	if err != nil {
 		log.Printf("Error: Could not convert project to yaml: %s", err)
 		return
-	}
-	if _, err := os.Stat(filepath.Dir(projectsPath)); os.IsNotExist(err) {
-		err = os.MkdirAll(filepath.Dir(projectsPath), 0777)
-		if err != nil {
-			log.Printf("Error: Could not create %s: %s", filepath.Dir(projectsPath), err)
-			return
-		}
 	}
 	projects, err := os.Create(projectsPath)
 	if err != nil {

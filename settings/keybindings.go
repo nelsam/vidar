@@ -5,43 +5,53 @@
 package settings
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/casimir/xdg-go"
 	"github.com/nelsam/gxui"
 	"github.com/spf13/viper"
 )
 
 const keysFilename = "keys"
 
-var Keybindings = viper.New()
+var bindings = viper.New()
 
 func init() {
-	Keybindings.AddConfigPath(filepath.Join(xdg.ConfigHome(), App.Name))
-	Keybindings.SetConfigName(keysFilename)
+	bindings.AddConfigPath(defaultConfigDir)
+	bindings.SetConfigName(keysFilename)
 	setDefaultBindings()
-	err := Keybindings.ReadInConfig()
+
+	// TODO: this is a bit of a messy way to set up the bindings; it needs
+	// a cleanup.
+	err := bindings.ReadInConfig()
 	if _, unsupported := err.(viper.UnsupportedConfigError); unsupported {
-		writeDefaultBindings()
-		err = Keybindings.ReadInConfig()
+		err = writeBindings()
+		if err != nil {
+			log.Printf("Error writing default key bindings: %s", err)
+			return
+		}
 	}
 	if err != nil {
-		panic(fmt.Errorf("Fatal error reading keybindings: %s", err))
+		log.Printf("Error reading keybindings: %s", err)
+		return
+	}
+	if err = updateBindings(); err != nil {
+		log.Printf("Error updating keybindings: %s", err)
 	}
 }
 
-func Bindings(commandName string) (bindings []gxui.KeyboardEvent) {
-	for event, action := range Keybindings.AllSettings() {
+func Bindings(commandName string) (events []gxui.KeyboardEvent) {
+	for event, action := range bindings.AllSettings() {
 		if action == commandName {
-			bindings = append(bindings, parseBinding(event)...)
+			events = append(events, parseBinding(event)...)
 		}
 	}
-	return bindings
+	return events
 }
 
 func parseBinding(eventPattern string) []gxui.KeyboardEvent {
@@ -83,52 +93,105 @@ func parseBinding(eventPattern string) []gxui.KeyboardEvent {
 }
 
 func setDefaultBindings() {
-	Keybindings.SetDefault("Ctrl-Shift-N", "add-project")
-	Keybindings.SetDefault("Ctrl-Shift-O", "open-project")
-	Keybindings.SetDefault("Ctrl-O", "open-file")
-	Keybindings.SetDefault("Ctrl-A", "select-all")
-	Keybindings.SetDefault("Ctrl-S", "goimports, save-current-file")
-	Keybindings.SetDefault("Ctrl-W", "close-current-tab")
+	bindings.SetDefault("Ctrl-Shift-N", "add-project")
+	bindings.SetDefault("Ctrl-Shift-O", "open-project")
+	bindings.SetDefault("Ctrl-O", "open-file")
+	bindings.SetDefault("Ctrl-A", "select-all")
+	bindings.SetDefault("Ctrl-S", "goimports, save-current-file")
+	bindings.SetDefault("Ctrl-W", "close-current-tab")
 
-	Keybindings.SetDefault("Ctrl-Z", "undo-last-edit")
-	Keybindings.SetDefault("Ctrl-Shift-Z", "redo-next-edit")
-	Keybindings.SetDefault("Ctrl-F", "find")
-	Keybindings.SetDefault("Ctrl-C", "copy-selection")
-	Keybindings.SetDefault("Ctrl-X", "cut-selection")
-	Keybindings.SetDefault("Ctrl-V", "paste")
-	Keybindings.SetDefault("Ctrl-Space", "show-suggestions")
-	Keybindings.SetDefault("Ctrl-G", "goto-line")
-	Keybindings.SetDefault("Ctrl-Shift-G", "goto-definition")
-	Keybindings.SetDefault("Ctrl-Shift-L", "update-license")
-	Keybindings.SetDefault("Ctrl-Shift-F", "goimports")
-	Keybindings.SetDefault("Ctrl-/", "toggle-comments")
+	bindings.SetDefault("Ctrl-Z", "undo-last-edit")
+	bindings.SetDefault("Ctrl-Shift-Z", "redo-next-edit")
+	bindings.SetDefault("Ctrl-F", "find")
+	bindings.SetDefault("Ctrl-C", "copy-selection")
+	bindings.SetDefault("Ctrl-X", "cut-selection")
+	bindings.SetDefault("Ctrl-V", "paste")
+	bindings.SetDefault("Ctrl-Space", "show-suggestions")
+	bindings.SetDefault("Ctrl-G", "goto-line")
+	bindings.SetDefault("Ctrl-Shift-G", "goto-definition")
+	bindings.SetDefault("Ctrl-Shift-L", "update-license")
+	bindings.SetDefault("Ctrl-Shift-F", "goimports")
+	bindings.SetDefault("Ctrl-/", "toggle-comments")
 
-	Keybindings.SetDefault("Alt-H", "split-view-horizontally")
-	Keybindings.SetDefault("Alt-V", "split-view-vertically")
-	Keybindings.SetDefault("Ctrl-Tab", "next-tab")
-	Keybindings.SetDefault("Ctrl-Shift-Tab", "prev-tab")
+	bindings.SetDefault("Alt-H", "split-view-horizontally")
+	bindings.SetDefault("Alt-V", "split-view-vertically")
+	bindings.SetDefault("Ctrl-Tab", "next-tab")
+	bindings.SetDefault("Ctrl-Shift-Tab", "prev-tab")
 
-	Keybindings.SetDefault("Left", "prev-char")
-	Keybindings.SetDefault("Shift-Left", "select-prev-char")
-	Keybindings.SetDefault("Right", "next-char")
-	Keybindings.SetDefault("Shift-Right", "select-next-char")
-	Keybindings.SetDefault("Up", "prev-line")
-	Keybindings.SetDefault("Shift-Up", "select-prev-line")
-	Keybindings.SetDefault("Down", "next-line")
-	Keybindings.SetDefault("Shift-Down", "select-next-line")
-	Keybindings.SetDefault("End", "line-end")
-	Keybindings.SetDefault("Shift-End", "select-to-line-end")
-	Keybindings.SetDefault("Home", "line-start")
-	Keybindings.SetDefault("Shift-Home", "select-to-line-start")
+	bindings.SetDefault("Left", "prev-char")
+	bindings.SetDefault("Shift-Left", "select-prev-char")
+	bindings.SetDefault("Right", "next-char")
+	bindings.SetDefault("Shift-Right", "select-next-char")
+	bindings.SetDefault("Up", "prev-line")
+	bindings.SetDefault("Shift-Up", "select-prev-line")
+	bindings.SetDefault("Down", "next-line")
+	bindings.SetDefault("Shift-Down", "select-next-line")
+	bindings.SetDefault("End", "line-end")
+	bindings.SetDefault("Shift-End", "select-to-line-end")
+	bindings.SetDefault("Home", "line-start")
+	bindings.SetDefault("Shift-Home", "select-to-line-start")
 }
 
-func writeDefaultBindings() {
+func writeBindings() error {
 	f, err := os.Create(App.ConfigPath(keysFilename + ".toml"))
 	if err != nil {
-		panic(fmt.Errorf("Could not create config file: %s", err))
+		return fmt.Errorf("Could not create config file: %s", err)
 	}
+	defer f.Close()
 	encoder := toml.NewEncoder(f)
-	if err := encoder.Encode(Keybindings.AllSettings()); err != nil {
-		panic(fmt.Errorf("Could not marshal default key bindings: %s", err))
+	if err := encoder.Encode(bindings.AllSettings()); err != nil {
+		return fmt.Errorf("Could not marshal key bindings: %s", err)
 	}
+	return nil
+}
+
+func updateBindings() error {
+	configNeedsUpdate := false
+	for key, action := range bindings.AllSettings() {
+		// The following were changed on May 30, 2016.  They should
+		// be safe to remove by July, 2016.
+		if action == "end-of-line" {
+			bindings.Set(key, "line-end")
+			configNeedsUpdate = true
+		}
+		if action == "beginning-of-line" {
+			bindings.Set(key, "line-start")
+			configNeedsUpdate = true
+		}
+	}
+	if configNeedsUpdate {
+		b, err := bindingConfigBytes()
+		if err != nil {
+			return err
+		}
+		b = bytes.Replace(b, []byte("end-of-line"), []byte("line-end"), -1)
+		b = bytes.Replace(b, []byte("beginning-of-line"), []byte("line-start"), -1)
+		return updateBindingConfigBytes(b)
+	}
+	return nil
+}
+
+func bindingConfigBytes() ([]byte, error) {
+	f, err := os.Open(bindings.ConfigFileUsed())
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return ioutil.ReadAll(f)
+}
+
+func updateBindingConfigBytes(bytes []byte) error {
+	f, err := os.Create(bindings.ConfigFileUsed())
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	written, err := f.Write(bytes)
+	if err != nil {
+		return err
+	}
+	if written < len(bytes) {
+		return fmt.Errorf("Error: expected %d bytes to be written, got %d", len(bytes), written)
+	}
+	return nil
 }
