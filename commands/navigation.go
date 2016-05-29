@@ -152,6 +152,24 @@ func (PrevChar) Exec(editor *editor.CodeEditor) {
 	editor.Controller().MoveLeft()
 }
 
+type PrevWord struct{}
+
+func NewPrevWord() EditorExecutor {
+	return NewMover(PrevWord{})
+}
+
+func (PrevWord) Name() string {
+	return "prev-word"
+}
+
+func (PrevWord) Menu() string {
+	return "Navigation"
+}
+
+func (PrevWord) Exec(editor *editor.CodeEditor) {
+	editor.Controller().MoveLeftByWord()
+}
+
 type SelectPrevChar struct {
 }
 
@@ -169,6 +187,25 @@ func (SelectPrevChar) Menu() string {
 
 func (SelectPrevChar) Exec(editor *editor.CodeEditor) {
 	editor.Controller().SelectLeft()
+}
+
+type SelectPrevWord struct {
+}
+
+func NewSelectPrevWord() EditorExecutor {
+	return NewScroller(SelectPrevWord{})
+}
+
+func (SelectPrevWord) Name() string {
+	return "select-prev-word"
+}
+
+func (SelectPrevWord) Menu() string {
+	return "Navigation"
+}
+
+func (SelectPrevWord) Exec(editor *editor.CodeEditor) {
+	editor.Controller().SelectLeftByWord()
 }
 
 type NextChar struct {
@@ -190,6 +227,25 @@ func (NextChar) Exec(editor *editor.CodeEditor) {
 	editor.Controller().MoveRight()
 }
 
+type NextWord struct {
+}
+
+func NewNextWord() EditorExecutor {
+	return NewMover(NextWord{})
+}
+
+func (NextWord) Name() string {
+	return "next-word"
+}
+
+func (NextWord) Menu() string {
+	return "Navigation"
+}
+
+func (NextWord) Exec(editor *editor.CodeEditor) {
+	editor.Controller().MoveRightByWord()
+}
+
 type SelectNextChar struct {
 }
 
@@ -207,6 +263,25 @@ func (SelectNextChar) Menu() string {
 
 func (SelectNextChar) Exec(editor *editor.CodeEditor) {
 	editor.Controller().SelectRight()
+}
+
+type SelectNextWord struct {
+}
+
+func NewSelectNextWord() EditorExecutor {
+	return NewScroller(SelectNextWord{})
+}
+
+func (SelectNextWord) Name() string {
+	return "select-next-word"
+}
+
+func (SelectNextWord) Menu() string {
+	return "Navigation"
+}
+
+func (SelectNextWord) Exec(editor *editor.CodeEditor) {
+	editor.Controller().SelectRightByWord()
 }
 
 type LineEnd struct {

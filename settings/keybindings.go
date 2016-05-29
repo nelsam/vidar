@@ -101,9 +101,13 @@ func setDefaultBindings() {
 	bindings.SetDefault("Ctrl-Shift-Tab", "prev-tab")
 
 	bindings.SetDefault("Left", "prev-char")
+	bindings.SetDefault("Ctrl-Left", "prev-word")
 	bindings.SetDefault("Shift-Left", "select-prev-char")
+	bindings.SetDefault("Ctrl-Shift-Left", "select-prev-word")
 	bindings.SetDefault("Right", "next-char")
+	bindings.SetDefault("Ctrl-Right", "next-word")
 	bindings.SetDefault("Shift-Right", "select-next-char")
+	bindings.SetDefault("Ctrl-Shift-Right", "select-next-word")
 	bindings.SetDefault("Up", "prev-line")
 	bindings.SetDefault("Shift-Up", "select-prev-line")
 	bindings.SetDefault("Down", "next-line")
