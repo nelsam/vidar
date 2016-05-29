@@ -56,8 +56,9 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 	formatted, err := cmd.Output()
 	if err != nil {
 		msg := errBuffer.String()
-		pathEnd := strings.Index(msg, stdinPathPattern) + len(stdinPathPattern)
-		if pathEnd > 0 {
+		stdinPatternStart := strings.Index(msg, stdinPathPattern)
+		if stdinPatternStart > 0 {
+			pathEnd := stdinPatternStart + len(stdinPathPattern)
 			msg = msg[pathEnd:]
 		}
 		gi.err = fmt.Sprintf("goimports error: %s", msg)
