@@ -56,6 +56,10 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 	formatted, err := cmd.Output()
 	if err != nil {
 		msg := errBuffer.String()
+		if msg == "" {
+			gi.err = err.Error()
+			return true, true
+		}
 		stdinPatternStart := strings.Index(msg, stdinPathPattern)
 		if stdinPatternStart > 0 {
 			pathEnd := stdinPatternStart + len(stdinPathPattern)
