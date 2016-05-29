@@ -57,7 +57,10 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 	if err != nil {
 		msg := errBuffer.String()
 		pathEnd := strings.Index(msg, stdinPathPattern) + len(stdinPathPattern)
-		gi.err = fmt.Sprintf("goimports error: %s", msg[pathEnd:])
+		if pathEnd > 0 {
+			msg = msg[pathEnd:]
+		}
+		gi.err = fmt.Sprintf("goimports error: %s", msg)
 		return true, true
 	}
 	edits := []gxui.TextBoxEdit{
