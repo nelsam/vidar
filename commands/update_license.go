@@ -38,9 +38,10 @@ func (u *LicenseHeaderUpdate) Exec(on interface{}) (executed, consume bool) {
 		return true, true
 	}
 	editor := finder.CurrentEditor()
-	runes := editor.Controller().TextRunes()
-	runes = append(runes[:len(edit.New)], runes[len(edit.Old):]...)
-	copy(runes, edit.New)
+	oldRunes := editor.Controller().TextRunes()
+	runes := make([]rune, 0, len(oldRunes)+edit.Delta)
+	runes = append(runes, edit.New...)
+	runes = append(runes, oldRunes[len(edit.Old):]...)
 
 	editor.Controller().SetTextEdits(runes, []gxui.TextBoxEdit{*edit})
 	return true, true
