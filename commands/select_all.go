@@ -23,6 +23,10 @@ func (s *SelectAll) Exec(target interface{}) (executed, consume bool) {
 	if !ok {
 		return false, false
 	}
-	finder.CurrentEditor().SelectAll()
+	editor := finder.CurrentEditor()
+	if editor == nil {
+		return true, true
+	}
+	editor.SelectAll()
 	return true, true
 }
