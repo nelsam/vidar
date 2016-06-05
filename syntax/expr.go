@@ -110,7 +110,7 @@ func (l layers) handleParenExpr(src *ast.ParenExpr) gxui.CodeSyntaxLayers {
 }
 
 func (l layers) handleSelectorExpr(src *ast.SelectorExpr) gxui.CodeSyntaxLayers {
-	return gxui.CodeSyntaxLayers{l.nodeLayer(src.Sel, functionColor)}
+	return append(l.handleExpr(src.X), l.nodeLayer(src.Sel, functionColor))
 }
 
 func (l layers) handleSliceExpr(src *ast.SliceExpr) gxui.CodeSyntaxLayers {
