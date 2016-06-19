@@ -21,7 +21,11 @@ func (e EditorExecutor) Exec(target interface{}) (executed, consume bool) {
 	if !ok {
 		return false, false
 	}
-	e.EditorCommand.Exec(finder.CurrentEditor())
+	editor := finder.CurrentEditor()
+	if editor == nil {
+		return true, true
+	}
+	e.EditorCommand.Exec(editor)
 	return true, true
 }
 
