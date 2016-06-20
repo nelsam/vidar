@@ -24,6 +24,10 @@ func (s *ShowSuggestions) Exec(target interface{}) (executed, consume bool) {
 	if !ok {
 		return false, false
 	}
-	finder.CurrentEditor().ShowSuggestionList()
+	editor := finder.CurrentEditor()
+	if editor == nil {
+		return true, true
+	}
+	editor.ShowSuggestionList()
 	return true, true
 }
