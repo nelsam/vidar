@@ -54,6 +54,7 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 	e.CodeEditor.Init(e, driver, theme, font)
 	e.CodeEditor.SetScrollBarEnabled(true)
 	e.SetDesiredWidth(math.MaxSize.W)
+	e.watcherSetup()
 
 	e.OnTextChanged(func(changes []gxui.TextBoxEdit) {
 		e.hasChanges = true
@@ -78,24 +79,57 @@ func (e *CodeEditor) open(headerText string) {
 	e.load(headerText)
 }
 
-func (e *CodeEditor) watch() {
+func (e *CodeEditor) watcherSetup() {
 	var err error
 	e.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		log.Printf("Error creating new fsnotify watcher: %s", err)
-		return
 	}
-	err = e.watcher.Add(e.filepath)
+}
+
+func (e *CodeEditor) startWatch() error {
+	err := e.watcher.Add(e.filepath)
 	if os.IsNotExist(err) {
 		err = e.waitForFileCreate()
+		if err != nil {
+			return err
+		}
+		return e.startWatch()
 	}
+	return nil
+}
+
+func (e *CodeEditor) watch() {
+	if e.watcher == nil {
+		return
+	}
+	err := e.startWatch()
 	if err != nil {
 		log.Printf("Error trying to watch %s for changes: %s", e.filepath, err)
 		return
 	}
+	defer e.watcher.Remove(e.filepath)
+	fileDir := filepath.Dir(e.filepath)
+	err = e.watcher.Add(fileDir)
+	if err != nil {
+		log.Printf("Error trying to watch %s for changes: %s", fileDir, err)
+		return
+	}
+	defer e.watcher.Remove(fileDir)
 	err = e.inotifyWait(func(event fsnotify.Event) bool {
-		if event.Op&fsnotify.Write == fsnotify.Write {
+		switch event.Op {
+		case fsnotify.Write:
+			if event.Name != e.filepath {
+				return false
+			}
 			e.load("")
+		case fsnotify.Rename:
+			log.Printf("File %s was renamed, but we don't know what it was renamed to.  "+
+				"Waiting for it to be recreated.", e.filepath)
+			fallthrough
+		case fsnotify.Remove:
+			e.open("")
+			return true
 		}
 		return false
 	})
@@ -136,7 +170,9 @@ func (e *CodeEditor) inotifyWait(eventFunc func(fsnotify.Event) (done bool)) err
 func (e *CodeEditor) load(headerText string) {
 	f, err := os.Open(e.filepath)
 	if os.IsNotExist(err) {
-		e.SetText(headerText)
+		e.driver.Call(func() {
+			e.SetText(headerText)
+		})
 		return
 	}
 	if err != nil {
