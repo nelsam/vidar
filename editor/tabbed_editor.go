@@ -5,6 +5,9 @@
 package editor
 
 import (
+	"path/filepath"
+	"strings"
+
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
@@ -37,13 +40,32 @@ func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, t
 	e.SetMargin(math.Spacing{L: 0, T: 2, R: 0, B: 0})
 }
 
-func (e *TabbedEditor) Open(name, path, gopath, headerText string) *CodeEditor {
+func (e *TabbedEditor) Open(hiddenPrefix, path, gopath, headerText string) *CodeEditor {
+	name := relPath(hiddenPrefix, path)
 	if editor, ok := e.editors[name]; ok {
 		e.Select(e.PanelIndex(editor))
 		e.Focus()
 		return editor
 	}
 	editor := &CodeEditor{}
+	// We want the OnRename trigger set up before the editor opens the file
+	// in its Init method.
+	editor.OnRename(func(newPath string) {
+		e.driver.Call(func() {
+			delete(e.editors, name)
+			newName := relPath(hiddenPrefix, newPath)
+			focused := e.SelectedPanel()
+			e.editors[newName] = editor
+			idx := e.PanelIndex(editor)
+			if idx == -1 {
+				return
+			}
+			e.RemovePanel(editor)
+			e.AddPanelAt(editor, newName, idx)
+			e.Select(e.PanelIndex(focused))
+			e.Focus()
+		})
+	})
 	editor.Init(e.driver, e.theme, e.font, path, headerText)
 	editor.SetTabWidth(4)
 	suggester := suggestions.NewGoCodeProvider(editor, gopath)
@@ -129,4 +151,12 @@ func (e *TabbedEditor) CurrentFile() string {
 		return ""
 	}
 	return e.SelectedPanel().(*CodeEditor).Filepath()
+}
+
+func relPath(from, path string) string {
+	rel := strings.TrimPrefix(path, from)
+	if rel[0] == filepath.Separator {
+		rel = rel[1:]
+	}
+	return rel
 }

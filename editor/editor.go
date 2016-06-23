@@ -40,6 +40,9 @@ type CodeEditor struct {
 
 	selections      gxui.TextSelectionList
 	scrollPositions math.Point
+
+	renamed  bool
+	onRename func(newPath string)
 }
 
 func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, file, headerText string) {
@@ -72,6 +75,10 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 	e.SetMargin(math.Spacing{L: 3, T: 3, R: 3, B: 3})
 	e.SetPadding(math.Spacing{L: 3, T: 3, R: 3, B: 3})
 	e.SetBorderPen(gxui.TransparentPen)
+}
+
+func (e *CodeEditor) OnRename(callback func(newPath string)) {
+	e.onRename = callback
 }
 
 func (e *CodeEditor) open(headerText string) {
@@ -117,16 +124,20 @@ func (e *CodeEditor) watch() {
 	}
 	defer e.watcher.Remove(fileDir)
 	err = e.inotifyWait(func(event fsnotify.Event) bool {
+		if event.Name != e.filepath {
+			if e.renamed && event.Op == fsnotify.Create {
+				e.filepath = event.Name
+				e.onRename(e.filepath)
+				e.open("")
+				return true
+			}
+			return false
+		}
 		switch event.Op {
 		case fsnotify.Write:
-			if event.Name != e.filepath {
-				return false
-			}
 			e.load("")
 		case fsnotify.Rename:
-			log.Printf("File %s was renamed, but we don't know what it was renamed to.  "+
-				"Waiting for it to be recreated.", e.filepath)
-			fallthrough
+			e.renamed = true
 		case fsnotify.Remove:
 			e.open("")
 			return true

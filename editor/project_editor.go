@@ -6,8 +6,6 @@ package editor
 
 import (
 	"go/token"
-	"path/filepath"
-	"strings"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
@@ -53,11 +51,7 @@ func (p *ProjectEditor) OpenLine(path string, line, col int) {
 }
 
 func (p *ProjectEditor) open(path string) *CodeEditor {
-	name := strings.TrimPrefix(path, p.project.Path)
-	if name[0] == filepath.Separator {
-		name = name[1:]
-	}
-	return p.SplitEditor.Open(name, path, p.project.Gopath, p.project.LicenseHeader())
+	return p.SplitEditor.Open(p.project.Path, path, p.project.Gopath, p.project.LicenseHeader())
 }
 
 func (p *ProjectEditor) Project() settings.Project {
