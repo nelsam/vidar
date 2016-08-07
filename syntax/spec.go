@@ -7,63 +7,36 @@ package syntax
 import (
 	"go/ast"
 	"log"
-
-	"github.com/nelsam/gxui"
 )
 
-func (l layers) handleSpec(spec ast.Spec) gxui.CodeSyntaxLayers {
+func (s *Syntax) addSpec(spec ast.Spec) {
 	switch src := spec.(type) {
 	case *ast.ValueSpec:
-		return l.handleValueSpec(src)
+		s.addValueSpec(src)
 	case *ast.ImportSpec:
-		return l.handleImportSpec(src)
+		s.addImportSpec(src)
 	case *ast.TypeSpec:
-		return l.handleTypeSpec(src)
+		s.addTypeSpec(src)
 	default:
 		log.Printf("Error: Unknown spec type: %T", spec)
-		return nil
 	}
 }
 
-func (l layers) handleValueSpec(val *ast.ValueSpec) gxui.CodeSyntaxLayers {
-	layers := make(gxui.CodeSyntaxLayers, 0, len(val.Names)+len(val.Values)+3)
-	if val.Doc != nil {
-		layers = append(layers, l.nodeLayer(val.Doc, commentColor))
-	}
-	if val.Comment != nil {
-		layers = append(layers, l.nodeLayer(val.Comment, commentColor))
-	}
+func (s *Syntax) addValueSpec(val *ast.ValueSpec) {
 	if val.Type != nil {
-		layers = append(layers, l.nodeLayer(val.Type, typeColor))
+		s.addNode(s.Theme.Colors.Type, val.Type)
 	}
 	for _, expr := range val.Values {
-		layers = append(layers, l.handleExpr(expr)...)
+		s.addExpr(expr)
 	}
-	return layers
 }
 
-func (l layers) handleImportSpec(imp *ast.ImportSpec) gxui.CodeSyntaxLayers {
-	layers := make(gxui.CodeSyntaxLayers, 0, 5)
-	if imp.Doc != nil {
-		layers = append(layers, l.nodeLayer(imp.Doc, commentColor))
-	}
-	if imp.Comment != nil {
-		layers = append(layers, l.nodeLayer(imp.Comment, commentColor))
-	}
-	// TODO: Decide if there should be more highlighting here.  It
-	// seems like the current import highlighting already takes care
-	// of it.
-	return layers
+func (s *Syntax) addImportSpec(imp *ast.ImportSpec) {
+	// TODO: Decide if there should be highlighting here.  It
+	// seems like the current import and comment highlighting
+	// already takes care of it.
 }
 
-func (l layers) handleTypeSpec(typ *ast.TypeSpec) gxui.CodeSyntaxLayers {
-	layers := make(gxui.CodeSyntaxLayers, 0, 5)
-	if typ.Doc != nil {
-		layers = append(layers, l.nodeLayer(typ.Doc, commentColor))
-	}
-	if typ.Comment != nil {
-		layers = append(layers, l.nodeLayer(typ.Comment, commentColor))
-	}
-	layers = append(layers, l.handleExpr(typ.Type)...)
-	return layers
+func (s *Syntax) addTypeSpec(typ *ast.TypeSpec) {
+	s.addExpr(typ.Type)
 }

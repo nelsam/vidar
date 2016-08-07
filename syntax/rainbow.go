@@ -13,81 +13,105 @@ import (
 var (
 	defaultRainbow = &rainbow{
 		colorRange: defaultRange,
-		available: []gxui.Color{
+		available: []Color{
 			{
-				R: 0.7,
-				G: 0.3,
-				B: 0.3,
-				A: 1,
+				Foreground: gxui.Color{
+					R: 0.7,
+					G: 0.3,
+					B: 0.3,
+					A: 1,
+				},
 			},
 			{
-				R: 0.3,
-				G: 0.7,
-				B: 0.3,
-				A: 1,
+				Foreground: gxui.Color{
+					R: 0.3,
+					G: 0.7,
+					B: 0.3,
+					A: 1,
+				},
 			},
 			{
-				R: 0.3,
-				G: 0.3,
-				B: 0.7,
-				A: 1,
+				Foreground: gxui.Color{
+					R: 0.3,
+					G: 0.3,
+					B: 0.7,
+					A: 1,
+				},
 			},
 			{
-				R: 0.7,
-				G: 0.7,
-				B: 0.3,
-				A: 1,
+				Foreground: gxui.Color{
+					R: 0.7,
+					G: 0.7,
+					B: 0.3,
+					A: 1,
+				},
 			},
 			{
-				R: 0.7,
-				G: 0.3,
-				B: 0.7,
-				A: 1,
+				Foreground: gxui.Color{
+					R: 0.7,
+					G: 0.3,
+					B: 0.7,
+					A: 1,
+				},
 			},
 			{
-				R: 0.3,
-				G: 0.7,
-				B: 0.7,
-				A: 1,
+				Foreground: gxui.Color{
+					R: 0.3,
+					G: 0.7,
+					B: 0.7,
+					A: 1,
+				},
 			},
 		},
 	}
 
 	defaultRange = colorRange{
-		min: gxui.Color{
-			R: 0.3,
-			G: 0.3,
-			B: 0.3,
-			A: 1,
+		min: Color{
+			Foreground: gxui.Color{
+				R: 0.3,
+				G: 0.3,
+				B: 0.3,
+				A: 1,
+			},
 		},
-		max: gxui.Color{
-			R: 0.7,
-			G: 0.7,
-			B: 0.7,
-			A: 1,
+		max: Color{
+			Foreground: gxui.Color{
+				R: 0.7,
+				G: 0.7,
+				B: 0.7,
+				A: 1,
+			},
 		},
 	}
 )
 
 type colorRange struct {
-	min, max gxui.Color
+	min, max Color
 }
 
-func (c colorRange) New() gxui.Color {
-	return gxui.Color{
-		R: c.min.R + rand.Float32()*(c.max.R-c.min.R),
-		G: c.min.G + rand.Float32()*(c.max.G-c.min.G),
-		B: c.min.B + rand.Float32()*(c.max.B-c.min.B),
-		A: c.min.A + rand.Float32()*(c.max.A-c.min.A),
+func (c colorRange) New() Color {
+	return Color{
+		Foreground: gxui.Color{
+			R: c.min.Foreground.R + rand.Float32()*(c.max.Foreground.R-c.min.Foreground.R),
+			G: c.min.Foreground.G + rand.Float32()*(c.max.Foreground.G-c.min.Foreground.G),
+			B: c.min.Foreground.B + rand.Float32()*(c.max.Foreground.B-c.min.Foreground.B),
+			A: c.min.Foreground.A + rand.Float32()*(c.max.Foreground.A-c.min.Foreground.A),
+		},
+		Background: gxui.Color{
+			R: c.min.Background.R + rand.Float32()*(c.max.Background.R-c.min.Background.R),
+			G: c.min.Background.G + rand.Float32()*(c.max.Background.G-c.min.Background.G),
+			B: c.min.Background.B + rand.Float32()*(c.max.Background.B-c.min.Background.B),
+			A: c.min.Background.A + rand.Float32()*(c.max.Background.A-c.min.Background.A),
+		},
 	}
 }
 
 type rainbow struct {
 	colorRange       colorRange
-	available, inUse []gxui.Color
+	available, inUse []Color
 }
 
-func (r *rainbow) New() gxui.Color {
+func (r *rainbow) New() Color {
 	next := r.colorRange.New()
 	if len(r.available) > 0 {
 		lastIdx := len(r.available) - 1
@@ -98,7 +122,7 @@ func (r *rainbow) New() gxui.Color {
 	return next
 }
 
-func (r *rainbow) Pop() gxui.Color {
+func (r *rainbow) Pop() Color {
 	lastIdx := len(r.inUse) - 1
 	color := r.inUse[lastIdx]
 	r.inUse = r.inUse[:lastIdx]

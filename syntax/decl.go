@@ -7,67 +7,54 @@ package syntax
 import (
 	"go/ast"
 	"log"
-
-	"github.com/nelsam/gxui"
 )
 
-func (l layers) handleDecl(decl ast.Decl) gxui.CodeSyntaxLayers {
+func (s *Syntax) addDecl(decl ast.Decl) {
 	switch src := decl.(type) {
 	case *ast.GenDecl:
-		return l.handleGenDecl(src)
+		s.addGenDecl(src)
 	case *ast.FuncDecl:
-		return l.handleFuncDecl(src)
+		s.addFuncDecl(src)
 	case *ast.BadDecl:
-		return l.handleBadDecl(src)
+		s.addBadDecl(src)
 	default:
 		log.Printf("Error: Unexpected declaration type: %T", decl)
-		return nil
 	}
 }
 
-func (l layers) handleBadDecl(decl *ast.BadDecl) gxui.CodeSyntaxLayers {
-	return gxui.CodeSyntaxLayers{l.nodeLayer(decl, badColor, badBackground)}
+func (s *Syntax) addBadDecl(decl *ast.BadDecl) {
+	s.addNode(s.Theme.Colors.Bad, decl)
 }
 
-func (l layers) handleFuncDecl(decl *ast.FuncDecl) gxui.CodeSyntaxLayers {
-	layers := make(gxui.CodeSyntaxLayers, 0, 4)
-	if decl.Doc != nil {
-		layers = append(layers, l.nodeLayer(decl.Doc, commentColor))
-	}
-	layers = append(layers, l.handleFuncType(decl.Type)...)
+func (s *Syntax) addFuncDecl(decl *ast.FuncDecl) {
+	s.addFuncType(decl.Type)
 	if decl.Recv != nil {
-		layers = append(layers, l.handleFieldList(decl.Recv)...)
+		s.addFieldList(decl.Recv)
 	}
-	layers = append(layers, l.nodeLayer(decl.Name, functionColor))
-	layers = append(layers, l.handleFuncType(decl.Type)...)
+	s.addNode(s.Theme.Colors.Func, decl.Name)
+	s.addFuncType(decl.Type)
 	if decl.Body != nil {
-		layers = append(layers, l.handleBlockStmt(decl.Body)...)
+		s.addBlockStmt(decl.Body)
 	}
-	return layers
 }
 
-func (l layers) handleGenDecl(decl *ast.GenDecl) gxui.CodeSyntaxLayers {
-	layers := make(gxui.CodeSyntaxLayers, 0, len(decl.Specs)+2)
-	if decl.Doc != nil {
-		layers = append(layers, l.nodeLayer(decl.Doc, commentColor))
-	}
-	var tokColor gxui.Color
+func (s *Syntax) addGenDecl(decl *ast.GenDecl) {
+	var tokColor Color
 	switch {
 	case decl.Tok.IsKeyword():
-		tokColor = keywordColor
+		tokColor = s.Theme.Colors.Keyword
 	default:
 		log.Printf("Error: Don't know how to handle token %v", decl.Tok)
-		return nil
+		return
 	}
 	if decl.Lparen != 0 {
-		layers = append(layers, l.layer(decl.Lparen, 1, defaultRainbow.New()))
+		s.add(defaultRainbow.New(), decl.Lparen, 1)
 	}
-	layers = append(layers, l.layer(decl.TokPos, len(decl.Tok.String()), tokColor))
+	s.add(tokColor, decl.TokPos, len(decl.Tok.String()))
 	for _, spec := range decl.Specs {
-		layers = append(layers, l.handleSpec(spec)...)
+		s.addSpec(spec)
 	}
 	if decl.Rparen != 0 {
-		layers = append(layers, l.layer(decl.Rparen, 1, defaultRainbow.Pop()))
+		s.add(defaultRainbow.Pop(), decl.Rparen, 1)
 	}
-	return layers
 }

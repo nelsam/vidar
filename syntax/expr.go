@@ -7,135 +7,131 @@ package syntax
 import (
 	"go/ast"
 	"log"
-
-	"github.com/nelsam/gxui"
 )
 
-func (l layers) handleExpr(expr ast.Expr) gxui.CodeSyntaxLayers {
+func (s *Syntax) addExpr(expr ast.Expr) {
 	if expr == nil {
-		return nil
+		return
 	}
 	switch src := expr.(type) {
 	case *ast.ArrayType:
-		return l.handleArrayType(src)
+		s.addArrayType(src)
 	case *ast.BadExpr:
-		return l.handleBadExpr(src)
+		s.addBadExpr(src)
 	case *ast.BasicLit:
-		return l.handleBasicLit(src)
+		s.addBasicLit(src)
 	case *ast.BinaryExpr:
-		return l.handleBinaryExpr(src)
+		s.addBinaryExpr(src)
 	case *ast.CallExpr:
-		return l.handleCallExpr(src)
+		s.addCallExpr(src)
 	case *ast.ChanType:
-		return l.handleChanExpr(src)
+		s.addChanExpr(src)
 	case *ast.FuncLit:
-		return l.handleFuncLitExpr(src)
+		s.addFuncLitExpr(src)
 	case *ast.FuncType:
-		return l.handleFuncType(src)
+		s.addFuncType(src)
 	case *ast.IndexExpr:
-		return l.handleIndexExpr(src)
+		s.addIndexExpr(src)
 	case *ast.InterfaceType:
-		return l.handleInterfaceType(src)
+		s.addInterfaceType(src)
 	case *ast.KeyValueExpr:
-		return l.handleKeyValueExpr(src)
+		s.addKeyValueExpr(src)
 	case *ast.MapType:
-		return l.handleMapType(src)
+		s.addMapType(src)
 	case *ast.ParenExpr:
-		return l.handleParenExpr(src)
+		s.addParenExpr(src)
 	case *ast.SelectorExpr:
-		return l.handleSelectorExpr(src)
+		s.addSelectorExpr(src)
 	case *ast.SliceExpr:
-		return l.handleSliceExpr(src)
+		s.addSliceExpr(src)
 	case *ast.StructType:
-		return l.handleStructType(src)
+		s.addStructType(src)
 	case *ast.StarExpr:
-		return l.handleStarExpr(src)
+		s.addStarExpr(src)
 	case *ast.TypeAssertExpr:
-		return l.handleTypeAssertExpr(src)
+		s.addTypeAssertExpr(src)
 	case *ast.UnaryExpr:
-		return l.handleUnaryExpr(src)
+		s.addUnaryExpr(src)
 	case *ast.Ident:
-		return nil
+		return
 	case *ast.CompositeLit:
-		return l.handleCompositeLit(src)
+		s.addCompositeLit(src)
 	default:
 		log.Printf("Error: Unknown expression type: %T", expr)
-		return nil
 	}
 }
 
-func (l layers) handleBadExpr(src *ast.BadExpr) gxui.CodeSyntaxLayers {
-	return gxui.CodeSyntaxLayers{l.nodeLayer(src, badColor, badBackground)}
+func (s *Syntax) addBadExpr(src *ast.BadExpr) {
+	s.addNode(s.Theme.Colors.Bad, src)
 }
 
-func (l layers) handleBinaryExpr(src *ast.BinaryExpr) gxui.CodeSyntaxLayers {
-	return append(l.handleExpr(src.X), l.handleExpr(src.Y)...)
+func (s *Syntax) addBinaryExpr(src *ast.BinaryExpr) {
+	s.addExpr(src.X)
+	s.addExpr(src.Y)
 }
 
-func (l layers) handleCallExpr(src *ast.CallExpr) gxui.CodeSyntaxLayers {
-	layers := make(gxui.CodeSyntaxLayers, 0, len(src.Args)+1)
-	layers = append(layers, l.handleExpr(src.Fun)...)
-	layers = append(layers, l.layer(src.Lparen, 1, defaultRainbow.New()))
+func (s *Syntax) addCallExpr(src *ast.CallExpr) {
+	s.addExpr(src.Fun)
+	s.add(defaultRainbow.New(), src.Lparen, 1)
 	for _, arg := range src.Args {
-		layers = append(layers, l.handleExpr(arg)...)
+		s.addExpr(arg)
 	}
-	return append(layers, l.layer(src.Rparen, 1, defaultRainbow.Pop()))
+	s.add(defaultRainbow.Pop(), src.Rparen, 1)
 }
 
-func (l layers) handleChanExpr(src *ast.ChanType) gxui.CodeSyntaxLayers {
-	layers := gxui.CodeSyntaxLayers{l.layer(src.Begin, len("chan"), keywordColor)}
-	layers = append(layers, l.handleExpr(src.Value)...)
-	return layers
+func (s *Syntax) addChanExpr(src *ast.ChanType) {
+	s.add(s.Theme.Colors.Keyword, src.Begin, len("chan"))
+	s.addExpr(src.Value)
 }
 
-func (l layers) handleFuncLitExpr(src *ast.FuncLit) gxui.CodeSyntaxLayers {
-	return append(l.handleFuncType(src.Type), l.handleBlockStmt(src.Body)...)
+func (s *Syntax) addFuncLitExpr(src *ast.FuncLit) {
+	s.addFuncType(src.Type)
+	s.addBlockStmt(src.Body)
 }
 
-func (l layers) handleIndexExpr(src *ast.IndexExpr) gxui.CodeSyntaxLayers {
-	layers := l.handleExpr(src.X)
-	layers = append(layers, l.layer(src.Lbrack, 1, defaultRainbow.New()))
-	layers = append(layers, l.handleExpr(src.Index)...)
-	return append(layers, l.layer(src.Rbrack, 1, defaultRainbow.Pop()))
+func (s *Syntax) addIndexExpr(src *ast.IndexExpr) {
+	s.addExpr(src.X)
+	s.add(defaultRainbow.New(), src.Lbrack, 1)
+	s.addExpr(src.Index)
+	s.add(defaultRainbow.Pop(), src.Rbrack, 1)
 }
 
-func (l layers) handleKeyValueExpr(src *ast.KeyValueExpr) gxui.CodeSyntaxLayers {
-	return append(l.handleExpr(src.Key), l.handleExpr(src.Value)...)
+func (s *Syntax) addKeyValueExpr(src *ast.KeyValueExpr) {
+	s.addExpr(src.Key)
+	s.addExpr(src.Value)
 }
 
-func (l layers) handleParenExpr(src *ast.ParenExpr) gxui.CodeSyntaxLayers {
-	parens := gxui.CodeSyntaxLayers{l.layer(src.Lparen, 1, defaultRainbow.New())}
-	parens = append(parens, l.handleExpr(src.X)...)
-	return append(parens, l.layer(src.Rparen, 1, defaultRainbow.Pop()))
+func (s *Syntax) addParenExpr(src *ast.ParenExpr) {
+	s.add(defaultRainbow.New(), src.Lparen, 1)
+	s.addExpr(src.X)
+	s.add(defaultRainbow.Pop(), src.Rparen, 1)
 }
 
-func (l layers) handleSelectorExpr(src *ast.SelectorExpr) gxui.CodeSyntaxLayers {
-	return append(l.handleExpr(src.X), l.nodeLayer(src.Sel, functionColor))
+func (s *Syntax) addSelectorExpr(src *ast.SelectorExpr) {
+	s.addExpr(src.X)
+	s.addNode(s.Theme.Colors.Func, src.Sel)
 }
 
-func (l layers) handleSliceExpr(src *ast.SliceExpr) gxui.CodeSyntaxLayers {
-	layers := l.handleExpr(src.X)
-	layers = append(layers, l.layer(src.Lbrack, 1, defaultRainbow.New()))
-	layers = append(layers, l.handleExpr(src.Low)...)
-	layers = append(layers, l.handleExpr(src.High)...)
-	layers = append(layers, l.handleExpr(src.Max)...)
-	return append(layers, l.layer(src.Lbrack, 1, defaultRainbow.Pop()))
+func (s *Syntax) addSliceExpr(src *ast.SliceExpr) {
+	s.addExpr(src.X)
+	s.add(defaultRainbow.New(), src.Lbrack, 1)
+	s.addExpr(src.Low)
+	s.addExpr(src.High)
+	s.addExpr(src.Max)
+	s.add(defaultRainbow.Pop(), src.Lbrack, 1)
 }
 
-func (l layers) handleStarExpr(src *ast.StarExpr) gxui.CodeSyntaxLayers {
-	return l.handleExpr(src.X)
+func (s *Syntax) addStarExpr(src *ast.StarExpr) {
+	s.addExpr(src.X)
 }
 
-func (l layers) handleTypeAssertExpr(src *ast.TypeAssertExpr) gxui.CodeSyntaxLayers {
-	layers := l.handleExpr(src.X)
-	layers = append(
-		layers,
-		l.layer(src.Lparen, 1, defaultRainbow.New()),
-	)
-	layers = append(layers, l.handleExpr(src.Type)...)
-	return append(layers, l.layer(src.Rparen, 1, defaultRainbow.Pop()))
+func (s *Syntax) addTypeAssertExpr(src *ast.TypeAssertExpr) {
+	s.addExpr(src.X)
+	s.add(defaultRainbow.New(), src.Lparen, 1)
+	s.addExpr(src.Type)
+	s.add(defaultRainbow.Pop(), src.Rparen, 1)
 }
 
-func (l layers) handleUnaryExpr(src *ast.UnaryExpr) gxui.CodeSyntaxLayers {
-	return l.handleExpr(src.X)
+func (s *Syntax) addUnaryExpr(src *ast.UnaryExpr) {
+	s.addExpr(src.X)
 }

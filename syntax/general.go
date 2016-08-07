@@ -7,102 +7,85 @@ package syntax
 import (
 	"go/ast"
 	"go/token"
-
-	"github.com/nelsam/gxui"
 )
 
-func (l layers) handleFieldList(src *ast.FieldList) gxui.CodeSyntaxLayers {
-	layers := make(gxui.CodeSyntaxLayers, 0, len(src.List))
+func (s *Syntax) addFieldList(src *ast.FieldList) {
 	if src.Opening != 0 {
-		layers = append(layers, l.layer(src.Opening, 1, defaultRainbow.New()))
+		s.add(defaultRainbow.New(), src.Opening, 1)
 	}
 	for _, block := range src.List {
-		layers = append(layers, l.nodeLayer(block.Type, typeColor))
+		s.addNode(s.Theme.Colors.Type, block.Type)
 	}
 	if src.Closing != 0 {
-		layers = append(layers, l.layer(src.Closing, 1, defaultRainbow.Pop()))
+		s.add(defaultRainbow.Pop(), src.Closing, 1)
 	}
-	return layers
 }
 
-func (l layers) handleStructType(src *ast.StructType) gxui.CodeSyntaxLayers {
-	layers := make(gxui.CodeSyntaxLayers, 0, 1+len(src.Fields.List))
-	layers = append(layers, l.layer(src.Struct, len("struct"), keywordColor))
-	layers = append(layers, l.handleFieldList(src.Fields)...)
-	return layers
+func (s *Syntax) addStructType(src *ast.StructType) {
+	s.add(s.Theme.Colors.Keyword, src.Struct, len("struct"))
+	s.addFieldList(src.Fields)
 }
 
-func (l layers) handleFuncType(src *ast.FuncType) gxui.CodeSyntaxLayers {
-	layers := make(gxui.CodeSyntaxLayers, 0, 5)
+func (s *Syntax) addFuncType(src *ast.FuncType) {
 	if src.Func != token.NoPos {
-		layers = append(layers, l.layer(src.Func, len("func"), keywordColor))
+		s.add(s.Theme.Colors.Keyword, src.Func, len("func"))
 	}
 	if src.Params != nil {
-		layers = append(layers, l.handleFieldList(src.Params)...)
+		s.addFieldList(src.Params)
 	}
 	if src.Results != nil {
-		layers = append(layers, l.handleFieldList(src.Results)...)
+		s.addFieldList(src.Results)
 	}
-	return layers
 }
 
-func (l layers) handleInterfaceType(src *ast.InterfaceType) gxui.CodeSyntaxLayers {
-	layers := gxui.CodeSyntaxLayers{l.layer(src.Interface, len("interface"), keywordColor)}
-	layers = append(layers, l.handleFieldList(src.Methods)...)
-	return layers
+func (s *Syntax) addInterfaceType(src *ast.InterfaceType) {
+	s.add(s.Theme.Colors.Keyword, src.Interface, len("interface"))
+	s.addFieldList(src.Methods)
 }
 
-func (l layers) handleMapType(src *ast.MapType) gxui.CodeSyntaxLayers {
-	layers := gxui.CodeSyntaxLayers{l.layer(src.Map, len("map"), keywordColor)}
-	layers = append(layers, l.handleExpr(src.Key)...)
-	layers = append(layers, l.handleExpr(src.Value)...)
-	return layers
+func (s *Syntax) addMapType(src *ast.MapType) {
+	s.add(s.Theme.Colors.Keyword, src.Map, len("map"))
+	s.addExpr(src.Key)
+	s.addExpr(src.Value)
 }
 
-func (l layers) handleArrayType(src *ast.ArrayType) gxui.CodeSyntaxLayers {
-	layers := gxui.CodeSyntaxLayers{
-		l.layer(src.Lbrack, 1, defaultRainbow.New()),
-		l.layer(src.Lbrack+1, 1, defaultRainbow.Pop()),
-	}
-	layers = append(layers, l.handleExpr(src.Len)...)
-	layers = append(layers, l.handleExpr(src.Elt)...)
-	return layers
+func (s *Syntax) addArrayType(src *ast.ArrayType) {
+	s.add(defaultRainbow.New(), src.Lbrack, 1)
+	s.add(defaultRainbow.Pop(), src.Lbrack+1, 1)
+	s.addExpr(src.Len)
+	s.addExpr(src.Elt)
 }
 
-func (l layers) handleBasicLit(src *ast.BasicLit) gxui.CodeSyntaxLayers {
-	var color gxui.Color
+func (s *Syntax) addBasicLit(src *ast.BasicLit) {
+	var color Color
 	switch src.Kind {
 	case token.INT, token.FLOAT:
-		color = numColor
+		color = s.Theme.Colors.Num
 	case token.CHAR, token.STRING:
-		color = stringColor
+		color = s.Theme.Colors.String
 	default:
-		return nil
+		return
 	}
-	return gxui.CodeSyntaxLayers{l.nodeLayer(src, color)}
+	s.addNode(color, src)
 }
 
-func (l layers) handleCompositeLit(src *ast.CompositeLit) gxui.CodeSyntaxLayers {
-	layers := append(
-		l.handleExpr(src.Type),
-		l.layer(src.Lbrace, 1, defaultRainbow.New()),
-	)
+func (s *Syntax) addCompositeLit(src *ast.CompositeLit) {
+	s.addExpr(src.Type)
+	s.add(defaultRainbow.New(), src.Lbrace, 1)
 	for _, elt := range src.Elts {
-		layers = append(layers, l.handleExpr(elt)...)
+		s.addExpr(elt)
 	}
-	return append(layers, l.layer(src.Rbrace, 1, defaultRainbow.Pop()))
+	s.add(defaultRainbow.Pop(), src.Rbrace, 1)
 }
 
-func (l layers) handleCommClause(src *ast.CommClause) gxui.CodeSyntaxLayers {
-	layers := make(gxui.CodeSyntaxLayers, 0, 5)
+func (s *Syntax) addCommClause(src *ast.CommClause) {
 	length := len("case")
 	if src.Comm == nil {
 		length = len("default")
 	}
-	layers = append(layers, l.layer(src.Case, length, keywordColor))
-	layers = append(layers, l.handleStmt(src.Comm)...)
+	s.add(s.Theme.Colors.Keyword, src.Case, length)
+	s.addStmt(src.Comm)
 	for _, stmt := range src.Body {
-		layers = append(layers, l.handleStmt(stmt)...)
+		s.addStmt(stmt)
 	}
-	return layers
 }

@@ -4,22 +4,16 @@
 
 package syntax
 
-import (
-	"go/ast"
+import "go/ast"
 
-	"github.com/nelsam/gxui"
-)
-
-func (l layers) handleUnresolved(unresolved *ast.Ident) gxui.CodeSyntaxLayers {
-	layers := make(gxui.CodeSyntaxLayers, 0, 1)
+func (s *Syntax) addUnresolved(unresolved *ast.Ident) {
 	switch unresolved.String() {
 	case "append", "cap", "close", "complex", "copy",
 		"delete", "imag", "len", "make", "new", "panic",
 		"print", "println", "real", "recover":
 
-		layers = append(layers, l.nodeLayer(unresolved, builtinColor))
+		s.addNode(s.Theme.Colors.Builtin, unresolved)
 	case "nil":
-		layers = append(layers, l.nodeLayer(unresolved, nilColor))
+		s.addNode(s.Theme.Colors.Nil, unresolved)
 	}
-	return layers
 }

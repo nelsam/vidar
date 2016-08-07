@@ -5,74 +5,90 @@
 package syntax
 
 import (
-	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"log"
+	"unicode/utf8"
 
 	"github.com/nelsam/gxui"
 )
 
-type layers struct {
-	syntaxLayers *gxui.CodeSyntaxLayers
-	fileSet      *token.FileSet
+const runeSize = 1
+
+// Syntax is a type that reads Go source code to provide information
+// on it.
+type Syntax struct {
+	Theme Theme
+
+	fileSet     *token.FileSet
+	layers      map[Color]*gxui.CodeSyntaxLayer
+	runeOffsets []int
 }
 
-func (l layers) nodeLayer(node ast.Node, colors ...gxui.Color) *gxui.CodeSyntaxLayer {
-	return l.layer(node.Pos(), int(node.End()-node.Pos()), colors...)
+// New constructs a new *Syntax value with theme as its Theme field.
+func New(theme Theme) *Syntax {
+	return &Syntax{Theme: theme}
 }
 
-func (l layers) append(newSyntaxLayers ...*gxui.CodeSyntaxLayer) {
-	*l.syntaxLayers = append(*l.syntaxLayers, newSyntaxLayers...)
-}
+// Parse parses the passed in Go source code, replacing s's stored
+// context with that of the parsed source.  It returns any error
+// encountered while parsing source, but will still store as much
+// information as possible.
+func (s *Syntax) Parse(source string) error {
+	s.runeOffsets = make([]int, len(source))
+	offset := 0
+	for i, r := range source {
+		s.runeOffsets[i] = offset
+		offset += runeSize - utf8.RuneLen(r)
+	}
 
-func (l layers) layer(pos token.Pos, length int, colors ...gxui.Color) *gxui.CodeSyntaxLayer {
-	if length == 0 {
-		return nil
-	}
-	if len(colors) == 0 {
-		log.Printf("Error: No colors passed to layer()")
-		return nil
-	}
-	if len(colors) > 2 {
-		err := errors.New("Only two colors (text and background) are currently supported")
-		log.Printf("Error: Expected %d to be <= 2: %s", len(colors), err)
-	}
-	layer := gxui.CreateCodeSyntaxLayer()
-	layer.Add(int(l.fileSet.Position(pos).Offset), length)
-	layer.SetColor(colors[0])
-	if len(colors) > 1 {
-		layer.SetBackgroundColor(colors[1])
-	}
-	return layer
-}
+	s.fileSet = token.NewFileSet()
+	s.layers = make(map[Color]*gxui.CodeSyntaxLayer)
+	f, err := parser.ParseFile(s.fileSet, "", source, parser.ParseComments)
 
-func Layers(filename, text string) (gxui.CodeSyntaxLayers, error) {
-	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, filename, text, parser.ParseComments)
-	syntaxLayers := make(gxui.CodeSyntaxLayers, 0, 100)
-	layers := layers{
-		syntaxLayers: &syntaxLayers,
-		fileSet:      fset,
-	}
-	if f.Doc != nil {
-		layers.append(layers.nodeLayer(f.Doc, commentColor))
-	}
+	// Parse everything we can before returning the error.
 	if f.Package.IsValid() {
-		layers.append(layers.layer(f.Package, len("package"), keywordColor))
+		s.add(s.Theme.Colors.Keyword, f.Package, len("package"))
 	}
 	for _, importSpec := range f.Imports {
-		layers.append(layers.nodeLayer(importSpec, stringColor))
+		s.addNode(s.Theme.Colors.String, importSpec)
 	}
 	for _, comment := range f.Comments {
-		layers.append(layers.nodeLayer(comment, commentColor))
+		s.addNode(s.Theme.Colors.Comment, comment)
 	}
 	for _, decl := range f.Decls {
-		layers.append(layers.handleDecl(decl)...)
+		s.addDecl(decl)
 	}
 	for _, unresolved := range f.Unresolved {
-		layers.append(layers.handleUnresolved(unresolved)...)
+		s.addUnresolved(unresolved)
 	}
-	return *layers.syntaxLayers, err
+	return err
+}
+
+// Layers returns a gxui.CodeSyntaxLayer for each color used from
+// s.Theme when s.Parse was called.  The corresponding
+// gxui.CodeSyntaxLayer will have its foreground and background
+// colors set, and all positions that should be highlighted that
+// color will be stored.
+func (s *Syntax) Layers() map[Color]*gxui.CodeSyntaxLayer {
+	return s.layers
+}
+
+func (s *Syntax) add(color Color, pos token.Pos, length int) {
+	if length == 0 {
+		return
+	}
+	layer, ok := s.layers[color]
+	if !ok {
+		layer = &gxui.CodeSyntaxLayer{}
+		layer.SetColor(color.Foreground)
+		layer.SetBackgroundColor(color.Background)
+		s.layers[color] = layer
+	}
+	idx := s.fileSet.Position(pos).Offset
+	layer.Add(idx+s.runeOffsets[idx], length)
+}
+
+func (s *Syntax) addNode(color Color, node ast.Node) {
+	s.add(color, node.Pos(), int(node.End()-node.Pos()))
 }

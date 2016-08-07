@@ -31,6 +31,7 @@ type CodeEditor struct {
 	theme   *basic.Theme
 	driver  gxui.Driver
 	history *History
+	syntax  *syntax.Syntax
 
 	lastModified time.Time
 	hasChanges   bool
@@ -49,6 +50,7 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 	e.theme = theme
 	e.driver = driver
 	e.history = NewHistory()
+	e.syntax = syntax.New(syntax.DefaultTheme)
 
 	e.adapter = &suggestions.Adapter{}
 	e.suggestions = e.CreateSuggestionList()
@@ -62,8 +64,14 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 	e.OnTextChanged(func(changes []gxui.TextBoxEdit) {
 		e.hasChanges = true
 		// TODO: only update layers that changed.
-		newLayers, err := syntax.Layers(e.filepath, e.Text())
-		e.SetSyntaxLayers(newLayers)
+
+		err := e.syntax.Parse(e.Text())
+		layers := e.syntax.Layers()
+		layerSlice := make(gxui.CodeSyntaxLayers, 0, len(layers))
+		for _, layer := range layers {
+			layerSlice = append(layerSlice, layer)
+		}
+		e.SetSyntaxLayers(layerSlice)
 		// TODO: display the error in some pane of the editor
 		_ = err
 		e.history.Add(changes...)
