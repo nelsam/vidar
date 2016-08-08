@@ -33,9 +33,9 @@ func New(theme Theme) *Syntax {
 // encountered while parsing source, but will still store as much
 // information as possible.
 func (s *Syntax) Parse(source string) error {
-	s.runeOffsets = make([]int, len([]byte(source)))
+	s.runeOffsets = make([]int, len(source))
 	byteOffset := 0
-	for runeIdx, r := range source {
+	for runeIdx, r := range []rune(source) {
 		byteIdx := runeIdx + byteOffset
 		bytes := utf8.RuneLen(r)
 		for i := byteIdx; i < byteIdx+bytes; i++ {
