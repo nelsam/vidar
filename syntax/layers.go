@@ -76,8 +76,8 @@ func (s *Syntax) Layers() map[Color]*gxui.CodeSyntaxLayer {
 	return s.layers
 }
 
-func (s *Syntax) add(color Color, pos token.Pos, length int) {
-	if length == 0 {
+func (s *Syntax) add(color Color, pos token.Pos, byteLength int) {
+	if byteLength == 0 {
 		return
 	}
 	layer, ok := s.layers[color]
@@ -87,10 +87,20 @@ func (s *Syntax) add(color Color, pos token.Pos, length int) {
 		layer.SetBackgroundColor(color.Background)
 		s.layers[color] = layer
 	}
-	idx := s.fileSet.Position(pos).Offset
-	if idx < len(s.runeOffsets) {
-		layer.Add(idx+s.runeOffsets[idx], length)
+	bytePos := s.fileSet.Position(pos).Offset
+	if bytePos >= len(s.runeOffsets) {
+		return
 	}
+	idx := s.runePos(bytePos)
+	end := s.runePos(bytePos + byteLength)
+	layer.Add(idx, end-idx)
+}
+
+func (s *Syntax) runePos(bytePos int) int {
+	if bytePos >= len(s.runeOffsets) {
+		return -1
+	}
+	return bytePos + s.runeOffsets[bytePos]
 }
 
 func (s *Syntax) addNode(color Color, node ast.Node) {
