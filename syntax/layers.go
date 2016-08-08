@@ -13,8 +13,6 @@ import (
 	"github.com/nelsam/gxui"
 )
 
-const runeSize = 1
-
 // Syntax is a type that reads Go source code to provide information
 // on it.
 type Syntax struct {
@@ -35,11 +33,15 @@ func New(theme Theme) *Syntax {
 // encountered while parsing source, but will still store as much
 // information as possible.
 func (s *Syntax) Parse(source string) error {
-	s.runeOffsets = make([]int, len(source))
-	offset := 0
-	for i, r := range source {
-		s.runeOffsets[i] = offset
-		offset += runeSize - utf8.RuneLen(r)
+	s.runeOffsets = make([]int, len([]byte(source)))
+	byteOffset := 0
+	for runeIdx, r := range source {
+		byteIdx := runeIdx + byteOffset
+		bytes := utf8.RuneLen(r)
+		for i := byteIdx; i < byteIdx+bytes; i++ {
+			s.runeOffsets[i] = -byteOffset
+		}
+		byteOffset += bytes - 1
 	}
 
 	s.fileSet = token.NewFileSet()
@@ -86,7 +88,9 @@ func (s *Syntax) add(color Color, pos token.Pos, length int) {
 		s.layers[color] = layer
 	}
 	idx := s.fileSet.Position(pos).Offset
-	layer.Add(idx+s.runeOffsets[idx], length)
+	if idx < len(s.runeOffsets) {
+		layer.Add(idx+s.runeOffsets[idx], length)
+	}
 }
 
 func (s *Syntax) addNode(color Color, node ast.Node) {
