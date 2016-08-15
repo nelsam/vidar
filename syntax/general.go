@@ -89,3 +89,8 @@ func (s *Syntax) addCommClause(src *ast.CommClause) {
 		s.addStmt(stmt)
 	}
 }
+
+func (s *Syntax) addEllipsis(src *ast.Ellipsis) {
+	s.add(s.Theme.Colors.Keyword, src.Ellipsis, len("..."))
+	s.addExpr(src.Elt)
+}

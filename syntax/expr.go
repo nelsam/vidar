@@ -52,6 +52,8 @@ func (s *Syntax) addExpr(expr ast.Expr) {
 		s.addTypeAssertExpr(src)
 	case *ast.UnaryExpr:
 		s.addUnaryExpr(src)
+	case *ast.Ellipsis:
+		s.addEllipsis(src)
 	case *ast.Ident:
 		return
 	case *ast.CompositeLit:
