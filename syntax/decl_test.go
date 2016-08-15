@@ -12,31 +12,6 @@ import (
 	"github.com/nelsam/vidar/syntax"
 )
 
-func TestLayers_PackageDocs(t *testing.T) {
-	expect := expect.New(t)
-
-	ast := `
-// Package foo does stuff.
-// It is also a thing.
-package foo
-`
-	s := syntax.New(syntax.DefaultTheme)
-	err := s.Parse(ast)
-	expect(err).To.Be.Nil()
-	layers := s.Layers()
-	expect(layers).To.Have.Len(2)
-	comments := layers[syntax.DefaultTheme.Colors.Comment]
-	expect(comments.Spans()).To.Have.Len(1)
-
-	start, end := comments.Spans()[0].Range()
-	expectedStart := strings.Index(ast, "//")
-	expectedEnd := expectedStart +
-		len("// Package foo does stuff.\n"+
-			"// It is also a thing.")
-	expect(start).To.Equal(expectedStart)
-	expect(end).To.Equal(expectedEnd)
-}
-
 func TestLayers_GenDecl_NoParen(t *testing.T) {
 	expect := expect.New(t)
 
@@ -55,12 +30,6 @@ var Foo string
 
 	keywords := layers[syntax.DefaultTheme.Colors.Keyword]
 	expect(keywords.Spans()).To.Have.Len(2)
-
-	// package keyword
-	start, end := keywords.Spans()[0].Range()
-	expectedStart := strings.Index(ast, "package")
-	expect(start).To.Equal(expectedStart)
-	expect(end).To.Equal(expectedStart + len("package"))
 
 	// var keyword
 	start, end = keywords.Spans()[1].Range()

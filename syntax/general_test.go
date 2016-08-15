@@ -5,6 +5,7 @@
 package syntax_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/a8m/expect"
@@ -46,4 +47,29 @@ func µ() string {
 	expectedStart = 41 // you guessed it
 	expect(start).To.Equal(expectedStart)
 	expect(end).To.Equal(expectedStart + 4)
+}
+
+func TestLayers_PackageDocs(t *testing.T) {
+	expect := expect.New(t)
+
+	ast := `
+// Package foo does stuff.
+// It is also a thing.
+package foo
+`
+	s := syntax.New(syntax.DefaultTheme)
+	err := s.Parse(ast)
+	expect(err).To.Be.Nil()
+	layers := s.Layers()
+	expect(layers).To.Have.Len(2)
+	comments := layers[syntax.DefaultTheme.Colors.Comment]
+	expect(comments.Spans()).To.Have.Len(1)
+
+	start, end := comments.Spans()[0].Range()
+	expectedStart := strings.Index(ast, "//")
+	expectedEnd := expectedStart +
+		len("// Package foo does stuff.\n"+
+			"// It is also a thing.")
+	expect(start).To.Equal(expectedStart)
+	expect(end).To.Equal(expectedEnd)
 }
