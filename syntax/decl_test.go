@@ -12,11 +12,6 @@ import (
 	"github.com/nelsam/vidar/syntax"
 )
 
-func TestLayers(t *testing.T) {
-	t.Run("ast.GenDecl", GenDecl)
-	t.Run("ast.FuncDecl", FuncDecl)
-}
-
 func GenDecl(t *testing.T) {
 	t.Run("NoParens", NoParen)
 	t.Run("Parens", Paren)

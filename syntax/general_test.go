@@ -12,7 +12,7 @@ import (
 	"github.com/nelsam/vidar/syntax"
 )
 
-func TestLayers_Unicode(t *testing.T) {
+func Unicode(t *testing.T) {
 	expect := expect.New(t)
 
 	ast := `
@@ -49,7 +49,7 @@ func µ() string {
 	expect(end).To.Equal(expectedStart + 4)
 }
 
-func TestLayers_PackageDocs(t *testing.T) {
+func PackageDocs(t *testing.T) {
 	expect := expect.New(t)
 
 	ast := `
