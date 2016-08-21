@@ -22,6 +22,11 @@ Go code, and I don't think it's far off from being in a finished 1.0 state.
 1. [Install GXUI's C dependencies](https://github.com/google/gxui#dependencies)
 2. `go get github.com/nelsam/vidar`.
 
+### Go Version
+
+I'm only supporting the latest stable version of Go.  This doesn't necessarily mean that vidar
+won't work with older versions, but I promise nothing.
+
 ### Optional Dependencies
 
 - [gocode](https://github.com/nsf/gocode) for code suggestions
