@@ -32,8 +32,8 @@ var Foo string
 	expect(keywords.Spans()).To.Have.Len(2)
 
 	// var keyword
-	start, end = keywords.Spans()[1].Range()
-	expectedStart = strings.Index(ast, "var")
+	start, end := keywords.Spans()[1].Range()
+	expectedStart := strings.Index(ast, "var")
 	expect(start).To.Equal(expectedStart)
 	expect(end).To.Equal(expectedStart + len("var"))
 
