@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/nelsam/vidar.svg?branch=master)](https://travis-ci.org/nelsam/vidar)
+
 # vidar
 
 [![Join the chat at https://gitter.im/nelsam/vidar](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nelsam/vidar?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
