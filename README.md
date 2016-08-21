@@ -14,10 +14,44 @@ place for me to mess around with [gxui](https://github.com/google/gxui).  The pr
 for my little learning exercise was "I dislike nearly every editor out there for working on Go
 code."  Three weeks later, I had something that I was actually *starting* to use for development.
 
-I'm six months in, now, and things are shaping up pretty nicely.  I've solved some of the issues
-that originated in GXUI, fixed almost all of the syntax highlighting issues, and have most of the
-basic functionality of a modern editor.  If you want to see what is yet to be done, feel free
-to check out the issues.
+Vidar is not a fully featured editor, right now.  However, it works for most purposes when editing
+Go code, and I don't think it's far off from being in a finished 1.0 state.
+
+## Installing
+
+1. [Install GXUI's C dependencies](https://github.com/google/gxui#dependencies)
+2. `go get github.com/nelsam/vidar`.
+
+### Optional Dependencies
+
+- [gocode](https://github.com/nsf/gocode) for code suggestions
+- [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports) for formatting files on save
+  - This will some day be configurable, but it currently is not
+- [godef](https://github.com/rogpeppe/godef) for goto-definition
+
+### Binary Distribution
+
+In the (hopefully near) future, I plan to have CI build installers and upload them to github
+releases.  For the moment, though, I'm only distributing via source code.
+
+## Configuration
+
+Vidar uses [xdg-go](https://github.com/casimir/xdg-go) to decide where to save config
+files.  On linux systems, this will probably end up in `~/.config/vidar/`; for Windows
+and OS X, you'll likely need to check the xdg-go package to see what it uses.
+
+Config files are written as `toml` by default, but can be parsed from any format that
+[viper](https://github.com/spf13/viper) supports.  Currently, there are three config
+files:
+- settings: Only used to configure a `fonts` list, which should be a list of names
+  of fonts installed on your system in order of preference.  Note that only truetype
+  fonts are supported right now, and many of those display incorrectly.  My current
+  favorites are `Inconsolata-Regular` and `PTM55F`.
+- projects: A list of projects with `name`, `path`, and `gopath` keys.  This can be
+  added to with the `add-project` command (`ctrl-shift-n` by default).
+- keys: The key bindings.  This file will be written on first startup with the default
+  key bindings, so you can edit the file with any changes or aliases you'd like.
+  Multiple bindings per command are supported.
 
 ## Current Features
 
@@ -54,58 +88,3 @@ These are all planned, but have yet to be implemented.
   - I've built the editor with plugins in mind, but it's not quite ready to have all that
     abstracted away, right now.  It'll get there.
 
-## Goals
-
-Mostly, I want my old emacs config, but with modern keybindings and a UI library that actually
-works correctly cross-platform (I've had a lot of trouble getting mouse clicks in OS X to
-register with emacs's UI).  I have hopes of taking lessons from those old editors and some new
-ones.
-
-If I can make something that I find useful for editing Go code, I'll be overjoyed.  If anyone
-else finds it useful, I'll probably die of excitement.  Which means ownership transfers to the
-person who found it useful (as they're indirectly responsible for my death).
-
-## Currently
-
-It's in a fairly usable state.  The potential for data loss is low.  It supports most of what
-you'd expect from a basic text editor, there are some extra features thrown in, and I'm
-maintaining some fixes for gxui bugs in a fork (I plan to make PRs when I can, but upstream
-is mostly unmaintained, so it's not my highest priority at the moment).
-
-I doubt it will replace your favorite text editor or IDE in its current state, but if you're
-curious or just unhappy with all of the Go editors out there, feel free to give it a shot.
-I welcome issues and pull requests.
-
-## Requirements
-
-If you do decide to try it, it should be noted that you'll have a better time if you have
-gocode (for suggestions), godef (for go-to-definition), and goimports (for formatting the
-file automatically on save) in your $PATH.  It should work without them, but it'll work a
-lot nicer with them.
-
-## Installation
-
-`go get github.com/nelsam/vidar`
-
-I don't believe in vendoring source code, so this may break from time to time.  I plan
-to have a build system that builds `.deb`, `.rpm`, `.dmg`, and `.exe` files in CI, but
-it's not yet in place.
-
-## Configuration
-
-Vidar uses [xdg-go](https://github.com/casimir/xdg-go) to decide where to save config
-files.  On linux systems, this will probably end up in `~/.config/vidar/`; for Windows
-and OS X, you'll likely need to check the xdg-go package to see what it uses.
-
-Config files are written as `toml` by default, but can be parsed from any format that
-[viper](https://github.com/spf13/viper) supports.  Currently, there are three config
-files:
-- settings: Only used to configure a `fonts` list, which should be a list of names
-  of fonts installed on your system in order of preference.  Note that only truetype
-  fonts are supported right now, and many of those display incorrectly.  My current
-  favorites are `Inconsolata-Regular` and `PTM55F`.
-- projects: A list of projects with `name`, `path`, and `gopath` keys.  This can be
-  added to with the `add-project` command (`ctrl-shift-n` by default).
-- keys: The key bindings.  This file will be written on first startup with the default
-  key bindings, so you can edit the file with any changes or aliases you'd like.
-  Multiple bindings per command are supported.
