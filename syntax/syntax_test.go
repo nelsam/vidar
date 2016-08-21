@@ -7,8 +7,7 @@ package syntax_test
 import "testing"
 
 func TestLayers(t *testing.T) {
-	t.Run("ast.GenDecl", GenDecl)
-	t.Run("ast.FuncDecl", FuncDecl)
+	t.Run("Decl", Decl)
 	t.Run("Unicode", Unicode)
 	t.Run("PackageDocs", PackageDocs)
 }

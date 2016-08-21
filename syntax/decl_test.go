@@ -12,7 +12,12 @@ import (
 	"github.com/nelsam/vidar/syntax"
 )
 
-func GenDecl(t *testing.T) {
+func Decl(t *testing.T) {
+	t.Run("Gen", Gen)
+	t.Run("Func", Func)
+}
+
+func Gen(t *testing.T) {
 	t.Run("NoParens", NoParen)
 	t.Run("Parens", Paren)
 }
@@ -96,7 +101,7 @@ var (
 	expect(end).To.Equal(expectedStart + len("int"))
 }
 
-func FuncDecl(t *testing.T) {
+func Func(t *testing.T) {
 	expect := expect.New(t)
 
 	ast := `
