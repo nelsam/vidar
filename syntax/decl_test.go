@@ -12,9 +12,10 @@ import (
 	"github.com/nelsam/vidar/syntax"
 )
 
-func Decl(t *testing.T) {
+func TestDecl(t *testing.T) {
 	t.Run("Gen", Gen)
 	t.Run("Func", Func)
+	t.Run("Bad", Bad)
 }
 
 func Gen(t *testing.T) {
@@ -25,14 +26,14 @@ func Gen(t *testing.T) {
 func NoParen(t *testing.T) {
 	expect := expect.New(t)
 
-	ast := `
+	src := `
 package foo
 
 // Foo is a thing
 var Foo string
 `
 	s := syntax.New(syntax.DefaultTheme)
-	err := s.Parse(ast)
+	err := s.Parse(src)
 	expect(err).To.Be.Nil()
 
 	layers := s.Layers()
@@ -40,32 +41,21 @@ var Foo string
 
 	keywords := layers[syntax.DefaultTheme.Colors.Keyword]
 	expect(keywords.Spans()).To.Have.Len(2)
-
-	// var keyword
-	start, end := keywords.Spans()[1].Range()
-	expectedStart := strings.Index(ast, "var")
-	expect(start).To.Equal(expectedStart)
-	expect(end).To.Equal(expectedStart + len("var"))
+	expectPositionMatch(t, src, "var", keywords.Spans()[1])
 
 	comments := layers[syntax.DefaultTheme.Colors.Comment]
 	expect(comments.Spans()).To.Have.Len(1)
-	start, end = comments.Spans()[0].Range()
-	expectedStart = strings.Index(ast, "//")
-	expect(start).To.Equal(expectedStart)
-	expect(end).To.Equal(expectedStart + len("// Foo is a thing"))
+	expectPositionMatch(t, src, "// Foo is a thing", comments.Spans()[0])
 
 	typs := layers[syntax.DefaultTheme.Colors.Type]
 	expect(typs.Spans()).To.Have.Len(1)
-	start, end = typs.Spans()[0].Range()
-	expectedStart = strings.Index(ast, "string")
-	expect(start).To.Equal(expectedStart)
-	expect(end).To.Equal(expectedStart + len("string"))
+	expectPositionMatch(t, src, "string", typs.Spans()[0])
 }
 
 func Paren(t *testing.T) {
 	expect := expect.New(t)
 
-	ast := `
+	src := `
 package foo
 
 var (
@@ -74,7 +64,7 @@ var (
 )
 `
 	s := syntax.New(syntax.DefaultTheme)
-	err := s.Parse(ast)
+	err := s.Parse(src)
 	expect(err).To.Be.Nil()
 
 	layers := s.Layers()
@@ -82,29 +72,24 @@ var (
 
 	keywords := layers[syntax.DefaultTheme.Colors.Keyword]
 	expect(keywords.Spans()).To.Have.Len(2)
+	expectPositionMatch(t, src, "var", keywords.Spans()[1])
 
-	// var keyword
-	start, end := keywords.Spans()[1].Range()
-	expectedStart := strings.Index(ast, "var")
-	expect(start).To.Equal(expectedStart)
-	expect(end).To.Equal(expectedStart + len("var"))
+	parens := layers[syntax.DefaultTheme.Rainbow.New()]
+	syntax.DefaultTheme.Rainbow.Pop()
+	expect(parens.Spans()).To.Have.Len(2)
+	expectPositionMatch(t, src, "(", parens.Spans()[0])
+	expectPositionMatch(t, src, ")", parens.Spans()[1])
 
 	typs := layers[syntax.DefaultTheme.Colors.Type]
 	expect(typs.Spans()).To.Have.Len(2)
-	start, end = typs.Spans()[0].Range()
-	expectedStart = strings.Index(ast, "string")
-	expect(start).To.Equal(expectedStart)
-	expect(end).To.Equal(expectedStart + len("string"))
-	start, end = typs.Spans()[1].Range()
-	expectedStart = strings.Index(ast, "int")
-	expect(start).To.Equal(expectedStart)
-	expect(end).To.Equal(expectedStart + len("int"))
+	expectPositionMatch(t, src, "string", typs.Spans()[0])
+	expectPositionMatch(t, src, "int", typs.Spans()[1])
 }
 
 func Func(t *testing.T) {
 	expect := expect.New(t)
 
-	ast := `
+	src := `
 package foo
 
 func Foo(bar string) int {
@@ -112,43 +97,53 @@ func Foo(bar string) int {
 }
 `
 	s := syntax.New(syntax.DefaultTheme)
-	err := s.Parse(ast)
+	err := s.Parse(src)
 	expect(err).To.Be.Nil()
 
 	layers := s.Layers()
 	expect(layers).To.Have.Len(5)
-	// TODO: test paren colors from rainbow parens
 
 	keywords := layers[syntax.DefaultTheme.Colors.Keyword]
 	expect(keywords.Spans()).To.Have.Len(3)
+	expectPositionMatch(t, src, "func", keywords.Spans()[1])
+	expectPositionMatch(t, src, "return", keywords.Spans()[2])
 
-	// func keyword
-	start, end := keywords.Spans()[1].Range()
-	expectedStart := strings.Index(ast, "func")
-	expect(start).To.Equal(expectedStart)
-	expect(end).To.Equal(expectedStart + len("func"))
-
-	// return keyword
-	start, end = keywords.Spans()[2].Range()
-	expectedStart = strings.Index(ast, "return")
-	expect(start).To.Equal(expectedStart)
-	expect(end).To.Equal(expectedStart + len("return"))
+	parens := layers[syntax.DefaultTheme.Rainbow.New()]
+	syntax.DefaultTheme.Rainbow.Pop()
+	expect(parens.Spans()).To.Have.Len(4)
+	expectPositionMatch(t, src, "(", parens.Spans()[0])
+	expectPositionMatch(t, src, ")", parens.Spans()[1])
+	expectPositionMatch(t, src, "{", parens.Spans()[2])
+	expectPositionMatch(t, src, "}", parens.Spans()[3])
 
 	typs := layers[syntax.DefaultTheme.Colors.Type]
 	expect(typs.Spans()).To.Have.Len(2)
-	start, end = typs.Spans()[0].Range()
-	expectedStart = strings.Index(ast, "string")
-	expect(start).To.Equal(expectedStart)
-	expect(end).To.Equal(expectedStart + len("string"))
-	start, end = typs.Spans()[1].Range()
-	expectedStart = strings.Index(ast, "int")
-	expect(start).To.Equal(expectedStart)
-	expect(end).To.Equal(expectedStart + len("int"))
+	expectPositionMatch(t, src, "string", typs.Spans()[0])
+	expectPositionMatch(t, src, "int", typs.Spans()[1])
 
 	ints := layers[syntax.DefaultTheme.Colors.Num]
 	expect(ints.Spans()).To.Have.Len(1)
-	start, end = ints.Spans()[0].Range()
-	expectedStart = strings.Index(ast, "0")
+	expectPositionMatch(t, src, "0", ints.Spans()[0])
+}
+
+func Bad(t *testing.T) {
+	expect := expect.New(t)
+
+	src := `
+package foo
+
+10
+`
+	s := syntax.New(syntax.DefaultTheme)
+	err := s.Parse(src)
+	expect(err).Not.To.Be.Nil()
+
+	layers := s.Layers()
+	expect(layers).To.Have.Len(2)
+
+	bad := layers[syntax.DefaultTheme.Colors.Bad]
+	expect(bad.Spans()).To.Have.Len(1)
+	expectedStart := strings.Index(src, "10")
+	start, _ := bad.Spans()[0].Range()
 	expect(start).To.Equal(expectedStart)
-	expect(end).To.Equal(expectedStart + 1)
 }

@@ -11,13 +11,13 @@ import (
 
 func (s *Syntax) addFieldList(src *ast.FieldList) {
 	if src.Opening != 0 {
-		s.add(defaultRainbow.New(), src.Opening, 1)
+		s.add(s.Theme.Rainbow.New(), src.Opening, 1)
 	}
 	for _, block := range src.List {
 		s.addNode(s.Theme.Colors.Type, block.Type)
 	}
 	if src.Closing != 0 {
-		s.add(defaultRainbow.Pop(), src.Closing, 1)
+		s.add(s.Theme.Rainbow.Pop(), src.Closing, 1)
 	}
 }
 
@@ -50,8 +50,8 @@ func (s *Syntax) addMapType(src *ast.MapType) {
 }
 
 func (s *Syntax) addArrayType(src *ast.ArrayType) {
-	s.add(defaultRainbow.New(), src.Lbrack, 1)
-	s.add(defaultRainbow.Pop(), src.Lbrack+1, 1)
+	s.add(s.Theme.Rainbow.New(), src.Lbrack, 1)
+	s.add(s.Theme.Rainbow.Pop(), src.Lbrack+1, 1)
 	s.addExpr(src.Len)
 	s.addExpr(src.Elt)
 }
@@ -71,11 +71,11 @@ func (s *Syntax) addBasicLit(src *ast.BasicLit) {
 
 func (s *Syntax) addCompositeLit(src *ast.CompositeLit) {
 	s.addExpr(src.Type)
-	s.add(defaultRainbow.New(), src.Lbrace, 1)
+	s.add(s.Theme.Rainbow.New(), src.Lbrace, 1)
 	for _, elt := range src.Elts {
 		s.addExpr(elt)
 	}
-	s.add(defaultRainbow.Pop(), src.Rbrace, 1)
+	s.add(s.Theme.Rainbow.Pop(), src.Rbrace, 1)
 }
 
 func (s *Syntax) addCommClause(src *ast.CommClause) {

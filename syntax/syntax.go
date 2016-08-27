@@ -7,6 +7,7 @@ package syntax
 import "github.com/nelsam/gxui"
 
 var DefaultTheme = Theme{
+	Rainbow: DefaultRainbow,
 	Colors: Colors{
 		Bad: Color{
 			Foreground: gxui.Color{

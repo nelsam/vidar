@@ -28,5 +28,6 @@ type Colors struct {
 }
 
 type Theme struct {
-	Colors Colors
+	Colors  Colors
+	Rainbow *Rainbow
 }

@@ -48,13 +48,13 @@ func (s *Syntax) addGenDecl(decl *ast.GenDecl) {
 		return
 	}
 	if decl.Lparen != 0 {
-		s.add(defaultRainbow.New(), decl.Lparen, 1)
+		s.add(s.Theme.Rainbow.New(), decl.Lparen, 1)
 	}
 	s.add(tokColor, decl.TokPos, len(decl.Tok.String()))
 	for _, spec := range decl.Specs {
 		s.addSpec(spec)
 	}
 	if decl.Rparen != 0 {
-		s.add(defaultRainbow.Pop(), decl.Rparen, 1)
+		s.add(s.Theme.Rainbow.Pop(), decl.Rparen, 1)
 	}
 }

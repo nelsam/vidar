@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	defaultRainbow = &rainbow{
+	DefaultRainbow = &Rainbow{
 		colorRange: defaultRange,
 		available: []Color{
 			{
@@ -65,7 +65,7 @@ var (
 		},
 	}
 
-	defaultRange = colorRange{
+	defaultRange = ColorRange{
 		min: Color{
 			Foreground: gxui.Color{
 				R: 0.3,
@@ -85,11 +85,11 @@ var (
 	}
 )
 
-type colorRange struct {
+type ColorRange struct {
 	min, max Color
 }
 
-func (c colorRange) New() Color {
+func (c ColorRange) New() Color {
 	return Color{
 		Foreground: gxui.Color{
 			R: c.min.Foreground.R + rand.Float32()*(c.max.Foreground.R-c.min.Foreground.R),
@@ -106,12 +106,12 @@ func (c colorRange) New() Color {
 	}
 }
 
-type rainbow struct {
-	colorRange       colorRange
+type Rainbow struct {
+	colorRange       ColorRange
 	available, inUse []Color
 }
 
-func (r *rainbow) New() Color {
+func (r *Rainbow) New() Color {
 	next := r.colorRange.New()
 	if len(r.available) > 0 {
 		lastIdx := len(r.available) - 1
@@ -122,7 +122,7 @@ func (r *rainbow) New() Color {
 	return next
 }
 
-func (r *rainbow) Pop() Color {
+func (r *Rainbow) Pop() Color {
 	lastIdx := len(r.inUse) - 1
 	color := r.inUse[lastIdx]
 	r.inUse = r.inUse[:lastIdx]

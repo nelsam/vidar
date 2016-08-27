@@ -74,11 +74,11 @@ func (s *Syntax) addBinaryExpr(src *ast.BinaryExpr) {
 
 func (s *Syntax) addCallExpr(src *ast.CallExpr) {
 	s.addExpr(src.Fun)
-	s.add(defaultRainbow.New(), src.Lparen, 1)
+	s.add(s.Theme.Rainbow.New(), src.Lparen, 1)
 	for _, arg := range src.Args {
 		s.addExpr(arg)
 	}
-	s.add(defaultRainbow.Pop(), src.Rparen, 1)
+	s.add(s.Theme.Rainbow.Pop(), src.Rparen, 1)
 }
 
 func (s *Syntax) addChanExpr(src *ast.ChanType) {
@@ -93,9 +93,9 @@ func (s *Syntax) addFuncLitExpr(src *ast.FuncLit) {
 
 func (s *Syntax) addIndexExpr(src *ast.IndexExpr) {
 	s.addExpr(src.X)
-	s.add(defaultRainbow.New(), src.Lbrack, 1)
+	s.add(s.Theme.Rainbow.New(), src.Lbrack, 1)
 	s.addExpr(src.Index)
-	s.add(defaultRainbow.Pop(), src.Rbrack, 1)
+	s.add(s.Theme.Rainbow.Pop(), src.Rbrack, 1)
 }
 
 func (s *Syntax) addKeyValueExpr(src *ast.KeyValueExpr) {
@@ -104,9 +104,9 @@ func (s *Syntax) addKeyValueExpr(src *ast.KeyValueExpr) {
 }
 
 func (s *Syntax) addParenExpr(src *ast.ParenExpr) {
-	s.add(defaultRainbow.New(), src.Lparen, 1)
+	s.add(s.Theme.Rainbow.New(), src.Lparen, 1)
 	s.addExpr(src.X)
-	s.add(defaultRainbow.Pop(), src.Rparen, 1)
+	s.add(s.Theme.Rainbow.Pop(), src.Rparen, 1)
 }
 
 func (s *Syntax) addSelectorExpr(src *ast.SelectorExpr) {
@@ -116,11 +116,11 @@ func (s *Syntax) addSelectorExpr(src *ast.SelectorExpr) {
 
 func (s *Syntax) addSliceExpr(src *ast.SliceExpr) {
 	s.addExpr(src.X)
-	s.add(defaultRainbow.New(), src.Lbrack, 1)
+	s.add(s.Theme.Rainbow.New(), src.Lbrack, 1)
 	s.addExpr(src.Low)
 	s.addExpr(src.High)
 	s.addExpr(src.Max)
-	s.add(defaultRainbow.Pop(), src.Lbrack, 1)
+	s.add(s.Theme.Rainbow.Pop(), src.Lbrack, 1)
 }
 
 func (s *Syntax) addStarExpr(src *ast.StarExpr) {
@@ -129,9 +129,9 @@ func (s *Syntax) addStarExpr(src *ast.StarExpr) {
 
 func (s *Syntax) addTypeAssertExpr(src *ast.TypeAssertExpr) {
 	s.addExpr(src.X)
-	s.add(defaultRainbow.New(), src.Lparen, 1)
+	s.add(s.Theme.Rainbow.New(), src.Lparen, 1)
 	s.addExpr(src.Type)
-	s.add(defaultRainbow.Pop(), src.Rparen, 1)
+	s.add(s.Theme.Rainbow.Pop(), src.Rparen, 1)
 }
 
 func (s *Syntax) addUnaryExpr(src *ast.UnaryExpr) {

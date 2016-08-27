@@ -171,9 +171,9 @@ func (s *Syntax) addBranchStmt(stmt *ast.BranchStmt) {
 }
 
 func (s *Syntax) addBlockStmt(stmt *ast.BlockStmt) {
-	s.add(defaultRainbow.New(), stmt.Lbrace, 1)
+	s.add(s.Theme.Rainbow.New(), stmt.Lbrace, 1)
 	for _, stmt := range stmt.List {
 		s.addStmt(stmt)
 	}
-	s.add(defaultRainbow.Pop(), stmt.Rbrace, 1)
+	s.add(s.Theme.Rainbow.Pop(), stmt.Rbrace, 1)
 }
