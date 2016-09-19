@@ -29,12 +29,12 @@ func µ() string {
 	layers := s.Layers()
 	keywords := layers[syntax.DefaultTheme.Colors.Keyword]
 	expect(keywords.Spans()).To.Have.Len(4)
-	expectPositionMatch(t, src, "var", keywords.Spans()[2])
-	expectPositionMatch(t, src, "return", keywords.Spans()[3])
+	expect(keywords.Spans()[2]).To.Pass(position{src: src, match: "var"})
+	expect(keywords.Spans()[3]).To.Pass(position{src: src, match: "return"})
 
 	strings := layers[syntax.DefaultTheme.Colors.String]
 	expect(strings.Spans()).To.Have.Len(1)
-	expectPositionMatch(t, src, `"Ωð"`, strings.Spans()[0])
+	expect(strings.Spans()[0]).To.Pass(position{src: src, match: `"Ωð"`})
 }
 
 func TestPackageDocs(t *testing.T) {
@@ -55,5 +55,5 @@ package foo
 	expect(comments.Spans()).To.Have.Len(1)
 	comment := "// Package foo does stuff.\n" +
 		"// It is also a thing."
-	expectPositionMatch(t, src, comment, comments.Spans()[0])
+	expect(comments.Spans()[0]).To.Pass(position{src: src, match: comment})
 }

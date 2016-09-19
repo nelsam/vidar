@@ -51,9 +51,13 @@ func (s *Syntax) addMapType(src *ast.MapType) {
 
 func (s *Syntax) addArrayType(src *ast.ArrayType) {
 	s.add(s.Theme.Rainbow.New(), src.Lbrack, 1)
-	s.add(s.Theme.Rainbow.Pop(), src.Lbrack+1, 1)
-	s.addExpr(src.Len)
-	s.addExpr(src.Elt)
+	rbrack := src.Lbrack + 1
+	if src.Len != nil {
+		rbrack = src.Len.End()
+		s.addExpr(src.Len)
+	}
+	s.add(s.Theme.Rainbow.Pop(), rbrack, 1)
+	s.addTypeExpr(src.Elt)
 }
 
 func (s *Syntax) addBasicLit(src *ast.BasicLit) {

@@ -23,6 +23,12 @@ var DefaultTheme = Theme{
 				A: 1,
 			},
 		},
+		Ident: Color{Foreground: gxui.Color{
+			R: 0.9,
+			G: 0.9,
+			B: 0.9,
+			A: 1,
+		}},
 		Builtin: Color{Foreground: gxui.Color{
 			R: 0.9,
 			G: 0.3,

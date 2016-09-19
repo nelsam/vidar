@@ -17,6 +17,7 @@ type Colors struct {
 	Builtin Color
 	Func    Color
 	Type    Color
+	Ident   Color
 
 	String Color
 	Num    Color

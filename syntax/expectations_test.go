@@ -4,33 +4,59 @@
 
 package syntax_test
 
-import "testing"
+import (
+	"errors"
+	"fmt"
+)
 
 type ranger interface {
 	Range() (int, int)
 }
 
-func expectPositionMatch(t *testing.T, src, match string, layer ranger) {
-	expectIndexedPositionMatch(t, src, match, 0, layer)
+func numSuffix(n int) string {
+	switch n % 10 {
+	case 1:
+		return "st"
+	case 2:
+		return "nd"
+	case 3:
+		return "rd"
+	default:
+		return "th"
+	}
 }
 
-func expectIndexedPositionMatch(t *testing.T, src, match string, idx int, layer ranger) {
-	// Switch to []rune, since we want to match positions based on rune index, not byte
-	runes, sep := []rune(src), []rune(match)
+type position struct {
+	src, match string
+	idx        int
+}
 
-	var expectedStart int
-	for ; idx >= 0; idx-- {
-		expectedStart = index(runes, sep)
+func (p position) Match(actual interface{}) error {
+	ranger, ok := actual.(ranger)
+	if !ok {
+		return errors.New("have a Range() (int, int) method")
 	}
-	expectedEnd := expectedStart + len(sep)
+	// Switch to []rune, since we want to match positions based on rune index, not byte
+	runes, sep := []rune(p.src), []rune(p.match)
+	humanIdx := fmt.Sprintf("%d%s", p.idx+1, numSuffix(p.idx+1))
 
-	start, end := layer.Range()
+	var expectedStart, expectedEnd int
+	for ; p.idx >= 0; p.idx-- {
+		expectedStart = expectedEnd + index(runes[expectedEnd:], sep)
+		if expectedStart == -1 {
+			return fmt.Errorf("have a %s %s in %s", humanIdx, p.match, p.src)
+		}
+		expectedEnd = expectedStart + len(sep)
+	}
+
+	start, end := ranger.Range()
 	if start != expectedStart {
-		t.Errorf("%s expected to be at position %d in %s (was at %d)", match, expectedStart, src, start)
+		return fmt.Errorf("have a start position of %d for the %s %s in %s", expectedStart, humanIdx, p.match, p.src)
 	}
 	if end != expectedEnd {
-		t.Errorf("%s expected to end at position %d in %s (was at %d)", match, expectedEnd, src, end)
+		return fmt.Errorf("have an end position of %d for the %s %s in %s", expectedEnd, humanIdx, p.match, p.src)
 	}
+	return nil
 }
 
 // index is like strings.Index, but for rune slices.

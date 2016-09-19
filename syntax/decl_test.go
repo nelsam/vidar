@@ -41,15 +41,15 @@ var Foo string
 
 	keywords := layers[syntax.DefaultTheme.Colors.Keyword]
 	expect(keywords.Spans()).To.Have.Len(2)
-	expectPositionMatch(t, src, "var", keywords.Spans()[1])
+	expect(keywords.Spans()[1]).To.Pass(position{src: src, match: "var"})
 
 	comments := layers[syntax.DefaultTheme.Colors.Comment]
 	expect(comments.Spans()).To.Have.Len(1)
-	expectPositionMatch(t, src, "// Foo is a thing", comments.Spans()[0])
+	expect(comments.Spans()[0]).To.Pass(position{src: src, match: "// Foo is a thing"})
 
 	typs := layers[syntax.DefaultTheme.Colors.Type]
 	expect(typs.Spans()).To.Have.Len(1)
-	expectPositionMatch(t, src, "string", typs.Spans()[0])
+	expect(typs.Spans()[0]).To.Pass(position{src: src, match: "string"})
 }
 
 func Paren(t *testing.T) {
@@ -72,18 +72,18 @@ var (
 
 	keywords := layers[syntax.DefaultTheme.Colors.Keyword]
 	expect(keywords.Spans()).To.Have.Len(2)
-	expectPositionMatch(t, src, "var", keywords.Spans()[1])
+	expect(keywords.Spans()[1]).To.Pass(position{src: src, match: "var"})
 
 	parens := layers[syntax.DefaultTheme.Rainbow.New()]
 	syntax.DefaultTheme.Rainbow.Pop()
 	expect(parens.Spans()).To.Have.Len(2)
-	expectPositionMatch(t, src, "(", parens.Spans()[0])
-	expectPositionMatch(t, src, ")", parens.Spans()[1])
+	expect(parens.Spans()[0]).To.Pass(position{src: src, match: "("})
+	expect(parens.Spans()[1]).To.Pass(position{src: src, match: ")"})
 
 	typs := layers[syntax.DefaultTheme.Colors.Type]
 	expect(typs.Spans()).To.Have.Len(2)
-	expectPositionMatch(t, src, "string", typs.Spans()[0])
-	expectPositionMatch(t, src, "int", typs.Spans()[1])
+	expect(typs.Spans()[0]).To.Pass(position{src: src, match: "string"})
+	expect(typs.Spans()[1]).To.Pass(position{src: src, match: "int"})
 }
 
 func Func(t *testing.T) {
@@ -105,25 +105,25 @@ func Foo(bar string) int {
 
 	keywords := layers[syntax.DefaultTheme.Colors.Keyword]
 	expect(keywords.Spans()).To.Have.Len(3)
-	expectPositionMatch(t, src, "func", keywords.Spans()[1])
-	expectPositionMatch(t, src, "return", keywords.Spans()[2])
+	expect(keywords.Spans()[1]).To.Pass(position{src: src, match: "func"})
+	expect(keywords.Spans()[2]).To.Pass(position{src: src, match: "return"})
 
 	parens := layers[syntax.DefaultTheme.Rainbow.New()]
 	syntax.DefaultTheme.Rainbow.Pop()
 	expect(parens.Spans()).To.Have.Len(4)
-	expectPositionMatch(t, src, "(", parens.Spans()[0])
-	expectPositionMatch(t, src, ")", parens.Spans()[1])
-	expectPositionMatch(t, src, "{", parens.Spans()[2])
-	expectPositionMatch(t, src, "}", parens.Spans()[3])
+	expect(parens.Spans()[0]).To.Pass(position{src: src, match: "("})
+	expect(parens.Spans()[1]).To.Pass(position{src: src, match: ")"})
+	expect(parens.Spans()[2]).To.Pass(position{src: src, match: "{"})
+	expect(parens.Spans()[3]).To.Pass(position{src: src, match: "}"})
 
 	typs := layers[syntax.DefaultTheme.Colors.Type]
 	expect(typs.Spans()).To.Have.Len(2)
-	expectPositionMatch(t, src, "string", typs.Spans()[0])
-	expectPositionMatch(t, src, "int", typs.Spans()[1])
+	expect(typs.Spans()[0]).To.Pass(position{src: src, match: "string"})
+	expect(typs.Spans()[1]).To.Pass(position{src: src, match: "int"})
 
 	ints := layers[syntax.DefaultTheme.Colors.Num]
 	expect(ints.Spans()).To.Have.Len(1)
-	expectPositionMatch(t, src, "0", ints.Spans()[0])
+	expect(ints.Spans()[0]).To.Pass(position{src: src, match: "0"})
 }
 
 func Bad(t *testing.T) {

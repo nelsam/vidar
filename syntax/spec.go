@@ -23,9 +23,7 @@ func (s *Syntax) addSpec(spec ast.Spec) {
 }
 
 func (s *Syntax) addValueSpec(val *ast.ValueSpec) {
-	if val.Type != nil {
-		s.addNode(s.Theme.Colors.Type, val.Type)
-	}
+	s.addTypeExpr(val.Type)
 	for _, expr := range val.Values {
 		s.addExpr(expr)
 	}

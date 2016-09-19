@@ -9,6 +9,13 @@ import (
 	"log"
 )
 
+func (s *Syntax) addTypeExpr(expr ast.Expr) {
+	orig := s.Theme.Colors.Ident
+	s.Theme.Colors.Ident = s.Theme.Colors.Type
+	s.addExpr(expr)
+	s.Theme.Colors.Ident = orig
+}
+
 func (s *Syntax) addExpr(expr ast.Expr) {
 	if expr == nil {
 		return
@@ -55,7 +62,7 @@ func (s *Syntax) addExpr(expr ast.Expr) {
 	case *ast.Ellipsis:
 		s.addEllipsis(src)
 	case *ast.Ident:
-		return
+		s.addNode(s.Theme.Colors.Ident, src)
 	case *ast.CompositeLit:
 		s.addCompositeLit(src)
 	default:
@@ -120,7 +127,7 @@ func (s *Syntax) addSliceExpr(src *ast.SliceExpr) {
 	s.addExpr(src.Low)
 	s.addExpr(src.High)
 	s.addExpr(src.Max)
-	s.add(s.Theme.Rainbow.Pop(), src.Lbrack, 1)
+	s.add(s.Theme.Rainbow.Pop(), src.Rbrack, 1)
 }
 
 func (s *Syntax) addStarExpr(src *ast.StarExpr) {
