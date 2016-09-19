@@ -13,17 +13,17 @@ import (
 )
 
 func TestDecl(t *testing.T) {
-	t.Run("Gen", Gen)
-	t.Run("Func", Func)
-	t.Run("Bad", Bad)
+	t.Run("Gen", GenDecl)
+	t.Run("Func", FuncDecl)
+	t.Run("Bad", BadDecl)
 }
 
-func Gen(t *testing.T) {
-	t.Run("NoParens", NoParen)
-	t.Run("Parens", Paren)
+func GenDecl(t *testing.T) {
+	t.Run("NoParens", GenDeclNoParen)
+	t.Run("Parens", GenDeclParen)
 }
 
-func NoParen(t *testing.T) {
+func GenDeclNoParen(t *testing.T) {
 	expect := expect.New(t)
 
 	src := `
@@ -52,7 +52,7 @@ var Foo string
 	expect(typs.Spans()[0]).To.Pass(position{src: src, match: "string"})
 }
 
-func Paren(t *testing.T) {
+func GenDeclParen(t *testing.T) {
 	expect := expect.New(t)
 
 	src := `
@@ -86,7 +86,7 @@ var (
 	expect(typs.Spans()[1]).To.Pass(position{src: src, match: "int"})
 }
 
-func Func(t *testing.T) {
+func FuncDecl(t *testing.T) {
 	expect := expect.New(t)
 
 	src := `
@@ -126,7 +126,7 @@ func Foo(bar string) int {
 	expect(ints.Spans()[0]).To.Pass(position{src: src, match: "0"})
 }
 
-func Bad(t *testing.T) {
+func BadDecl(t *testing.T) {
 	expect := expect.New(t)
 
 	src := `
