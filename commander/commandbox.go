@@ -189,6 +189,7 @@ func (b *commandBox) Clear() {
 }
 
 func (b *commandBox) Run(command Command) (needsInput bool) {
+	b.Clear()
 	if b.statusTimer != nil {
 		b.statusTimer.Stop()
 	}
