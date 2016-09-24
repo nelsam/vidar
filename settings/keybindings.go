@@ -5,14 +5,12 @@
 package settings
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/nelsam/gxui"
 	"github.com/spf13/viper"
 )
@@ -119,42 +117,7 @@ func setDefaultBindings() {
 }
 
 func writeBindings() error {
-	f, err := os.Create(App.ConfigPath(keysFilename + ".toml"))
-	if err != nil {
-		return fmt.Errorf("Could not create config file: %s", err)
-	}
-	defer f.Close()
-	encoder := toml.NewEncoder(f)
-	if err := encoder.Encode(bindings.AllSettings()); err != nil {
-		return fmt.Errorf("Could not marshal key bindings: %s", err)
-	}
-	return nil
-}
-
-func updateBindings() error {
-	configNeedsUpdate := false
-	for key, action := range bindings.AllSettings() {
-		// The following were changed on May 30, 2016.  They should
-		// be safe to remove by July, 2016.
-		if action == "end-of-line" {
-			bindings.Set(key, "line-end")
-			configNeedsUpdate = true
-		}
-		if action == "beginning-of-line" {
-			bindings.Set(key, "line-start")
-			configNeedsUpdate = true
-		}
-	}
-	if configNeedsUpdate {
-		b, err := bindingConfigBytes()
-		if err != nil {
-			return err
-		}
-		b = bytes.Replace(b, []byte("end-of-line"), []byte("line-end"), -1)
-		b = bytes.Replace(b, []byte("beginning-of-line"), []byte("line-start"), -1)
-		return updateBindingConfigBytes(b)
-	}
-	return nil
+	return writeConfig(bindings, keysFilename)
 }
 
 func readBindings() error {
@@ -165,7 +128,7 @@ func readBindings() error {
 	if err != nil {
 		return err
 	}
-	return updateBindings()
+	return nil
 }
 
 func bindingConfigBytes() ([]byte, error) {
