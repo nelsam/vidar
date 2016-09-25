@@ -61,9 +61,10 @@ func (u *LicenseHeaderUpdate) LicenseEdit(finder ProjectFinder) *gxui.TextBoxEdi
 	// should have an empty line following them, and should not
 	// contain build tag comments
 	firstCommentBlockEnd := 0
-	for i := 0; i < editor.Controller().LineCount(); i++ {
+	numberOfLines := editor.Controller().LineCount()
+	for i := 0; i < numberOfLines; i++ {
 		line := editor.Controller().LineRunes(i)
-		if !strings.HasPrefix(string(line), "//") {
+		if !strings.HasPrefix(string(line), "//") && i+1 != numberOfLines {
 			if len(line) == 0 {
 				firstCommentBlockEnd = editor.Controller().LineStart(i + 1)
 			}
