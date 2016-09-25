@@ -6,7 +6,6 @@ package suggestions
 
 import (
 	"sort"
-	"strings"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/scoring"
@@ -18,7 +17,7 @@ import (
 type Adapter struct {
 	gxui.DefaultAdapter
 	suggestions []gxui.CodeSuggestion
-	scores      []int
+	scores      []float64
 }
 
 func (a *Adapter) SetSuggestions(suggestions []gxui.CodeSuggestion) {
@@ -31,10 +30,10 @@ func (a *Adapter) Suggestion(item gxui.AdapterItem) gxui.CodeSuggestion {
 }
 
 func (a *Adapter) Sort(partial string) {
-	partialLower := strings.ToLower(partial)
-	a.scores = make([]int, len(a.suggestions))
+	a.scores = make([]float64, len(a.suggestions))
+	match := []rune(partial)
 	for i, suggestion := range a.suggestions {
-		a.scores[i] = scoring.Score(suggestion.Name(), strings.ToLower(suggestion.Name()), partial, partialLower)
+		a.scores[i] = scoring.Score([]rune(suggestion.Name()), match)
 	}
 	sort.Sort(a)
 	a.DefaultAdapter.SetItems(a.suggestions)
