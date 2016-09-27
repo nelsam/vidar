@@ -5,6 +5,7 @@
 package suggestions
 
 import (
+	"math"
 	"sort"
 
 	"github.com/nelsam/gxui"
@@ -36,7 +37,12 @@ func (a *Adapter) Sort(partial string) {
 		a.scores[i] = scoring.Score([]rune(suggestion.Name()), match)
 	}
 	sort.Sort(a)
-	a.DefaultAdapter.SetItems(a.suggestions)
+
+	end := len(a.suggestions)
+	for a.scores[end-1] == math.MaxFloat64 {
+		end--
+	}
+	a.DefaultAdapter.SetItems(a.suggestions[:end])
 }
 
 func (a *Adapter) Len() int {

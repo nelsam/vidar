@@ -305,7 +305,8 @@ func (e *CodeEditor) updateSuggestionList() {
 		return
 	}
 
-	suggestions := e.SuggestionProvider().SuggestionsAt(caret)
+	start, _ := e.Controller().WordAt(caret)
+	suggestions := e.SuggestionProvider().SuggestionsAt(start)
 	if len(suggestions) == 0 {
 		e.HideSuggestionList()
 		return
@@ -323,8 +324,8 @@ func (e *CodeEditor) updateSuggestionList() {
 	size.W *= longest
 	e.adapter.SetSize(size)
 
+	partial := e.Controller().TextRange(start, caret)
 	e.adapter.SetSuggestions(suggestions)
-	partial := e.WordAt(caret)
 	e.adapter.Sort(partial)
 	e.suggestions.Select(e.suggestions.Adapter().ItemAt(0))
 
