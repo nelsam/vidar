@@ -39,7 +39,7 @@ func (a *Adapter) Sort(partial string) {
 	sort.Sort(a)
 
 	end := len(a.suggestions)
-	for a.scores[end-1] == math.MaxFloat64 {
+	for end > 0 && a.scores[end-1] == math.MaxFloat64 {
 		end--
 	}
 	a.DefaultAdapter.SetItems(a.suggestions[:end])
