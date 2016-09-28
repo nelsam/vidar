@@ -19,11 +19,13 @@ type Adapter struct {
 	gxui.DefaultAdapter
 	suggestions []gxui.CodeSuggestion
 	scores      []float64
+	end         int
 }
 
 func (a *Adapter) SetSuggestions(suggestions []gxui.CodeSuggestion) {
 	a.suggestions = suggestions
 	a.DefaultAdapter.SetItems(suggestions)
+	a.end = len(suggestions)
 }
 
 func (a *Adapter) Suggestion(item gxui.AdapterItem) gxui.CodeSuggestion {
@@ -38,15 +40,15 @@ func (a *Adapter) Sort(partial string) {
 	}
 	sort.Sort(a)
 
-	end := len(a.suggestions)
-	for end > 0 && a.scores[end-1] == math.MaxFloat64 {
-		end--
+	a.end = len(a.suggestions)
+	for a.end > 0 && a.scores[a.end-1] == math.MaxFloat64 {
+		a.end--
 	}
-	a.DefaultAdapter.SetItems(a.suggestions[:end])
+	a.DefaultAdapter.SetItems(a.suggestions[:a.end])
 }
 
 func (a *Adapter) Len() int {
-	return len(a.suggestions)
+	return a.end
 }
 
 func (a *Adapter) Less(i, j int) bool {

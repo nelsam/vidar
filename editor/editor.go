@@ -307,10 +307,7 @@ func (e *CodeEditor) updateSuggestionList() {
 
 	start, _ := e.Controller().WordAt(caret)
 	suggestions := e.SuggestionProvider().SuggestionsAt(start)
-	if len(suggestions) == 0 {
-		e.HideSuggestionList()
-		return
-	}
+
 	// TODO: if len(suggestions) == 1, show the completion in-line
 	// instead of in a completion box.
 	longest := 0
@@ -327,6 +324,10 @@ func (e *CodeEditor) updateSuggestionList() {
 	partial := e.Controller().TextRange(start, caret)
 	e.adapter.SetSuggestions(suggestions)
 	e.adapter.Sort(partial)
+	if e.adapter.Len() == 0 {
+		e.HideSuggestionList()
+		return
+	}
 	e.suggestions.Select(e.suggestions.Adapter().ItemAt(0))
 
 	// Position the suggestion list below the last caret
