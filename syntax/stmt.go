@@ -6,6 +6,7 @@ package syntax
 
 import (
 	"go/ast"
+	"go/token"
 	"log"
 )
 
@@ -116,6 +117,18 @@ func (s *Syntax) addReturnStmt(stmt *ast.ReturnStmt) {
 
 func (s *Syntax) addRangeStmt(stmt *ast.RangeStmt) {
 	s.add(s.Theme.Colors.Keyword, stmt.For, len("for"))
+	s.addExpr(stmt.Key)
+	s.addExpr(stmt.Value)
+	var rangeStart token.Pos
+	switch stmt.Tok {
+	case token.ILLEGAL:
+		rangeStart = stmt.For + token.Pos(len("for "))
+	case token.ASSIGN:
+		rangeStart = stmt.TokPos + token.Pos(len("= "))
+	case token.DEFINE:
+		rangeStart = stmt.TokPos + token.Pos(len(":= "))
+	}
+	s.add(s.Theme.Colors.Keyword, rangeStart, len("range"))
 	s.addExpr(stmt.X)
 	s.addBlockStmt(stmt.Body)
 }
@@ -125,6 +138,9 @@ func (s *Syntax) addIfStmt(stmt *ast.IfStmt) {
 	s.addStmt(stmt.Init)
 	s.addExpr(stmt.Cond)
 	s.addBlockStmt(stmt.Body)
+	if stmt.Else != nil {
+		s.add(s.Theme.Colors.Keyword, stmt.Body.End()+1, len("else"))
+	}
 	s.addStmt(stmt.Else)
 }
 

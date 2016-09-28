@@ -14,7 +14,7 @@ func (s *Syntax) addFieldList(src *ast.FieldList) {
 		s.add(s.Theme.Rainbow.New(), src.Opening, 1)
 	}
 	for _, block := range src.List {
-		s.addNode(s.Theme.Colors.Type, block.Type)
+		s.addTypeExpr(block.Type)
 	}
 	if src.Closing != 0 {
 		s.add(s.Theme.Rainbow.Pop(), src.Closing, 1)

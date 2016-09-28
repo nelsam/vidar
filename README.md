@@ -58,6 +58,13 @@ files:
   key bindings, so you can edit the file with any changes or aliases you'd like.
   Multiple bindings per command are supported.
 
+## Syntax Assumptions
+
+Much of the syntax highlighting assumes gofmted code.  If your code is not formatted that way,
+some of the highlighting may be off.  For example, if you use `}else{` instead of `} else {`,
+the wrong characters will be highlighted.  This should only have an affect on those particular
+instances, though, and the highlighting for the rest of the file should be fine.
+
 ## Current Features
 
 - Completion suggestions (via gocode)
