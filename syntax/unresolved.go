@@ -7,13 +7,6 @@ package syntax
 import "go/ast"
 
 func (s *Syntax) addUnresolved(unresolved *ast.Ident) {
-	switch unresolved.String() {
-	case "append", "cap", "close", "complex", "copy",
-		"delete", "imag", "len", "make", "new", "panic",
-		"print", "println", "real", "recover":
-
-		s.addNode(s.Theme.Colors.Builtin, unresolved)
-	case "nil":
-		s.addNode(s.Theme.Colors.Nil, unresolved)
-	}
+	// This used to be used to add builtins, but that's
+	// now handled by the *ast.Ident case in addExpr.
 }

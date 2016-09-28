@@ -62,7 +62,17 @@ func (s *Syntax) addExpr(expr ast.Expr) {
 	case *ast.Ellipsis:
 		s.addEllipsis(src)
 	case *ast.Ident:
-		s.addNode(s.Theme.Colors.Ident, src)
+		switch src.Name {
+		case "append", "cap", "close", "complex", "copy",
+			"delete", "imag", "len", "make", "new", "panic",
+			"print", "println", "real", "recover":
+
+			s.addNode(s.Theme.Colors.Builtin, src)
+		case "nil":
+			s.addNode(s.Theme.Colors.Nil, src)
+		default:
+			s.addNode(s.Theme.Colors.Ident, src)
+		}
 	case *ast.CompositeLit:
 		s.addCompositeLit(src)
 	default:

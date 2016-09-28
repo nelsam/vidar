@@ -45,8 +45,8 @@ func (s *Syntax) addInterfaceType(src *ast.InterfaceType) {
 
 func (s *Syntax) addMapType(src *ast.MapType) {
 	s.add(s.Theme.Colors.Keyword, src.Map, len("map"))
-	s.addExpr(src.Key)
-	s.addExpr(src.Value)
+	s.addTypeExpr(src.Key)
+	s.addTypeExpr(src.Value)
 }
 
 func (s *Syntax) addArrayType(src *ast.ArrayType) {
