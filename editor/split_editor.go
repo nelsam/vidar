@@ -7,11 +7,17 @@ package editor
 import (
 	"fmt"
 
+	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/mixins/outer"
 	"github.com/nelsam/gxui/themes/basic"
 )
+
+type Orienter interface {
+	SetOrientation(gxui.Orientation)
+}
 
 type Splitter interface {
 	Split(orientation gxui.Orientation)
@@ -35,21 +41,20 @@ type SplitEditor struct {
 	driver gxui.Driver
 	theme  *basic.Theme
 	font   gxui.Font
+	window gxui.Window
 
 	current MultiEditor
 }
 
-func NewSplitEditor(driver gxui.Driver, theme *basic.Theme, font gxui.Font) *SplitEditor {
-	editor := &SplitEditor{}
-	editor.Init(editor, driver, theme, font)
+func NewSplitEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme, font gxui.Font) *SplitEditor {
+	editor := &SplitEditor{
+		driver: driver,
+		theme:  theme,
+		font:   font,
+		window: window,
+	}
+	editor.SplitterLayout.Init(editor, theme)
 	return editor
-}
-
-func (e *SplitEditor) Init(outer mixins.SplitterLayoutOuter, driver gxui.Driver, theme *basic.Theme, font gxui.Font) {
-	e.driver = driver
-	e.theme = theme
-	e.font = font
-	e.SplitterLayout.Init(outer, theme)
 }
 
 func (e *SplitEditor) Split(orientation gxui.Orientation) {
@@ -68,7 +73,7 @@ func (e *SplitEditor) Split(orientation gxui.Orientation) {
 		newSplit.Focus()
 		return
 	}
-	newSplitter := NewSplitEditor(e.driver, e.theme, e.font)
+	newSplitter := NewSplitEditor(e.driver, e.window, e.theme, e.font)
 	newSplitter.SetOrientation(orientation)
 	var (
 		index       int
@@ -126,6 +131,22 @@ func (e *SplitEditor) Focus() {
 	e.current.Focus()
 }
 
+func (l *SplitEditor) CreateSplitterBar() gxui.Control {
+	b := NewSplitterBar(l.window.Viewport(), l.theme)
+	b.SetOrientation(l.Orientation())
+	b.OnSplitterDragged(func(wndPnt math.Point) { l.SplitterDragged(b, wndPnt) })
+	return b
+}
+
+func (e *SplitEditor) SetOrientation(o gxui.Orientation) {
+	e.SplitterLayout.SetOrientation(o)
+	for _, child := range e.Children() {
+		if orienter, ok := child.Control.(Orienter); ok {
+			orienter.SetOrientation(o)
+		}
+	}
+}
+
 func (e *SplitEditor) MouseUp(event gxui.MouseEvent) {
 	for _, child := range e.Children() {
 		offsetPoint := event.Point.AddX(-child.Offset.X).AddY(-child.Offset.Y)
@@ -148,4 +169,40 @@ func (e *SplitEditor) CurrentEditor() *CodeEditor {
 
 func (e *SplitEditor) CurrentFile() string {
 	return e.current.CurrentFile()
+}
+
+type SplitterBar struct {
+	mixins.SplitterBar
+	viewport    gxui.Viewport
+	orientation gxui.Orientation
+
+	arrow, horizResize, vertResize *glfw.Cursor
+}
+
+func NewSplitterBar(viewport gxui.Viewport, theme gxui.Theme) *SplitterBar {
+	s := &SplitterBar{
+		viewport:    viewport,
+		arrow:       glfw.CreateStandardCursor(int(glfw.ArrowCursor)),
+		horizResize: glfw.CreateStandardCursor(int(glfw.HResizeCursor)),
+		vertResize:  glfw.CreateStandardCursor(int(glfw.VResizeCursor)),
+	}
+	s.SplitterBar.Init(s, theme)
+	return s
+}
+
+func (s *SplitterBar) SetOrientation(o gxui.Orientation) {
+	s.orientation = o
+}
+
+func (s *SplitterBar) MouseEnter(gxui.MouseEvent) {
+	switch s.orientation {
+	case gxui.Vertical:
+		s.viewport.SetCursor(s.vertResize)
+	case gxui.Horizontal:
+		s.viewport.SetCursor(s.horizResize)
+	}
+}
+
+func (s *SplitterBar) MouseExit(gxui.MouseEvent) {
+	s.viewport.SetCursor(s.arrow)
 }

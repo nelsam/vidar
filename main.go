@@ -40,7 +40,10 @@ func init() {
 	cmd = &cobra.Command{
 		Use:   "vidar [files...]",
 		Short: "An experimental Go editor",
-		Long:  "An editor for Go code, still in its infancy.  Basic editing of Go code is mostly complete, but there's still a potential for data loss.",
+		Long: "An editor for Go code, still in its infancy.  " +
+			"Basic editing of Go code is mostly complete, but " +
+			"panics still happen and can result in the loss of " +
+			"unsaved work.",
 		Run: func(cmd *cobra.Command, args []string) {
 			files = args
 			gl.StartDriver(uiMain)
@@ -95,7 +98,7 @@ func uiMain(driver gxui.Driver) {
 	nav := navigator.New(driver, theme, controller)
 	controller.SetNavigator(nav)
 
-	editor := editor.New(driver, theme, theme.DefaultMonospaceFont())
+	editor := editor.New(driver, window, theme, theme.DefaultMonospaceFont())
 	controller.SetEditor(editor)
 
 	projTree := navigator.NewProjectTree(driver, theme)

@@ -16,14 +16,16 @@ import (
 type ProjectEditor struct {
 	SplitEditor
 
-	driver gxui.Driver
-	theme  gxui.Theme
-
 	project settings.Project
 }
 
-func (p *ProjectEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, project settings.Project) {
-	p.SplitEditor.Init(p, driver, theme, font)
+func NewProjectEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme, font gxui.Font, project settings.Project) *ProjectEditor {
+	p := &ProjectEditor{}
+	p.driver = driver
+	p.window = window
+	p.theme = theme
+	p.font = font
+	p.SplitterLayout.Init(p, theme)
 	p.SetOrientation(gxui.Horizontal)
 	p.driver = driver
 	p.theme = theme
@@ -31,6 +33,7 @@ func (p *ProjectEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.F
 	p.SetMouseEventTarget(true)
 
 	p.AddChild(NewTabbedEditor(driver, theme, font))
+	return p
 }
 
 func (p *ProjectEditor) Open(path string, cursor token.Position) {
@@ -64,38 +67,34 @@ type MultiProjectEditor struct {
 	driver gxui.Driver
 	theme  *basic.Theme
 	font   gxui.Font
+	window gxui.Window
 
 	current  *ProjectEditor
 	projects map[string]*ProjectEditor
 }
 
-func New(driver gxui.Driver, theme *basic.Theme, font gxui.Font) *MultiProjectEditor {
-	defaultEditor := new(ProjectEditor)
-	defaultEditor.Init(driver, theme, font, settings.DefaultProject)
+func New(driver gxui.Driver, window gxui.Window, theme *basic.Theme, font gxui.Font) *MultiProjectEditor {
+	defaultEditor := NewProjectEditor(driver, window, theme, font, settings.DefaultProject)
 
 	e := &MultiProjectEditor{
 		projects: map[string]*ProjectEditor{
 			"*default*": defaultEditor,
 		},
+		driver: driver,
+		window: window,
+		font:   font,
+		theme:  theme,
 	}
-	e.Init(driver, theme, font)
+	e.LinearLayout.Init(e, theme)
 	e.AddChild(defaultEditor)
 	e.current = defaultEditor
 	return e
 }
 
-func (e *MultiProjectEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font) {
-	e.driver = driver
-	e.theme = theme
-	e.font = font
-	e.LinearLayout.Init(e, e.theme)
-}
-
 func (e *MultiProjectEditor) SetProject(project settings.Project) {
 	editor, ok := e.projects[project.Name]
 	if !ok {
-		editor = new(ProjectEditor)
-		editor.Init(e.driver, e.theme, e.font, project)
+		editor = NewProjectEditor(e.driver, e.window, e.theme, e.font, project)
 		e.projects[project.Name] = editor
 	}
 	e.RemoveChild(e.current)
