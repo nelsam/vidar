@@ -60,6 +60,15 @@ func (s *Syntax) addArrayType(src *ast.ArrayType) {
 	s.addTypeExpr(src.Elt)
 }
 
+func (s *Syntax) addChanType(src *ast.ChanType) {
+	length := len("chan")
+	if src.Arrow != token.NoPos {
+		length += len("<-")
+	}
+	s.add(s.Theme.Colors.Keyword, src.Begin, length)
+	s.addExpr(src.Value)
+}
+
 func (s *Syntax) addBasicLit(src *ast.BasicLit) {
 	var color Color
 	switch src.Kind {

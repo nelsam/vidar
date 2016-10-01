@@ -28,12 +28,14 @@ func TestKeywords(t *testing.T) {
 	type bar interface{}
 	
 	func Foo(in chan string) string {
-		done := make(chan struct{})
+		wait := make(chan struct{})
 		go func() {
+			var done chan<- struct{} = wait
 			defer close(done)
 			for range in {
 			}
 		}()
+		var exitAfter <-chan struct{} = wait
 		goto FOO
 
 FOO:
@@ -66,7 +68,6 @@ FOO:
 	layers := s.Layers()
 
 	keywords := layers[syntax.DefaultTheme.Colors.Keyword]
-	expect(keywords.Spans()).To.Have.Len(34).Else.FailNow()
 
 	expect(keywords.Spans()[0]).To.Pass(position{src: src, match: "package"})
 	expect(keywords.Spans()[1]).To.Pass(position{src: src, match: "import"})
@@ -83,23 +84,29 @@ FOO:
 	expect(keywords.Spans()[12]).To.Pass(position{src: src, idx: 1, match: "struct"})
 	expect(keywords.Spans()[13]).To.Pass(position{src: src, match: "go"})
 	expect(keywords.Spans()[14]).To.Pass(position{src: src, idx: 1, match: "func"})
-	expect(keywords.Spans()[15]).To.Pass(position{src: src, match: "defer"})
-	expect(keywords.Spans()[16]).To.Pass(position{src: src, match: "for"})
-	expect(keywords.Spans()[17]).To.Pass(position{src: src, match: "range"})
-	expect(keywords.Spans()[18]).To.Pass(position{src: src, match: "goto"})
-	expect(keywords.Spans()[19]).To.Pass(position{src: src, idx: 1, match: "for"})
-	expect(keywords.Spans()[20]).To.Pass(position{src: src, match: "if"})
-	expect(keywords.Spans()[21]).To.Pass(position{src: src, match: "break"})
-	expect(keywords.Spans()[22]).To.Pass(position{src: src, match: "else"})
-	expect(keywords.Spans()[23]).To.Pass(position{src: src, idx: 1, match: "if"})
-	expect(keywords.Spans()[24]).To.Pass(position{src: src, match: "continue"})
-	expect(keywords.Spans()[25]).To.Pass(position{src: src, idx: 1, match: "else"})
-	expect(keywords.Spans()[26]).To.Pass(position{src: src, match: "switch"})
-	expect(keywords.Spans()[27]).To.Pass(position{src: src, match: "case"})
-	expect(keywords.Spans()[28]).To.Pass(position{src: src, match: "fallthrough"})
-	expect(keywords.Spans()[29]).To.Pass(position{src: src, match: "default"})
-	expect(keywords.Spans()[30]).To.Pass(position{src: src, match: "return"})
-	expect(keywords.Spans()[31]).To.Pass(position{src: src, match: "select"})
-	expect(keywords.Spans()[32]).To.Pass(position{src: src, idx: 1, match: "case"})
-	expect(keywords.Spans()[33]).To.Pass(position{src: src, idx: 1, match: "default"})
+	expect(keywords.Spans()[15]).To.Pass(position{src: src, idx: 1, match: "var"})
+	expect(keywords.Spans()[16]).To.Pass(position{src: src, match: "chan<-"})
+	expect(keywords.Spans()[17]).To.Pass(position{src: src, idx: 2, match: "struct"})
+	expect(keywords.Spans()[18]).To.Pass(position{src: src, match: "defer"})
+	expect(keywords.Spans()[19]).To.Pass(position{src: src, match: "for"})
+	expect(keywords.Spans()[20]).To.Pass(position{src: src, match: "range"})
+	expect(keywords.Spans()[21]).To.Pass(position{src: src, idx: 2, match: "var"})
+	expect(keywords.Spans()[22]).To.Pass(position{src: src, match: "<-chan"})
+	expect(keywords.Spans()[23]).To.Pass(position{src: src, idx: 3, match: "struct"})
+	expect(keywords.Spans()[24]).To.Pass(position{src: src, match: "goto"})
+	expect(keywords.Spans()[25]).To.Pass(position{src: src, idx: 1, match: "for"})
+	expect(keywords.Spans()[26]).To.Pass(position{src: src, match: "if"})
+	expect(keywords.Spans()[27]).To.Pass(position{src: src, match: "break"})
+	expect(keywords.Spans()[28]).To.Pass(position{src: src, match: "else"})
+	expect(keywords.Spans()[29]).To.Pass(position{src: src, idx: 1, match: "if"})
+	expect(keywords.Spans()[30]).To.Pass(position{src: src, match: "continue"})
+	expect(keywords.Spans()[31]).To.Pass(position{src: src, idx: 1, match: "else"})
+	expect(keywords.Spans()[32]).To.Pass(position{src: src, match: "switch"})
+	expect(keywords.Spans()[33]).To.Pass(position{src: src, match: "case"})
+	expect(keywords.Spans()[34]).To.Pass(position{src: src, match: "fallthrough"})
+	expect(keywords.Spans()[35]).To.Pass(position{src: src, match: "default"})
+	expect(keywords.Spans()[36]).To.Pass(position{src: src, match: "return"})
+	expect(keywords.Spans()[37]).To.Pass(position{src: src, match: "select"})
+	expect(keywords.Spans()[38]).To.Pass(position{src: src, idx: 1, match: "case"})
+	expect(keywords.Spans()[39]).To.Pass(position{src: src, idx: 1, match: "default"})
 }

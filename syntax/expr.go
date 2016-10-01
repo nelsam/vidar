@@ -32,7 +32,7 @@ func (s *Syntax) addExpr(expr ast.Expr) {
 	case *ast.CallExpr:
 		s.addCallExpr(src)
 	case *ast.ChanType:
-		s.addChanExpr(src)
+		s.addChanType(src)
 	case *ast.FuncLit:
 		s.addFuncLitExpr(src)
 	case *ast.FuncType:
@@ -96,11 +96,6 @@ func (s *Syntax) addCallExpr(src *ast.CallExpr) {
 		s.addExpr(arg)
 	}
 	s.add(s.Theme.Rainbow.Pop(), src.Rparen, 1)
-}
-
-func (s *Syntax) addChanExpr(src *ast.ChanType) {
-	s.add(s.Theme.Colors.Keyword, src.Begin, len("chan"))
-	s.addExpr(src.Value)
 }
 
 func (s *Syntax) addFuncLitExpr(src *ast.FuncLit) {
