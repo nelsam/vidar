@@ -5,23 +5,58 @@
 package commands
 
 import (
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/scoring"
+	"github.com/nelsam/vidar/settings"
 )
+
+const minInputChars = 10
+
+var (
+	dirColor = gxui.Color{
+		R: 0.1,
+		G: 0.3,
+		B: 0.8,
+		A: 1,
+	}
+	completionBG = gxui.Color{
+		R: 1,
+		G: 1,
+		B: 1,
+		A: 0.05,
+	}
+	completionPadding = math.Size{
+		H: 7,
+		W: 7,
+	}
+)
+
+type FileGetter interface {
+	CurrentFile() string
+}
+
+type ProjectGetter interface {
+	CurrentProject() settings.Project
+}
 
 type FSLocator struct {
 	mixins.LinearLayout
 
-	theme  *basic.Theme
-	driver gxui.Driver
-	dir    *dirLabel
-	file   *fileBox
+	theme       *basic.Theme
+	driver      gxui.Driver
+	dir         *dirLabel
+	file        *fileBox
+	completions []gxui.Label
+	files       []string
 }
 
 func NewFSLocator(driver gxui.Driver, theme *basic.Theme) *FSLocator {
@@ -40,12 +75,14 @@ func (f *FSLocator) Init(driver gxui.Driver, theme *basic.Theme) {
 	f.AddChild(f.dir)
 	f.file = newFileBox(driver, theme)
 	f.AddChild(f.file)
+	f.loadDirContents()
 }
 
 func (f *FSLocator) loadEditorDir(control gxui.Control) {
 	startingPath := findStart(control)
 
 	f.driver.Call(func() {
+		defer f.loadDirContents()
 		f.dir.SetText(startingPath)
 		f.file.SetText("")
 	})
@@ -56,6 +93,7 @@ func (f *FSLocator) Path() string {
 }
 
 func (f *FSLocator) SetPath(filePath string) {
+	defer f.loadDirContents()
 	dir, file := filepath.Split(filePath)
 
 	f.dir.SetText(dir)
@@ -65,24 +103,59 @@ func (f *FSLocator) SetPath(filePath string) {
 func (f *FSLocator) KeyPress(event gxui.KeyboardEvent) bool {
 	if event.Modifier == 0 {
 		switch event.Key {
-		case gxui.KeyTab, gxui.KeySlash:
-			fullPath := f.Path()
-			matches, err := filepath.Glob(fullPath + "*")
-			if err != nil {
-				log.Printf("Error globbing path: %s", err)
+		case gxui.KeyEscape:
+			if len(f.completions) > 0 {
+				f.clearCompletions()
+				f.completions = nil
 				return true
 			}
-			if len(matches) == 1 {
-				fullPath = matches[0]
-				f.file.setFile(filepath.Base(fullPath))
+		case gxui.KeySlash:
+			// TODO: directory creation
+			fullPath := f.Path()
+			if len(f.completions) > 0 {
+				fullPath = filepath.Join(f.dir.Text(), f.completions[0].Text())
 			}
-			if finfo, err := os.Stat(fullPath); err == nil && finfo.IsDir() {
-				f.dir.SetText(fullPath)
-				f.file.SetText("")
+			f.dir.SetText(fullPath)
+			f.file.setFile("")
+			f.loadDirContents()
+			return true
+		case gxui.KeyEnter:
+			if len(f.completions) == 0 {
+				return false
 			}
+			fullPath := filepath.Join(f.dir.Text(), f.completions[0].Text())
+			finfo, err := os.Stat(fullPath)
+			if os.IsNotExist(err) {
+				return false
+			}
+			if err != nil {
+				return false
+			}
+			if !finfo.IsDir() {
+				f.file.setFile(finfo.Name())
+				return false
+			}
+			f.dir.SetText(fullPath)
+			f.file.setFile("")
+			f.loadDirContents()
+			return true
+		case gxui.KeyRight:
+			f.clearCompletions()
+			for i := 1; i < len(f.completions); i++ {
+				f.completions[i-1], f.completions[i] = f.completions[i], f.completions[i-1]
+			}
+			f.addCompletions()
+			return true
+		case gxui.KeyLeft:
+			f.clearCompletions()
+			for i := len(f.completions) - 1; i > 0; i-- {
+				f.completions[i-1], f.completions[i] = f.completions[i], f.completions[i-1]
+			}
+			f.addCompletions()
 			return true
 		case gxui.KeyBackspace:
 			if len(f.file.Text()) == 0 {
+				defer f.loadDirContents()
 				newDir := filepath.Dir(f.dir.Text())
 				if newDir == f.dir.Text() {
 					newDir = systemRoot
@@ -104,6 +177,7 @@ func (f *FSLocator) KeyUp(event gxui.KeyboardEvent) {
 }
 
 func (f *FSLocator) KeyStroke(event gxui.KeyStrokeEvent) bool {
+	defer f.updateCompletions()
 	if event.Character == filepath.Separator {
 		return false
 	}
@@ -148,6 +222,59 @@ func (f *FSLocator) OnLostFocus(callback func()) gxui.EventSubscription {
 	return f.file.OnLostFocus(callback)
 }
 
+func (f *FSLocator) updateCompletions() {
+	f.clearCompletions()
+	f.completions = nil
+	newCompletions := scoring.Sort(f.files, f.file.Text())
+	for _, comp := range newCompletions {
+		color := f.theme.LabelStyle.FontColor
+		if strings.HasSuffix(comp, "/") {
+			color = dirColor
+		}
+		l := newCompletionLabel(f.theme, color)
+		l.SetText(comp)
+		f.completions = append(f.completions, l)
+	}
+	f.addCompletions()
+}
+
+func (f *FSLocator) clearCompletions() {
+	for _, l := range f.completions {
+		f.RemoveChild(l)
+	}
+}
+
+func (f *FSLocator) addCompletions() {
+	for _, l := range f.completions {
+		f.AddChild(l)
+	}
+}
+
+func (f *FSLocator) loadDirContents() {
+	defer f.updateCompletions()
+	dir := f.Path()
+	if dir == "" {
+		log.Printf("This is odd")
+		return
+	}
+	f.files = nil
+	contents, err := ioutil.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return
+	}
+	if err != nil {
+		log.Printf("Unexpected error trying to read directory %s", f.dir.Text())
+		return
+	}
+	for _, finfo := range contents {
+		name := finfo.Name()
+		if finfo.IsDir() {
+			name += "/"
+		}
+		f.files = append(f.files, name)
+	}
+}
+
 type dirLabel struct {
 	mixins.Label
 }
@@ -168,6 +295,9 @@ func (l *dirLabel) SetText(dir string) {
 
 func (l *dirLabel) Text() string {
 	text := l.Label.Text()
+	if len(text) == 0 || text == "/" {
+		return "/"
+	}
 	if text[len(text)-1] == filepath.Separator {
 		text = text[:len(text)-1]
 	}
@@ -176,10 +306,14 @@ func (l *dirLabel) Text() string {
 
 type fileBox struct {
 	mixins.TextBox
+
+	font gxui.Font
 }
 
 func newFileBox(driver gxui.Driver, theme *basic.Theme) *fileBox {
-	file := new(fileBox)
+	file := &fileBox{
+		font: theme.DefaultMonospaceFont(),
+	}
 	file.TextBox.Init(file, driver, theme, theme.DefaultMonospaceFont())
 	file.SetTextColor(theme.TextBoxDefaultStyle.FontColor)
 	file.SetMargin(math.Spacing{L: 3, T: 3, R: 3, B: 3})
@@ -195,21 +329,67 @@ func (f *fileBox) setFile(file string) {
 	f.Controller().SetCaret(len(file))
 }
 
-type currentFiler interface {
-	CurrentFile() string
+func (f *fileBox) DesiredSize(min, max math.Size) math.Size {
+	s := f.TextBox.DesiredSize(min, max)
+	chars := len(f.Text())
+	if chars < minInputChars {
+		chars = minInputChars
+	}
+	width := chars * f.font.GlyphMaxSize().W
+	if width > max.W {
+		width = max.W
+	}
+	if width < min.W {
+		width = min.W
+	}
+	s.W = width
+	return s
+}
+
+type completionLabel struct {
+	mixins.Label
+
+	padding math.Size
+}
+
+func newCompletionLabel(theme gxui.Theme, color gxui.Color) *completionLabel {
+	l := &completionLabel{}
+	l.Init(l, theme, theme.DefaultMonospaceFont(), color)
+	l.SetMargin(math.Spacing{
+		T: 3,
+		R: 3,
+	})
+	l.SetHorizontalAlignment(gxui.AlignCenter)
+	l.padding = completionPadding
+	return l
+}
+
+func (l *completionLabel) DesiredSize(min, max math.Size) math.Size {
+	size := l.Label.DesiredSize(min, max)
+	size.W += l.padding.W
+	size.H += l.padding.H
+	return size
+}
+
+func (l *completionLabel) Paint(c gxui.Canvas) {
+	l.Label.Paint(c)
+	r := l.Size().Rect()
+	c.DrawRoundedRect(r, 3, 3, 3, 3, gxui.TransparentPen, gxui.CreateBrush(completionBG))
 }
 
 func findStart(control gxui.Control) string {
-	startingPath := findCurrentFile(control)
-	if startingPath == "" {
-		return userHome
+	if startingPath := findCurrentFile(control); startingPath != "" {
+		return filepath.Dir(startingPath)
 	}
-	return filepath.Dir(startingPath)
+	if project, ok := findProject(control); ok {
+		return project.Path
+	}
+	return settings.DefaultProject.Path
 }
 
 func findCurrentFile(control gxui.Control) string {
 	switch src := control.(type) {
-	case currentFiler:
+	case FileGetter:
 		return src.CurrentFile()
 	case gxui.Parent:
 		for _, child := range src.Children() {
@@ -219,4 +399,18 @@ func findCurrentFile(control gxui.Control) string {
 		}
 	}
 	return ""
+}
+
+func findProject(control gxui.Control) (settings.Project, bool) {
+	switch src := control.(type) {
+	case ProjectGetter:
+		return src.CurrentProject(), true
+	case gxui.Parent:
+		for _, child := range src.Children() {
+			if proj, ok := findProject(child.Control); ok {
+				return proj, true
+			}
+		}
+	}
+	return settings.Project{}, false
 }
