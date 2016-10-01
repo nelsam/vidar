@@ -66,11 +66,13 @@ func (e *SplitEditor) Split(orientation gxui.Orientation) {
 		return
 	}
 	name, editor := e.current.CloseCurrentEditor()
-	if e.Orientation() == orientation {
-		newSplit := NewTabbedEditor(e.driver, e.theme, e.font)
-		e.AddChild(newSplit)
+	newSplit := NewTabbedEditor(e.driver, e.theme, e.font)
+	defer func() {
 		newSplit.Add(name, editor)
 		newSplit.Focus()
+	}()
+	if e.Orientation() == orientation {
+		e.AddChild(newSplit)
 		return
 	}
 	newSplitter := NewSplitEditor(e.driver, e.window, e.theme, e.font)
@@ -88,7 +90,7 @@ func (e *SplitEditor) Split(orientation gxui.Orientation) {
 	newSplitter.AddChild(e.current)
 	e.current = newSplitter
 	e.AddChildAt(index, e.current)
-	newSplitter.Split(orientation)
+	newSplitter.AddChild(newSplit)
 }
 
 func (e *SplitEditor) Editors() (count uint) {
