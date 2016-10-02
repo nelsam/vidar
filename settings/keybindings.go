@@ -97,6 +97,10 @@ func setDefaultBindings() {
 	bindings.SetDefault("Alt-V", "split-view-vertically")
 	bindings.SetDefault("Ctrl-Tab", "next-tab")
 	bindings.SetDefault("Ctrl-Shift-Tab", "prev-tab")
+	bindings.SetDefault("Alt-Up", "focus-up")
+	bindings.SetDefault("Alt-Down", "focus-down")
+	bindings.SetDefault("Alt-Left", "focus-left")
+	bindings.SetDefault("Alt-Right", "focus-right")
 
 	bindings.SetDefault("Left", "prev-char")
 	bindings.SetDefault("Ctrl-Left", "prev-word")

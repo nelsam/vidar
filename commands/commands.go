@@ -41,6 +41,10 @@ func Commands(driver gxui.Driver, theme *basic.Theme, projPane gxui.Control) []c
 		NewVerticalSplit(),
 		NewNextTab(),
 		NewPrevTab(),
+		NewFocusUp(),
+		NewFocusDown(),
+		NewFocusLeft(),
+		NewFocusRight(),
 
 		// Navigation menu
 		NewPrevLine(),
