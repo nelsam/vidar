@@ -6,7 +6,7 @@ package navigator
 
 import (
 	"go/token"
-	"os"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 
@@ -14,7 +14,6 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commands"
 	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/settings"
 )
@@ -53,44 +52,23 @@ type ProjectTree struct {
 	driver gxui.Driver
 	theme  *basic.Theme
 
-	dirs        *dirTree
-	dirsAdapter *dirTreeAdapter
-
-	project        *dirTree
-	projectAdapter *TOC
+	dirs *dirTree
 
 	layout gxui.LinearLayout
 }
 
 func NewProjectTree(driver gxui.Driver, theme *basic.Theme) *ProjectTree {
 	tree := &ProjectTree{
-		driver:  driver,
-		theme:   theme,
-		button:  createIconButton(driver, theme, "folder.png"),
-		dirs:    newDirTree(theme),
-		project: newDirTree(theme),
-		layout:  theme.CreateLinearLayout(),
+		driver: driver,
+		theme:  theme,
+		button: createIconButton(driver, theme, "folder.png"),
+		layout: theme.CreateLinearLayout(),
 	}
 	tree.layout.SetDirection(gxui.TopToBottom)
-	tree.layout.AddChild(tree.dirs)
-	tree.layout.AddChild(tree.project)
 
 	tree.SetProject(settings.DefaultProject)
 
-	tree.dirs.OnSelectionChanged(func(selection gxui.AdapterItem) {
-		tree.dirs.Show(selection)
-		tree.projectAdapter.Close()
-		tree.projectAdapter = NewTOC(selection.(string))
-		tree.project.SetAdapter(tree.projectAdapter)
-		tree.project.ExpandAll()
-	})
-
 	return tree
-}
-
-func (p *ProjectTree) SetHeight(height int) {
-	p.project.height = height - p.dirs.height
-	p.project.SizeChanged()
 }
 
 func (p *ProjectTree) Button() gxui.Button {
@@ -98,18 +76,10 @@ func (p *ProjectTree) Button() gxui.Button {
 }
 
 func (p *ProjectTree) SetRoot(path string) {
-	p.dirsAdapter = &dirTreeAdapter{}
-	p.dirsAdapter.children = []string{path}
-	p.dirsAdapter.dirs = true
-	p.dirs.SetAdapter(p.dirsAdapter)
-
-	if p.projectAdapter != nil {
-		p.projectAdapter.Close()
-	}
-	p.projectAdapter = NewTOC(path)
-	p.project.SetAdapter(p.projectAdapter)
-
-	p.project.ExpandAll()
+	p.layout.RemoveAll()
+	p.dirs = newDirTree(p.theme, path)
+	p.dirs.Load()
+	p.layout.AddChild(p.dirs)
 }
 
 func (p *ProjectTree) SetProject(project settings.Project) {
@@ -117,8 +87,7 @@ func (p *ProjectTree) SetProject(project settings.Project) {
 }
 
 func (p *ProjectTree) Open(filePath string) {
-	dir, _ := filepath.Split(filePath)
-	p.dirs.Select(dir)
+	//dir, _ := filepath.Split(filePath)
 }
 
 func (p *ProjectTree) Frame() gxui.Control {
@@ -126,156 +95,156 @@ func (p *ProjectTree) Frame() gxui.Control {
 }
 
 func (p *ProjectTree) OnComplete(onComplete func(controller.Executor)) {
-	cmd := commands.NewFileOpener(p.driver, p.theme)
-	p.project.OnSelectionChanged(func(selected gxui.AdapterItem) {
-		var node gxui.TreeNode = p.projectAdapter
-		for i := node.ItemIndex(selected); i != -1; i = node.ItemIndex(selected) {
-			node = node.NodeAt(i)
-		}
-		locationer, ok := node.(Locationer)
-		if !ok {
-			return
-		}
-		cmd.SetLocation(locationer.File(), locationer.Position())
-		onComplete(cmd)
-	})
-}
-
-type fsAdapter struct {
-	gxui.AdapterBase
-	path     string
-	children []string
-	dirs     bool
-}
-
-func fsList(dirPath string, dirs bool) fsAdapter {
-	fs := fsAdapter{
-		path: dirPath,
-		dirs: dirs,
-	}
-	fs.Walk()
-	return fs
-}
-
-func (a *fsAdapter) Walk() {
-	filepath.Walk(a.path, func(path string, info os.FileInfo, err error) error {
-		if err == nil && path != a.path {
-			use := (a.dirs && info.IsDir()) || (!a.dirs && !info.IsDir())
-			if use && !strings.HasPrefix(info.Name(), ".") {
-				a.children = append(a.children, path)
-			}
-			if info.IsDir() {
-				return filepath.SkipDir
-			}
-		}
-		return nil
-	})
-}
-
-func (a *fsAdapter) Count() int {
-	return len(a.children)
-}
-
-func (a *fsAdapter) ItemIndex(item gxui.AdapterItem) int {
-	path := item.(string)
-	for i, subDir := range a.children {
-		if strings.HasPrefix(path, subDir) {
-			return i
-		}
-	}
-	return -1
-}
-
-func (a *fsAdapter) Size(theme gxui.Theme) math.Size {
-	return math.Size{
-		W: 20 * theme.DefaultMonospaceFont().GlyphMaxSize().W,
-		H: theme.DefaultMonospaceFont().GlyphMaxSize().H,
-	}
-}
-
-func (a *fsAdapter) create(theme gxui.Theme, path string) gxui.Label {
-	label := theme.CreateLabel()
-	label.SetText(filepath.Base(path))
-	return label
+	//cmd := commands.NewFileOpener(p.driver, p.theme)
 }
 
 type dirTree struct {
-	mixins.Tree
-	theme  *basic.Theme
-	height int
+	mixins.LinearLayout
+
+	theme gxui.Theme
+	path  string
 }
 
-func newDirTree(theme *basic.Theme) *dirTree {
+func newDirTree(theme gxui.Theme, path string) *dirTree {
 	t := &dirTree{
-		theme:  theme,
-		height: 20 * theme.DefaultMonospaceFont().GlyphMaxSize().H,
+		theme: theme,
+		path:  path,
 	}
 	t.Init(t, theme)
+	t.SetDirection(gxui.TopToBottom)
 	return t
 }
 
-func (t *dirTree) DesiredSize(min, max math.Size) math.Size {
-	width := 20 * t.theme.DefaultMonospaceFont().GlyphMaxSize().W
+func (d *dirTree) DesiredSize(min, max math.Size) math.Size {
+	s := d.LinearLayout.DesiredSize(min, max)
+	width := 20 * d.theme.DefaultMonospaceFont().GlyphMaxSize().W
 	if min.W > width {
 		width = min.W
 	}
 	if max.W < width {
 		width = max.W
 	}
-	height := t.height
-	if min.H > height {
-		height = min.H
+	s.W = width
+	return s
+}
+
+func (d *dirTree) Load() error {
+	d.RemoveAll()
+	finfos, err := ioutil.ReadDir(d.path)
+	if err != nil {
+		return err
 	}
-	if max.H < height {
-		height = max.H
+	for _, finfo := range finfos {
+		if !finfo.IsDir() {
+			continue
+		}
+		if strings.HasPrefix(finfo.Name(), ".") {
+			continue
+		}
+		layout := d.theme.CreateLinearLayout()
+		layout.SetDirection(gxui.TopToBottom)
+		d.AddChild(layout)
+		button := newDirButton(d.theme.(*basic.Theme), finfo.Name())
+		path := filepath.Join(d.path, button.Text())
+
+		// TODO: move this logic.  It's here temporarily while I spike out
+		// alternative tree logic.
+		finfos, err := ioutil.ReadDir(path)
+		if err == nil {
+			for _, finfo := range finfos {
+				if finfo.IsDir() {
+					button.SetText(button.Text() + " ►")
+					break
+				}
+			}
+		}
+		layout.AddChild(button)
+		subTree := newDirTree(d.theme, path)
+		subTree.SetMargin(math.Spacing{L: 10})
+		button.OnClick(func(gxui.MouseEvent) {
+			if len(layout.Children()) > 1 {
+				button.SetText(strings.TrimSuffix(button.Text(), " ▼") + " ►")
+				layout.RemoveChild(subTree)
+				return
+			}
+			subTree.Load()
+			button.SetText(strings.TrimSuffix(button.Text(), " ►") + " ▼")
+			layout.AddChild(subTree)
+		})
 	}
-	size := math.Size{
-		W: width,
-		H: height,
+	return nil
+}
+
+type dirButton struct {
+	mixins.Button
+
+	theme *basic.Theme
+}
+
+func newDirButton(theme *basic.Theme, name string) *dirButton {
+	d := &dirButton{
+		theme: theme,
 	}
-	return size
+	d.Init(d, theme)
+	d.SetText(name)
+	d.Label().SetColor(dirColor)
+	d.SetPadding(math.Spacing{L: 1, R: 1, B: 1, T: 1})
+	d.SetMargin(math.Spacing{L: 3})
+	d.SetBackgroundBrush(d.theme.ButtonDefaultStyle.Brush)
+	d.OnMouseEnter(func(gxui.MouseEvent) { d.Redraw() })
+	d.OnMouseExit(func(gxui.MouseEvent) { d.Redraw() })
+	d.OnMouseDown(func(gxui.MouseEvent) { d.Redraw() })
+	d.OnMouseUp(func(gxui.MouseEvent) { d.Redraw() })
+	d.OnGainedFocus(d.Redraw)
+	d.OnLostFocus(d.Redraw)
+	return d
 }
 
-type dirTreeAdapter struct {
-	fsAdapter
+func (d *dirButton) DesiredSize(min, max math.Size) math.Size {
+	s := d.Button.DesiredSize(min, max)
+	s.W = max.W
+	return s
 }
 
-func loadDirTreeAdapter(dirPath string) *dirTreeAdapter {
-	return &dirTreeAdapter{
-		fsAdapter: fsList(dirPath, true),
+func (d *dirButton) Style() (s basic.Style) {
+	defer func() {
+		s.FontColor = d.Label().Color()
+	}()
+	if d.IsMouseDown(gxui.MouseButtonLeft) && d.IsMouseOver() {
+		return d.theme.ButtonPressedStyle
 	}
-}
-
-func (a *dirTreeAdapter) Item() gxui.AdapterItem {
-	return a.path
-}
-
-func (a *dirTreeAdapter) NodeAt(index int) gxui.TreeNode {
-	return loadDirTreeAdapter(a.children[index])
-}
-
-func (a *dirTreeAdapter) Create(theme gxui.Theme) gxui.Control {
-	label := a.create(theme, a.path)
-	label.SetColor(dirColor)
-	return label
-}
-
-type fileListAdapter struct {
-	fsAdapter
-}
-
-func fileList(dirPath string) *fileListAdapter {
-	return &fileListAdapter{
-		fsAdapter: fsList(dirPath, false),
+	if d.IsMouseOver() {
+		return d.theme.ButtonOverStyle
 	}
+	return d.theme.ButtonDefaultStyle
 }
 
-func (a *fileListAdapter) ItemAt(index int) gxui.AdapterItem {
-	return a.children[index]
-}
+func (d *dirButton) Paint(canvas gxui.Canvas) {
+	style := d.Style()
+	if l := d.Label(); l != nil {
+		l.SetColor(style.FontColor)
+	}
 
-func (a *fileListAdapter) Create(theme gxui.Theme, index int) gxui.Control {
-	label := a.create(theme, a.children[index])
-	label.SetColor(fileColor)
-	return label
+	rect := d.Size().Rect()
+	poly := gxui.Polygon{
+		{Position: math.Point{
+			X: rect.Min.X,
+			Y: rect.Max.Y,
+		}},
+		{Position: math.Point{
+			X: rect.Min.X,
+			Y: rect.Min.Y,
+		}},
+		{Position: math.Point{
+			X: rect.Max.X,
+			Y: rect.Min.Y,
+		}},
+		{Position: math.Point{
+			X: rect.Max.X,
+			Y: rect.Max.Y,
+		}},
+	}
+	canvas.DrawPolygon(poly, gxui.TransparentPen, style.Brush)
+	d.PaintChildren.Paint(canvas)
+	//canvas.DrawLines(poly, style.Pen)
 }
