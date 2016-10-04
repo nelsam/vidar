@@ -7,9 +7,13 @@ package navigator
 import (
 	"go/token"
 	"io/ioutil"
+	"log"
+	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
@@ -23,6 +27,12 @@ var (
 		R: 0.8,
 		G: 1,
 		B: 0.7,
+		A: 1,
+	}
+	dropColor = gxui.Color{
+		R: 0.7,
+		G: 0.7,
+		B: 0.1,
 		A: 1,
 	}
 	fileColor = gxui.Gray80
@@ -52,7 +62,7 @@ type ProjectTree struct {
 	driver gxui.Driver
 	theme  *basic.Theme
 
-	dirs *dirTree
+	dirs *directory
 
 	layout gxui.LinearLayout
 }
@@ -77,9 +87,11 @@ func (p *ProjectTree) Button() gxui.Button {
 
 func (p *ProjectTree) SetRoot(path string) {
 	p.layout.RemoveAll()
-	p.dirs = newDirTree(p.theme, path)
-	p.dirs.Load()
+	p.dirs = newDirectory(p.driver, p.theme, path)
 	p.layout.AddChild(p.dirs)
+
+	// Expand the top level
+	p.dirs.button.Click(gxui.MouseEvent{})
 }
 
 func (p *ProjectTree) SetProject(project settings.Project) {
@@ -87,32 +99,153 @@ func (p *ProjectTree) SetProject(project settings.Project) {
 }
 
 func (p *ProjectTree) Open(filePath string) {
-	//dir, _ := filepath.Split(filePath)
+	dir, _ := filepath.Split(filePath)
+	p.dirs.ExpandTo(dir)
 }
 
 func (p *ProjectTree) Frame() gxui.Control {
 	return p.layout
 }
 
-func (p *ProjectTree) OnComplete(onComplete func(controller.Executor)) {
-	//cmd := commands.NewFileOpener(p.driver, p.theme)
+func (p *ProjectTree) OnComplete(func(controller.Executor)) {
+}
+
+type directory struct {
+	mixins.LinearLayout
+
+	driver  gxui.Driver
+	button  *treeButton
+	tree    *dirTree
+	watcher *fsnotify.Watcher
+
+	// length is an atomically updated list of child nodes of
+	// this directory.  Only access via atomics.
+	length int64
+}
+
+func newDirectory(driver gxui.Driver, theme gxui.Theme, path string) *directory {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Printf("Could not create new watcher: %s", err)
+	}
+	button := newTreeButton(driver, theme.(*basic.Theme), filepath.Base(path))
+	tree := newDirTree(driver, theme, path)
+	tree.SetMargin(math.Spacing{L: 10})
+	d := &directory{
+		driver:  driver,
+		button:  button,
+		tree:    tree,
+		watcher: watcher,
+	}
+	d.Init(d, theme)
+	d.AddChild(button)
+	button.OnClick(func(gxui.MouseEvent) {
+		if d.Length() == 0 {
+			return
+		}
+		if d.tree.Attached() {
+			d.button.Collapse()
+			d.RemoveChild(d.tree)
+			return
+		}
+		d.tree.Load()
+		d.button.Expand()
+		d.AddChild(d.tree)
+	})
+	if d.watcher != nil {
+		go d.watchErrs()
+		d.startWatch()
+	}
+	return d
+}
+
+func (d *directory) ExpandTo(dir string) {
+	if !strings.HasPrefix(dir, d.tree.path) {
+		return
+	}
+	d.button.Click(gxui.MouseEvent{})
+	for _, child := range d.tree.Dirs() {
+		child.ExpandTo(dir)
+	}
+}
+
+func (d *directory) Length() int64 {
+	return atomic.LoadInt64(&d.length)
+}
+
+func (d *directory) watchErrs() {
+	for err := range d.watcher.Errors {
+		log.Printf("Watcher returned error %s", err)
+	}
+}
+
+func (d *directory) startWatch() {
+	if err := d.watcher.Add(d.tree.path); err != nil {
+		log.Printf("Unexpected error watching directory %s: %s", d.tree.path, err)
+		return
+	}
+	d.reload()
+	go d.watch()
+}
+
+func (d *directory) watch() {
+	for range d.watcher.Events {
+		// TODO: deal with the case where our directory was deleted.
+		d.driver.CallSync(d.reload)
+	}
+}
+
+func (d *directory) reload() {
+	finfos, err := ioutil.ReadDir(d.tree.path)
+	if err != nil {
+		log.Printf("Unexpected error reading directory %s: %s", d.tree.path, err)
+		return
+	}
+	defer d.driver.Call(d.Redraw)
+
+	children := int64(0)
+	for _, finfo := range finfos {
+		if finfo.IsDir() {
+			children++
+		}
+	}
+
+	switch children {
+	case 0:
+		d.button.SetExpandable(false)
+	default:
+		d.button.SetExpandable(true)
+	}
+	atomic.StoreInt64(&d.length, children)
+	if d.tree.Attached() {
+		d.tree.parse(finfos)
+	}
 }
 
 type dirTree struct {
 	mixins.LinearLayout
 
-	theme gxui.Theme
-	path  string
+	driver gxui.Driver
+	theme  gxui.Theme
+	path   string
 }
 
-func newDirTree(theme gxui.Theme, path string) *dirTree {
+func newDirTree(driver gxui.Driver, theme gxui.Theme, path string) *dirTree {
 	t := &dirTree{
-		theme: theme,
-		path:  path,
+		driver: driver,
+		theme:  theme,
+		path:   path,
 	}
 	t.Init(t, theme)
 	t.SetDirection(gxui.TopToBottom)
 	return t
+}
+
+func (d *dirTree) Dirs() (dirs []*directory) {
+	for _, c := range d.Children() {
+		dirs = append(dirs, c.Control.(*directory))
+	}
+	return dirs
 }
 
 func (d *dirTree) DesiredSize(min, max math.Size) math.Size {
@@ -129,11 +262,16 @@ func (d *dirTree) DesiredSize(min, max math.Size) math.Size {
 }
 
 func (d *dirTree) Load() error {
-	d.RemoveAll()
 	finfos, err := ioutil.ReadDir(d.path)
 	if err != nil {
 		return err
 	}
+	d.parse(finfos)
+	return nil
+}
+
+func (d *dirTree) parse(finfos []os.FileInfo) {
+	d.RemoveAll()
 	for _, finfo := range finfos {
 		if !finfo.IsDir() {
 			continue
@@ -141,53 +279,31 @@ func (d *dirTree) Load() error {
 		if strings.HasPrefix(finfo.Name(), ".") {
 			continue
 		}
-		layout := d.theme.CreateLinearLayout()
-		layout.SetDirection(gxui.TopToBottom)
-		d.AddChild(layout)
-		button := newDirButton(d.theme.(*basic.Theme), finfo.Name())
-		path := filepath.Join(d.path, button.Text())
-
-		// TODO: move this logic.  It's here temporarily while I spike out
-		// alternative tree logic.
-		finfos, err := ioutil.ReadDir(path)
-		if err == nil {
-			for _, finfo := range finfos {
-				if finfo.IsDir() {
-					button.SetText(button.Text() + " ►")
-					break
-				}
-			}
-		}
-		layout.AddChild(button)
-		subTree := newDirTree(d.theme, path)
-		subTree.SetMargin(math.Spacing{L: 10})
-		button.OnClick(func(gxui.MouseEvent) {
-			if len(layout.Children()) > 1 {
-				button.SetText(strings.TrimSuffix(button.Text(), " ▼") + " ►")
-				layout.RemoveChild(subTree)
-				return
-			}
-			subTree.Load()
-			button.SetText(strings.TrimSuffix(button.Text(), " ►") + " ▼")
-			layout.AddChild(subTree)
-		})
+		dir := newDirectory(d.driver, d.theme, filepath.Join(d.path, finfo.Name()))
+		d.AddChild(dir)
 	}
-	return nil
 }
 
-type dirButton struct {
+type treeButton struct {
 	mixins.Button
 
-	theme *basic.Theme
+	driver gxui.Driver
+	theme  *basic.Theme
+	drop   *mixins.Label
 }
 
-func newDirButton(theme *basic.Theme, name string) *dirButton {
-	d := &dirButton{
-		theme: theme,
+func newTreeButton(driver gxui.Driver, theme *basic.Theme, name string) *treeButton {
+	d := &treeButton{
+		driver: driver,
+		theme:  theme,
+		drop:   &mixins.Label{},
 	}
+	d.drop.Init(d.drop, d.theme, d.theme.DefaultMonospaceFont(), dropColor)
 	d.Init(d, theme)
+	d.SetDirection(gxui.LeftToRight)
 	d.SetText(name)
 	d.Label().SetColor(dirColor)
+	d.AddChild(d.drop)
 	d.SetPadding(math.Spacing{L: 1, R: 1, B: 1, T: 1})
 	d.SetMargin(math.Spacing{L: 3})
 	d.SetBackgroundBrush(d.theme.ButtonDefaultStyle.Brush)
@@ -200,16 +316,39 @@ func newDirButton(theme *basic.Theme, name string) *dirButton {
 	return d
 }
 
-func (d *dirButton) DesiredSize(min, max math.Size) math.Size {
+func (d *treeButton) SetExpandable(expandable bool) {
+	if expandable && d.drop.Text() != "" {
+		return
+	}
+	if !expandable && d.drop.Text() == "" {
+		return
+	}
+	text := ""
+	if expandable {
+		text = " ►"
+	}
+	d.drop.SetText(text)
+}
+
+func (d *treeButton) Expandable() bool {
+	return d.drop.Text() != ""
+}
+
+func (d *treeButton) Expand() {
+	d.drop.SetText(" ▼")
+}
+
+func (d *treeButton) Collapse() {
+	d.drop.SetText(" ►")
+}
+
+func (d *treeButton) DesiredSize(min, max math.Size) math.Size {
 	s := d.Button.DesiredSize(min, max)
 	s.W = max.W
 	return s
 }
 
-func (d *dirButton) Style() (s basic.Style) {
-	defer func() {
-		s.FontColor = d.Label().Color()
-	}()
+func (d *treeButton) Style() (s basic.Style) {
 	if d.IsMouseDown(gxui.MouseButtonLeft) && d.IsMouseOver() {
 		return d.theme.ButtonPressedStyle
 	}
@@ -219,11 +358,8 @@ func (d *dirButton) Style() (s basic.Style) {
 	return d.theme.ButtonDefaultStyle
 }
 
-func (d *dirButton) Paint(canvas gxui.Canvas) {
+func (d *treeButton) Paint(canvas gxui.Canvas) {
 	style := d.Style()
-	if l := d.Label(); l != nil {
-		l.SetColor(style.FontColor)
-	}
 
 	rect := d.Size().Rect()
 	poly := gxui.Polygon{
@@ -246,5 +382,4 @@ func (d *dirButton) Paint(canvas gxui.Canvas) {
 	}
 	canvas.DrawPolygon(poly, gxui.TransparentPen, style.Brush)
 	d.PaintChildren.Paint(canvas)
-	//canvas.DrawLines(poly, style.Pen)
 }
