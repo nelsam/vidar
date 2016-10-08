@@ -16,9 +16,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
+	"github.com/nelsam/gxui/mixins"
+	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commands"
+	"github.com/nelsam/vidar/controller"
 )
 
 var (
@@ -64,169 +67,137 @@ var (
 	}
 )
 
-func zeroBasedPos(pos token.Pos) int {
-	return int(pos) - 1
+type genericNode struct {
+	mixins.LinearLayout
+
+	driver gxui.Driver
+	theme  gxui.Theme
+
+	button   *treeButton
+	children gxui.LinearLayout
 }
 
-type genericTreeNode struct {
-	gxui.AdapterBase
-
-	name     string
-	path     string
-	color    gxui.Color
-	children []gxui.TreeNode
+func newGenericNode(driver gxui.Driver, theme gxui.Theme, name string, color gxui.Color) *genericNode {
+	g := &genericNode{}
+	g.Init(g, driver, theme, name, color)
+	return g
 }
 
-func (t genericTreeNode) Count() int {
-	return len(t.children)
+func (n *genericNode) Init(outer mixins.LinearLayoutOuter, driver gxui.Driver, theme gxui.Theme, name string, color gxui.Color) {
+	n.LinearLayout.Init(outer, theme)
+
+	n.driver = driver
+	n.theme = theme
+
+	n.SetDirection(gxui.TopToBottom)
+
+	n.button = newTreeButton(driver, theme.(*basic.Theme), name)
+	n.button.Label().SetColor(color)
+	n.LinearLayout.AddChild(n.button)
+
+	n.children = theme.CreateLinearLayout()
+	n.children.SetDirection(gxui.TopToBottom)
+	n.children.SetMargin(math.Spacing{L: 10})
 }
 
-func (t genericTreeNode) ItemIndex(item gxui.AdapterItem) int {
-	path := item.(string)
-	for i, child := range t.children {
-		childPath := child.Item().(string)
-		if path == childPath || strings.HasPrefix(path, childPath+".") {
-			return i
+func (n *genericNode) AddChild(c gxui.Control) *gxui.Child {
+	child := n.children.AddChild(c)
+	if len(n.children.Children()) > 1 {
+		return child
+	}
+	n.button.SetExpandable(true)
+	n.button.OnClick(func(gxui.MouseEvent) {
+		if n.children.Attached() {
+			n.LinearLayout.RemoveChild(n.children)
+			n.button.Collapse()
+			return
 		}
+		n.LinearLayout.AddChild(n.children)
+		n.button.Expand()
+	})
+	return child
+}
+
+func (n *genericNode) MissingChild() gxui.Control {
+	if n.children.Attached() {
+		return nil
 	}
-	return -1
-}
-
-func (t genericTreeNode) Size(theme gxui.Theme) math.Size {
-	return math.Size{
-		W: 20 * theme.DefaultMonospaceFont().GlyphMaxSize().W,
-		H: theme.DefaultMonospaceFont().GlyphMaxSize().H,
-	}
-}
-
-func (t genericTreeNode) Item() gxui.AdapterItem {
-	return t.path
-}
-
-func (t genericTreeNode) NodeAt(index int) gxui.TreeNode {
-	return t.children[index]
-}
-
-func (t genericTreeNode) Create(theme gxui.Theme) gxui.Control {
-	label := theme.CreateLabel()
-	label.SetText(t.name)
-	label.SetColor(t.color)
-	return label
-}
-
-// skippingTreeNode is a gxui.TreeNode that will skip to the child
-// node if there is exactly one child node on implementations of all
-// gxui.TreeNode methods.  This means that any number of nested
-// skippingTreeNodes will display as a single node, so long as no
-// child contains more than one child.
-type skippingTreeNode struct {
-	genericTreeNode
-}
-
-func (t skippingTreeNode) Count() int {
-	if len(t.children) == 1 {
-		return t.children[0].Count()
-	}
-	return t.genericTreeNode.Count()
-}
-
-func (t skippingTreeNode) ItemIndex(item gxui.AdapterItem) int {
-	if len(t.children) == 1 {
-		return t.children[0].ItemIndex(item)
-	}
-	return t.genericTreeNode.ItemIndex(item)
-}
-
-func (t skippingTreeNode) Item() gxui.AdapterItem {
-	if len(t.children) == 1 {
-		return t.children[0].Item()
-	}
-	return t.genericTreeNode.Item()
-}
-
-func (t skippingTreeNode) NodeAt(index int) gxui.TreeNode {
-	if len(t.children) == 1 {
-		return t.children[0].NodeAt(index)
-	}
-	return t.genericTreeNode.NodeAt(index)
-}
-
-func (t skippingTreeNode) Create(theme gxui.Theme) gxui.Control {
-	if len(t.children) == 1 {
-		return t.children[0].Create(theme)
-	}
-	return t.genericTreeNode.Create(theme)
+	return n.children
 }
 
 type packageNode struct {
-	genericTreeNode
+	genericNode
 
-	consts, vars, types, funcs *genericTreeNode
+	consts, vars, types, funcs *genericNode
 	typeMap                    map[string]*Name
 }
 
-func newPackageNode(name string) *packageNode {
-	node := &packageNode{}
-	node.name = name
-	node.consts = &genericTreeNode{name: "constants", path: name + ".constants", color: genericColor}
-	node.vars = &genericTreeNode{name: "global vars", path: name + ".global vars", color: genericColor}
-	node.types = &genericTreeNode{name: "types", path: name + ".types", color: genericColor}
-	node.funcs = &genericTreeNode{name: "funcs", path: name + ".funcs", color: genericColor}
-	node.typeMap = make(map[string]*Name)
-	node.children = []gxui.TreeNode{node.consts, node.vars, node.types, node.funcs}
+func newPackageNode(driver gxui.Driver, theme gxui.Theme, name string) *packageNode {
+	node := &packageNode{
+		consts:  newGenericNode(driver, theme, "constants", genericColor),
+		vars:    newGenericNode(driver, theme, "vars", genericColor),
+		types:   newGenericNode(driver, theme, "types", genericColor),
+		funcs:   newGenericNode(driver, theme, "funcs", genericColor),
+		typeMap: make(map[string]*Name),
+	}
+	node.Init(node, driver, theme, name, skippableColor)
+	node.AddChild(node.consts)
+	node.AddChild(node.vars)
+	node.AddChild(node.types)
+	node.AddChild(node.funcs)
 	return node
 }
 
-func (p *packageNode) addConsts(consts ...Name) {
+func (p *packageNode) expand() {
+	p.consts.button.Click(gxui.MouseEvent{})
+	p.vars.button.Click(gxui.MouseEvent{})
+	p.types.button.Click(gxui.MouseEvent{})
+	p.funcs.button.Click(gxui.MouseEvent{})
+}
+
+func (p *packageNode) addConsts(consts ...*Name) {
 	for _, c := range consts {
-		c.path = p.consts.path + "." + c.name
-		p.consts.children = append(p.consts.children, c)
+		p.consts.AddChild(c)
 	}
 }
 
-func (p *packageNode) addVars(vars ...Name) {
+func (p *packageNode) addVars(vars ...*Name) {
 	for _, v := range vars {
-		v.path = p.vars.path + "." + v.name
-		p.vars.children = append(p.vars.children, v)
+		p.vars.AddChild(v)
 	}
 }
 
-func (p *packageNode) addTypes(types ...Name) {
+func (p *packageNode) addTypes(types ...*Name) {
 	for _, typ := range types {
 		// Since we can't guarantee that we parsed the type declaration before
 		// any method declarations, we have to check to see if the type already
 		// exists.
-		existingType, ok := p.typeMap[typ.name]
+		existingType, ok := p.typeMap[typ.button.Text()]
 		if !ok {
-			typ.path = p.types.path + "." + typ.name
-			p.typeMap[typ.name] = &typ
-			p.types.children = append(p.types.children, &typ)
+			p.typeMap[typ.button.Text()] = typ
+			p.types.AddChild(typ)
 			continue
 		}
-		existingType.color = typ.color
+		existingType.button.Label().SetColor(typ.button.Label().Color())
 		existingType.filepath = typ.filepath
 		existingType.position = typ.position
 	}
 }
 
-func (p *packageNode) addFuncs(funcs ...Name) {
+func (p *packageNode) addFuncs(funcs ...*Name) {
 	for _, f := range funcs {
-		f.path = p.funcs.path + "." + f.name
-		p.funcs.children = append(p.funcs.children, f)
+		p.funcs.AddChild(f)
 	}
 }
 
-func (p *packageNode) addMethod(typeName string, method Name) {
+func (p *packageNode) addMethod(typeName string, method *Name) {
 	typ, ok := p.typeMap[typeName]
 	if !ok {
-		typ = &Name{}
-		typ.name = typeName
-		typ.path = p.types.path + "." + typ.name
+		typ = newName(p.driver, p.theme, typeName, nameColor)
 		p.typeMap[typeName] = typ
-		p.types.children = append(p.types.children, typ)
+		p.types.AddChild(typ)
 	}
-	method.path = typ.path + "." + method.name
-	typ.children = append(typ.children, method)
+	typ.AddChild(method)
 }
 
 type Location struct {
@@ -243,152 +214,102 @@ func (l Location) Position() token.Position {
 }
 
 type Name struct {
-	genericTreeNode
+	genericNode
 	Location
 }
 
-type TOC struct {
-	skippingTreeNode
+func newName(driver gxui.Driver, theme gxui.Theme, name string, color gxui.Color) *Name {
+	node := &Name{}
+	node.Init(node, driver, theme, name, color)
+	return node
+}
 
-	path       string
+func (n *Name) OnSelected(exec func(controller.Executor)) {
+	var cmd *commands.FileOpener
+	n.driver.CallSync(func() {
+		cmd = commands.NewFileOpener(n.driver, n.theme.(*basic.Theme))
+		cmd.SetLocation(n.File(), n.Position())
+	})
+	n.button.OnClick(func(gxui.MouseEvent) {
+		exec(cmd)
+	})
+}
+
+type TOC struct {
+	mixins.LinearLayout
+
+	driver gxui.Driver
+	theme  gxui.Theme
+
+	dir        string
 	fileSet    *token.FileSet
 	packageMap map[string]*packageNode
-	watcher    *fsnotify.Watcher
 
 	lock sync.Mutex
 }
 
-func NewTOC(path string) *TOC {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Printf("TOC: Could not create watcher")
-	}
+func NewTOC(driver gxui.Driver, theme gxui.Theme, dir string) *TOC {
 	toc := &TOC{
-		path:    path,
-		watcher: watcher,
+		driver: driver,
+		theme:  theme,
+		dir:    dir,
 	}
-	toc.path = path
-	if watcher != nil {
-		toc.watch()
-	}
+	toc.Init(toc, theme)
 	toc.Reload()
 	return toc
-}
-
-func (t *TOC) watch() {
-	allFiles, err := ioutil.ReadDir(t.path)
-	if err != nil {
-		log.Printf("Received error reading directory %s for watching: %s", t.path, err)
-		return
-	}
-	t.watcher.Add(t.path)
-	for _, f := range allFiles {
-		if f.IsDir() {
-			continue
-		}
-		fPath := filepath.Join(t.path, f.Name())
-		if err := t.watcher.Add(fPath); err != nil {
-			log.Printf("Could not watch file %s: %s", fPath, err)
-		}
-	}
-	go t.watchEvents()
-	go t.watchErrors()
-}
-
-func (t *TOC) watchEvents() {
-	for event := range t.watcher.Events {
-		switch event.Op {
-		case fsnotify.Remove:
-			t.watcher.Remove(event.Name)
-		case fsnotify.Create:
-			t.watcher.Add(event.Name)
-		}
-		t.Reload()
-	}
-}
-
-func (t *TOC) watchErrors() {
-	for err := range t.watcher.Errors {
-		log.Printf("Received error %s from watcher", err)
-	}
-}
-
-func (t *TOC) Close() error {
-	if t.watcher != nil {
-		return t.watcher.Close()
-	}
-	return nil
 }
 
 func (t *TOC) Reload() {
 	t.lock.Lock()
 	defer t.lock.Unlock()
+	defer t.expandPackages()
 	t.fileSet = token.NewFileSet()
-	t.children = make([]gxui.TreeNode, 0, len(t.children))
+	t.RemoveAll()
 	t.packageMap = make(map[string]*packageNode)
-	allFiles, err := ioutil.ReadDir(t.path)
+	allFiles, err := ioutil.ReadDir(t.dir)
 	if err != nil {
-		log.Printf("Received error reading directory %s: %s", t.path, err)
+		log.Printf("Received error reading directory %s: %s", t.dir, err)
 		return
 	}
-	t.parseFiles(t.path, allFiles...)
+	t.parseFiles(t.dir, allFiles...)
+}
+
+func (t *TOC) expandPackages() {
+	for _, c := range t.Children() {
+		pkg, ok := c.Control.(*packageNode)
+		if !ok {
+			continue
+		}
+		pkg.button.Click(gxui.MouseEvent{})
+		pkg.expand()
+	}
 }
 
 func (t *TOC) parseFiles(dir string, files ...os.FileInfo) {
-	filesNode := &genericTreeNode{
-		name:  "files",
-		path:  "files",
-		color: skippableColor,
-	}
-	t.children = append(t.children, filesNode)
+	filesNode := newGenericNode(t.driver, t.theme, "files", skippableColor)
+	t.AddChild(filesNode)
+	defer filesNode.button.Click(gxui.MouseEvent{})
 	for _, file := range files {
 		if file.IsDir() {
 			continue
 		}
 		fileNode := t.parseFile(dir, file)
-		filesNode.children = append(filesNode.children, fileNode)
+		fileNode.filepath = filepath.Join(dir, file.Name())
+		filesNode.AddChild(fileNode)
 	}
 }
 
-func (t *TOC) parseFile(dir string, file os.FileInfo) (fileNode Name) {
-	fileNode.name = file.Name()
-	fileNode.filepath = filepath.Join(dir, fileNode.name)
-	fileNode.path = "files." + fileNode.name
+func (t *TOC) parseFile(dir string, file os.FileInfo) *Name {
 	if !strings.HasSuffix(file.Name(), ".go") {
-		fileNode.color = nonGoColor
-		return fileNode
+		return newName(t.driver, t.theme, file.Name(), nonGoColor)
 	}
-	f, err := parser.ParseFile(t.fileSet, fileNode.filepath, nil, parser.ParseComments)
+	path := filepath.Join(dir, file.Name())
+	f, err := parser.ParseFile(t.fileSet, path, nil, parser.ParseComments)
 	if err != nil {
-		fileNode.color = errColor
-		return fileNode
+		return newName(t.driver, t.theme, file.Name(), errColor)
 	}
-	fileNode.color = nameColor
-	t.parseAstFile(fileNode.filepath, f)
-	return fileNode
-}
-
-func (t *TOC) parseGenDecl(pkgNode *packageNode, decl *ast.GenDecl, filepath, buildTags string) {
-	switch decl.Tok.String() {
-	case "const":
-		pkgNode.addConsts(t.valueNamesFrom(filepath, buildTags, decl.Specs)...)
-	case "var":
-		pkgNode.addVars(t.valueNamesFrom(filepath, buildTags, decl.Specs)...)
-	case "type":
-		// I have yet to see a case where a type declaration has more than one Specs.
-		typeSpec := decl.Specs[0].(*ast.TypeSpec)
-		typeName := typeSpec.Name.String()
-
-		typ := Name{}
-		typ.name = typeName
-		if buildTags != "" {
-			typ.name = fmt.Sprintf("%s (%s)", typ.name, buildTags)
-		}
-		typ.color = nameColor
-		typ.filepath = filepath
-		typ.position = t.fileSet.Position(typeSpec.Pos())
-		pkgNode.addTypes(typ)
-	}
+	t.parseAstFile(path, f)
+	return newName(t.driver, t.theme, file.Name(), nameColor)
 }
 
 func (t *TOC) parseAstFile(filepath string, file *ast.File) *packageNode {
@@ -398,11 +319,9 @@ func (t *TOC) parseAstFile(filepath string, file *ast.File) *packageNode {
 	packageName := file.Name.String()
 	pkgNode, ok := t.packageMap[packageName]
 	if !ok {
-		pkgNode = newPackageNode(packageName)
-		pkgNode.path = pkgNode.name
-		pkgNode.color = skippableColor
-		t.packageMap[pkgNode.name] = pkgNode
-		t.children = append(t.children, pkgNode)
+		pkgNode = newPackageNode(t.driver, t.theme, packageName)
+		t.packageMap[pkgNode.button.Text()] = pkgNode
+		t.AddChild(pkgNode)
 	}
 	for _, decl := range file.Decls {
 		switch src := decl.(type) {
@@ -414,12 +333,11 @@ func (t *TOC) parseAstFile(filepath string, file *ast.File) *packageNode {
 				// doesn't really help us in the TOC.
 				continue
 			}
-			var name Name
-			name.name = src.Name.String()
+			text := src.Name.String()
 			if buildTagLine != "" {
-				name.name = fmt.Sprintf("%s (%s)", name.name, buildTagLine)
+				text = fmt.Sprintf("%s (%s)", text, buildTagLine)
 			}
-			name.color = nameColor
+			name := newName(t.driver, t.theme, text, nameColor)
 			name.filepath = filepath
 			name.position = t.fileSet.Position(src.Pos())
 			if src.Recv == nil {
@@ -437,7 +355,27 @@ func (t *TOC) parseAstFile(filepath string, file *ast.File) *packageNode {
 	return pkgNode
 }
 
-func (t *TOC) valueNamesFrom(filepath, buildTags string, specs []ast.Spec) (names []Name) {
+func (t *TOC) parseGenDecl(pkgNode *packageNode, decl *ast.GenDecl, filepath, buildTags string) {
+	switch decl.Tok.String() {
+	case "const":
+		pkgNode.addConsts(t.valueNamesFrom(filepath, buildTags, decl.Specs)...)
+	case "var":
+		pkgNode.addVars(t.valueNamesFrom(filepath, buildTags, decl.Specs)...)
+	case "type":
+		// I have yet to see a case where a type declaration has len(Specs) != 0.
+		typeSpec := decl.Specs[0].(*ast.TypeSpec)
+		name := typeSpec.Name.String()
+		if buildTags != "" {
+			name = fmt.Sprintf("%s (%s)", name, buildTags)
+		}
+		typ := newName(t.driver, t.theme, name, nameColor)
+		typ.filepath = filepath
+		typ.position = t.fileSet.Position(typeSpec.Pos())
+		pkgNode.addTypes(typ)
+	}
+}
+
+func (t *TOC) valueNamesFrom(filepath, buildTags string, specs []ast.Spec) (names []*Name) {
 	for _, spec := range specs {
 		valSpec, ok := spec.(*ast.ValueSpec)
 		if !ok {
@@ -449,15 +387,14 @@ func (t *TOC) valueNamesFrom(filepath, buildTags string, specs []ast.Spec) (name
 				// it in the TOC isn't that useful.
 				continue
 			}
-			var newName Name
-			newName.name = name.String()
+			n := name.String()
 			if buildTags != "" {
-				newName.name = fmt.Sprintf("%s (%s)", newName.name, buildTags)
+				n = fmt.Sprintf("%s (%s)", n, buildTags)
 			}
-			newName.color = nameColor
-			newName.filepath = filepath
-			newName.position = t.fileSet.Position(name.Pos())
-			names = append(names, newName)
+			node := newName(t.driver, t.theme, n, nameColor)
+			node.filepath = filepath
+			node.position = t.fileSet.Position(name.Pos())
+			names = append(names, node)
 		}
 	}
 	return names

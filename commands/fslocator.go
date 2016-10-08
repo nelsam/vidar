@@ -252,7 +252,7 @@ func (f *FSLocator) addCompletions() {
 
 func (f *FSLocator) loadDirContents() {
 	defer f.updateCompletions()
-	dir := f.Path()
+	dir := f.dir.Text()
 	if dir == "" {
 		log.Printf("This is odd")
 		return
@@ -263,7 +263,7 @@ func (f *FSLocator) loadDirContents() {
 		return
 	}
 	if err != nil {
-		log.Printf("Unexpected error trying to read directory %s", f.dir.Text())
+		log.Printf("Unexpected error trying to read directory %s: %s", f.dir.Text(), err)
 		return
 	}
 	for _, finfo := range contents {

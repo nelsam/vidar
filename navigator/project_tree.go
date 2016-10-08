@@ -13,7 +13,6 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
@@ -62,9 +61,11 @@ type ProjectTree struct {
 	driver gxui.Driver
 	theme  *basic.Theme
 
-	dirs *directory
+	callback func(controller.Executor)
+	dirs     *directory
+	toc      gxui.Control
 
-	layout gxui.LinearLayout
+	layout *splitterLayout
 }
 
 func NewProjectTree(driver gxui.Driver, theme *basic.Theme) *ProjectTree {
@@ -72,9 +73,9 @@ func NewProjectTree(driver gxui.Driver, theme *basic.Theme) *ProjectTree {
 		driver: driver,
 		theme:  theme,
 		button: createIconButton(driver, theme, "folder.png"),
-		layout: theme.CreateLinearLayout(),
+		layout: newSplitterLayout(theme),
 	}
-	tree.layout.SetDirection(gxui.TopToBottom)
+	tree.layout.SetOrientation(gxui.Vertical)
 
 	tree.SetProject(settings.DefaultProject)
 
@@ -87,8 +88,16 @@ func (p *ProjectTree) Button() gxui.Button {
 
 func (p *ProjectTree) SetRoot(path string) {
 	p.layout.RemoveAll()
-	p.dirs = newDirectory(p.driver, p.theme, path)
-	p.layout.AddChild(p.dirs)
+	p.toc = nil
+
+	p.dirs = newDirectory(p, path)
+	scrollable := p.theme.CreateScrollLayout()
+	// Disable horiz scrolling until we can figure out an accurate
+	// way to calculate our width.
+	scrollable.SetScrollAxis(false, true)
+	scrollable.SetChild(p.dirs)
+	p.layout.AddChild(scrollable)
+	p.layout.SetChildWeight(p.dirs, 1)
 
 	// Expand the top level
 	p.dirs.button.Click(gxui.MouseEvent{})
@@ -107,39 +116,79 @@ func (p *ProjectTree) Frame() gxui.Control {
 	return p.layout
 }
 
-func (p *ProjectTree) OnComplete(func(controller.Executor)) {
+func (p *ProjectTree) OnComplete(callback func(controller.Executor)) {
+	p.callback = callback
+	go attachCallback(p.toc, callback)
+}
+
+type parent interface {
+	Children() gxui.Children
+}
+
+type irrespParent interface {
+	MissingChild() gxui.Control
+}
+
+type selectionButton interface {
+	OnSelected(func(controller.Executor))
+}
+
+func attachCallback(control gxui.Control, callback func(controller.Executor)) {
+	if b, ok := control.(selectionButton); ok {
+		b.OnSelected(callback)
+	}
+	if p, ok := control.(parent); ok {
+		for _, c := range p.Children() {
+			attachCallback(c.Control, callback)
+		}
+	}
+	if p, ok := control.(irrespParent); ok {
+		attachCallback(p.MissingChild(), callback)
+	}
 }
 
 type directory struct {
 	mixins.LinearLayout
 
-	driver  gxui.Driver
-	button  *treeButton
-	tree    *dirTree
-	watcher *fsnotify.Watcher
+	driver gxui.Driver
+	button *treeButton
+	tree   *dirTree
 
 	// length is an atomically updated list of child nodes of
 	// this directory.  Only access via atomics.
 	length int64
 }
 
-func newDirectory(driver gxui.Driver, theme gxui.Theme, path string) *directory {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Printf("Could not create new watcher: %s", err)
-	}
-	button := newTreeButton(driver, theme.(*basic.Theme), filepath.Base(path))
-	tree := newDirTree(driver, theme, path)
+func newDirectory(projTree *ProjectTree, path string) *directory {
+	driver := projTree.driver
+	theme := projTree.theme
+
+	button := newTreeButton(driver, theme, filepath.Base(path))
+	tree := newDirTree(projTree, path)
 	tree.SetMargin(math.Spacing{L: 10})
 	d := &directory{
-		driver:  driver,
-		button:  button,
-		tree:    tree,
-		watcher: watcher,
+		driver: driver,
+		button: button,
+		tree:   tree,
 	}
 	d.Init(d, theme)
 	d.AddChild(button)
 	button.OnClick(func(gxui.MouseEvent) {
+		if projTree.toc != nil {
+			projTree.layout.RemoveChild(projTree.toc)
+		}
+		toc := NewTOC(projTree.driver, projTree.theme, path)
+		if projTree.callback != nil {
+			go attachCallback(toc, projTree.callback)
+		}
+		scrollable := theme.CreateScrollLayout()
+		// Disable horiz scrolling until we can figure out an accurate
+		// way to calculate our width.
+		scrollable.SetScrollAxis(false, true)
+		scrollable.SetChild(toc)
+		projTree.toc = scrollable
+		projTree.layout.AddChild(projTree.toc)
+		projTree.layout.SetChildWeight(projTree.toc, 2)
 		if d.Length() == 0 {
 			return
 		}
@@ -152,12 +201,11 @@ func newDirectory(driver gxui.Driver, theme gxui.Theme, path string) *directory 
 		d.button.Expand()
 		d.AddChild(d.tree)
 	})
-	if d.watcher != nil {
-		go d.watchErrs()
-		d.startWatch()
-	}
+	d.reload()
 	return d
 }
+
+//func (d *directory) Child(dir string)
 
 func (d *directory) ExpandTo(dir string) {
 	if !strings.HasPrefix(dir, d.tree.path) {
@@ -173,26 +221,12 @@ func (d *directory) Length() int64 {
 	return atomic.LoadInt64(&d.length)
 }
 
-func (d *directory) watchErrs() {
-	for err := range d.watcher.Errors {
-		log.Printf("Watcher returned error %s", err)
-	}
-}
-
-func (d *directory) startWatch() {
-	if err := d.watcher.Add(d.tree.path); err != nil {
-		log.Printf("Unexpected error watching directory %s: %s", d.tree.path, err)
+func (d *directory) updateExpandable(children int64) {
+	if children == 0 {
+		d.button.SetExpandable(false)
 		return
 	}
-	d.reload()
-	go d.watch()
-}
-
-func (d *directory) watch() {
-	for range d.watcher.Events {
-		// TODO: deal with the case where our directory was deleted.
-		d.driver.CallSync(d.reload)
-	}
+	d.button.SetExpandable(true)
 }
 
 func (d *directory) reload() {
@@ -210,12 +244,7 @@ func (d *directory) reload() {
 		}
 	}
 
-	switch children {
-	case 0:
-		d.button.SetExpandable(false)
-	default:
-		d.button.SetExpandable(true)
-	}
+	d.updateExpandable(children)
 	atomic.StoreInt64(&d.length, children)
 	if d.tree.Attached() {
 		d.tree.parse(finfos)
@@ -225,18 +254,20 @@ func (d *directory) reload() {
 type dirTree struct {
 	mixins.LinearLayout
 
-	driver gxui.Driver
-	theme  gxui.Theme
-	path   string
+	projTree *ProjectTree
+	driver   gxui.Driver
+	theme    gxui.Theme
+	path     string
 }
 
-func newDirTree(driver gxui.Driver, theme gxui.Theme, path string) *dirTree {
+func newDirTree(projTree *ProjectTree, path string) *dirTree {
 	t := &dirTree{
-		driver: driver,
-		theme:  theme,
-		path:   path,
+		projTree: projTree,
+		driver:   projTree.driver,
+		theme:    projTree.theme,
+		path:     path,
 	}
-	t.Init(t, theme)
+	t.Init(t, projTree.theme)
 	t.SetDirection(gxui.TopToBottom)
 	return t
 }
@@ -246,19 +277,6 @@ func (d *dirTree) Dirs() (dirs []*directory) {
 		dirs = append(dirs, c.Control.(*directory))
 	}
 	return dirs
-}
-
-func (d *dirTree) DesiredSize(min, max math.Size) math.Size {
-	s := d.LinearLayout.DesiredSize(min, max)
-	width := 20 * d.theme.DefaultMonospaceFont().GlyphMaxSize().W
-	if min.W > width {
-		width = min.W
-	}
-	if max.W < width {
-		width = max.W
-	}
-	s.W = width
-	return s
 }
 
 func (d *dirTree) Load() error {
@@ -279,7 +297,7 @@ func (d *dirTree) parse(finfos []os.FileInfo) {
 		if strings.HasPrefix(finfo.Name(), ".") {
 			continue
 		}
-		dir := newDirectory(d.driver, d.theme, filepath.Join(d.path, finfo.Name()))
+		dir := newDirectory(d.projTree, filepath.Join(d.path, finfo.Name()))
 		d.AddChild(dir)
 	}
 }
@@ -382,4 +400,36 @@ func (d *treeButton) Paint(canvas gxui.Canvas) {
 	}
 	canvas.DrawPolygon(poly, gxui.TransparentPen, style.Brush)
 	d.PaintChildren.Paint(canvas)
+}
+
+type splitterLayout struct {
+	mixins.SplitterLayout
+
+	theme gxui.Theme
+}
+
+func newSplitterLayout(theme gxui.Theme) *splitterLayout {
+	l := &splitterLayout{
+		theme: theme,
+	}
+	l.Init(l, theme)
+	return l
+}
+
+func (l *splitterLayout) DesiredSize(min, max math.Size) math.Size {
+	s := l.SplitterLayout.DesiredSize(min, max)
+	width := 20 * l.theme.DefaultMonospaceFont().GlyphMaxSize().W
+	if min.W > width {
+		width = min.W
+	}
+	if max.W < width {
+		width = max.W
+	}
+	s.W = width
+	return s
+}
+
+func (l *splitterLayout) CreateSplitterBar() gxui.Control {
+	bar := l.SplitterLayout.CreateSplitterBar()
+	return bar
 }
