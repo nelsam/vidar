@@ -173,7 +173,9 @@ func (p *ProjectTree) watch() {
 }
 
 func (p *ProjectTree) update(path string) {
-	p.dirs.update(path)
+	p.driver.CallSync(func() {
+		p.dirs.update(path)
+	})
 	toc := p.TOC()
 	if toc != nil && strings.HasPrefix(path, toc.dir) {
 		p.driver.Call(toc.Reload)
