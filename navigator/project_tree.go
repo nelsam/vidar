@@ -5,21 +5,27 @@
 package navigator
 
 import (
+	"fmt"
 	"go/token"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/controller"
+	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/settings"
 )
+
+const maxWatchDirs = 4096
 
 var (
 	dirColor = gxui.Color{
@@ -63,23 +69,38 @@ type ProjectTree struct {
 
 	callback func(controller.Executor)
 	dirs     *directory
-	toc      gxui.Control
+	tocCtl   gxui.Control
+	toc      *TOC
+	tocLock  sync.RWMutex
+
+	watcher *fsnotify.Watcher
 
 	layout *splitterLayout
 }
 
-func NewProjectTree(driver gxui.Driver, theme *basic.Theme) *ProjectTree {
+func NewProjectTree(driver gxui.Driver, window gxui.Window, theme *basic.Theme) *ProjectTree {
 	tree := &ProjectTree{
 		driver: driver,
 		theme:  theme,
 		button: createIconButton(driver, theme, "folder.png"),
-		layout: newSplitterLayout(theme),
+		layout: newSplitterLayout(window, theme),
 	}
 	tree.layout.SetOrientation(gxui.Vertical)
-
 	tree.SetProject(settings.DefaultProject)
 
 	return tree
+}
+
+func (p *ProjectTree) SetTOC(toc *TOC) {
+	p.tocLock.Lock()
+	defer p.tocLock.Unlock()
+	p.toc = toc
+}
+
+func (p *ProjectTree) TOC() *TOC {
+	p.tocLock.RLock()
+	defer p.tocLock.RUnlock()
+	return p.toc
 }
 
 func (p *ProjectTree) Button() gxui.Button {
@@ -88,7 +109,18 @@ func (p *ProjectTree) Button() gxui.Button {
 
 func (p *ProjectTree) SetRoot(path string) {
 	p.layout.RemoveAll()
-	p.toc = nil
+	p.SetTOC(nil)
+	p.tocCtl = nil
+
+	if p.watcher != nil {
+		p.watcher.Close()
+	}
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Printf("Error creating project tree watcher: %s", err)
+	}
+	p.watcher = watcher
+	p.startWatch(path)
 
 	p.dirs = newDirectory(p, path)
 	scrollable := p.theme.CreateScrollLayout()
@@ -103,12 +135,57 @@ func (p *ProjectTree) SetRoot(path string) {
 	p.dirs.button.Click(gxui.MouseEvent{})
 }
 
+func (p *ProjectTree) startWatch(path string) {
+	if p.watcher == nil {
+		return
+	}
+	// Try to avoid watching the whole world
+	count := 0
+	err := filepath.Walk(path, func(path string, finfo os.FileInfo, err error) error {
+		if count > maxWatchDirs {
+			p.watcher.Close()
+			return fmt.Errorf("Could not watch project: exceeded directory watch limit of %d", maxWatchDirs)
+		}
+		if finfo.IsDir() {
+			count++
+			p.watcher.Add(path)
+		}
+		return nil
+	})
+	if err != nil {
+		log.Printf("Warning: %s", err)
+		return
+	}
+	go p.watch()
+	go p.watchErrs()
+}
+
+func (p *ProjectTree) watchErrs() {
+	for err := range p.watcher.Errors {
+		log.Printf("Watcher received error %s", err)
+	}
+}
+
+func (p *ProjectTree) watch() {
+	for e := range p.watcher.Events {
+		p.update(e.Name)
+	}
+}
+
+func (p *ProjectTree) update(path string) {
+	p.dirs.update(path)
+	toc := p.TOC()
+	if toc != nil && strings.HasPrefix(path, toc.dir) {
+		p.driver.Call(toc.Reload)
+	}
+}
+
 func (p *ProjectTree) SetProject(project settings.Project) {
 	p.SetRoot(project.Path)
 }
 
-func (p *ProjectTree) Open(filePath string) {
-	dir, _ := filepath.Split(filePath)
+func (p *ProjectTree) Open(path string, pos token.Position) {
+	dir, _ := filepath.Split(path)
 	p.dirs.ExpandTo(dir)
 }
 
@@ -118,7 +195,7 @@ func (p *ProjectTree) Frame() gxui.Control {
 
 func (p *ProjectTree) OnComplete(callback func(controller.Executor)) {
 	p.callback = callback
-	go attachCallback(p.toc, callback)
+	go attachCallback(p.TOC(), callback)
 }
 
 type parent interface {
@@ -174,21 +251,22 @@ func newDirectory(projTree *ProjectTree, path string) *directory {
 	d.Init(d, theme)
 	d.AddChild(button)
 	button.OnClick(func(gxui.MouseEvent) {
-		if projTree.toc != nil {
-			projTree.layout.RemoveChild(projTree.toc)
+		if projTree.tocCtl != nil {
+			projTree.layout.RemoveChild(projTree.tocCtl)
 		}
 		toc := NewTOC(projTree.driver, projTree.theme, path)
 		if projTree.callback != nil {
 			go attachCallback(toc, projTree.callback)
 		}
+		projTree.SetTOC(toc)
 		scrollable := theme.CreateScrollLayout()
 		// Disable horiz scrolling until we can figure out an accurate
 		// way to calculate our width.
 		scrollable.SetScrollAxis(false, true)
 		scrollable.SetChild(toc)
-		projTree.toc = scrollable
-		projTree.layout.AddChild(projTree.toc)
-		projTree.layout.SetChildWeight(projTree.toc, 2)
+		projTree.tocCtl = scrollable
+		projTree.layout.AddChild(projTree.tocCtl)
+		projTree.layout.SetChildWeight(projTree.tocCtl, 2)
 		if d.Length() == 0 {
 			return
 		}
@@ -205,13 +283,26 @@ func newDirectory(projTree *ProjectTree, path string) *directory {
 	return d
 }
 
-//func (d *directory) Child(dir string)
+func (d *directory) update(path string) {
+	if !strings.HasPrefix(path, d.tree.path) {
+		return
+	}
+	if d.tree.path == filepath.Dir(path) {
+		d.driver.Call(d.reload)
+		return
+	}
+	for _, dir := range d.tree.Dirs() {
+		dir.update(path)
+	}
+}
 
 func (d *directory) ExpandTo(dir string) {
 	if !strings.HasPrefix(dir, d.tree.path) {
 		return
 	}
-	d.button.Click(gxui.MouseEvent{})
+	if !d.button.Expanded() {
+		d.button.Click(gxui.MouseEvent{})
+	}
 	for _, child := range d.tree.Dirs() {
 		child.ExpandTo(dir)
 	}
@@ -348,6 +439,10 @@ func (d *treeButton) SetExpandable(expandable bool) {
 	d.drop.SetText(text)
 }
 
+func (d *treeButton) Expanded() bool {
+	return d.Expandable() && d.drop.Text() == " ▼"
+}
+
 func (d *treeButton) Expandable() bool {
 	return d.drop.Text() != ""
 }
@@ -405,12 +500,14 @@ func (d *treeButton) Paint(canvas gxui.Canvas) {
 type splitterLayout struct {
 	mixins.SplitterLayout
 
-	theme gxui.Theme
+	window gxui.Window
+	theme  gxui.Theme
 }
 
-func newSplitterLayout(theme gxui.Theme) *splitterLayout {
+func newSplitterLayout(window gxui.Window, theme gxui.Theme) *splitterLayout {
 	l := &splitterLayout{
-		theme: theme,
+		window: window,
+		theme:  theme,
 	}
 	l.Init(l, theme)
 	return l
@@ -430,6 +527,7 @@ func (l *splitterLayout) DesiredSize(min, max math.Size) math.Size {
 }
 
 func (l *splitterLayout) CreateSplitterBar() gxui.Control {
-	bar := l.SplitterLayout.CreateSplitterBar()
+	bar := editor.NewSplitterBar(l.window.Viewport(), l.theme)
+	bar.OnSplitterDragged(func(wndPnt math.Point) { l.SplitterDragged(bar, wndPnt) })
 	return bar
 }

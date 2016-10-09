@@ -225,6 +225,10 @@ func newName(driver gxui.Driver, theme gxui.Theme, name string, color gxui.Color
 }
 
 func (n *Name) OnSelected(exec func(controller.Executor)) {
+	// OnSelected will often be called in non-UI goroutines because
+	// it's called by resource intensive tasks that shouldn't be
+	// holding up the UI.  However, creating the FileOpener and
+	// setting its location needs to be done on the UI goroutine.
 	var cmd *commands.FileOpener
 	n.driver.CallSync(func() {
 		cmd = commands.NewFileOpener(n.driver, n.theme.(*basic.Theme))
