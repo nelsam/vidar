@@ -73,17 +73,19 @@ type ProjectTree struct {
 	toc      *TOC
 	tocLock  sync.RWMutex
 
-	watcher *fsnotify.Watcher
+	watcher    *fsnotify.Watcher
+	reloadLock chan struct{}
 
 	layout *splitterLayout
 }
 
 func NewProjectTree(driver gxui.Driver, window gxui.Window, theme *basic.Theme) *ProjectTree {
 	tree := &ProjectTree{
-		driver: driver,
-		theme:  theme,
-		button: createIconButton(driver, theme, "folder.png"),
-		layout: newSplitterLayout(window, theme),
+		driver:     driver,
+		theme:      theme,
+		reloadLock: make(chan struct{}, 1),
+		button:     createIconButton(driver, theme, "folder.png"),
+		layout:     newSplitterLayout(window, theme),
 	}
 	tree.layout.SetOrientation(gxui.Vertical)
 	tree.SetProject(settings.DefaultProject)
@@ -135,13 +137,16 @@ func (p *ProjectTree) SetRoot(path string) {
 	p.dirs.button.Click(gxui.MouseEvent{})
 }
 
-func (p *ProjectTree) startWatch(path string) {
+func (p *ProjectTree) startWatch(root string) {
 	if p.watcher == nil {
 		return
 	}
-	// Try to avoid watching the whole world
+
 	count := 0
-	err := filepath.Walk(path, func(path string, finfo os.FileInfo, err error) error {
+	err := filepath.Walk(root, func(path string, finfo os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("Error walking directory %s: %s", root, err)
+		}
 		if count > maxWatchDirs {
 			p.watcher.Close()
 			return fmt.Errorf("Could not watch project: exceeded directory watch limit of %d", maxWatchDirs)
@@ -166,19 +171,54 @@ func (p *ProjectTree) watchErrs() {
 	}
 }
 
+// watch waits for events from p.watcher.  For each event, the tree will
+// spin off a goroutine to update the its children.
+//
+// Events are processed in separate goroutines to help us keep up with
+// rapidly occurring events, e.g. in the case of a `git checkout` that
+// touches many, many files and directories.  It doesn't completely
+// prevent UI lock up, but it mitigates it some.
 func (p *ProjectTree) watch() {
 	for e := range p.watcher.Events {
-		p.update(e.Name)
+		switch e.Op {
+		case fsnotify.Write, fsnotify.Create, fsnotify.Remove, fsnotify.Rename:
+			go p.update(e.Name)
+		}
 	}
 }
 
+// update will update any parts of p that changes to path would affect.
+//
+// If other concurrent calls to update are running, update may bail out
+// in order to prevent locking up the UI.
+//
+// KNOWN ISSUE: This logic could cause the UI to get out of sync with
+// the filesystem.  Either an event for /bar could be ignored while
+// we process an event for /foo, or an event for /foo could be ignored
+// when the current state of the filesystem has already been processed,
+// but before the lock has been released.
+//
+// So far, though, I haven't seen a situation where fsnotify overwhelms
+// this logic to the point that the UI displays incorrect data, so maybe
+// it's good enough?  I'll be keeping my eye out for the UI getting in
+// to a bad state, but I'm not going to solve the issue until I know
+// it really is an issue.
 func (p *ProjectTree) update(path string) {
+	select {
+	case p.reloadLock <- struct{}{}:
+	default:
+		return
+	}
+	defer func() {
+		<-p.reloadLock
+	}()
+
 	p.driver.CallSync(func() {
 		p.dirs.update(path)
 	})
 	toc := p.TOC()
 	if toc != nil && strings.HasPrefix(path, toc.dir) {
-		p.driver.Call(toc.Reload)
+		p.driver.CallSync(toc.Reload)
 	}
 }
 
