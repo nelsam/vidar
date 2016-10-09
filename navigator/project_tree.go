@@ -435,12 +435,41 @@ func (d *dirTree) parse(finfos []os.FileInfo) {
 	}
 }
 
+type dropdownCharSet struct {
+	expanded, collapsed rune
+}
+
+var preferred = []dropdownCharSet{
+	{
+		expanded:  '▼',
+		collapsed: '►',
+	},
+	{
+		expanded:  '∨',
+		collapsed: '›',
+	},
+	{
+		expanded:  '◊',
+		collapsed: '›',
+	},
+	{
+		expanded:  'v',
+		collapsed: '>',
+	},
+}
+
 type treeButton struct {
 	mixins.Button
 
 	driver gxui.Driver
 	theme  *basic.Theme
 	drop   *mixins.Label
+
+	dropSet dropdownCharSet
+}
+
+type indexable interface {
+	Index(r rune) int
 }
 
 func newTreeButton(driver gxui.Driver, theme *basic.Theme, name string) *treeButton {
@@ -451,6 +480,9 @@ func newTreeButton(driver gxui.Driver, theme *basic.Theme, name string) *treeBut
 	}
 	d.drop.Init(d.drop, d.theme, d.theme.DefaultMonospaceFont(), dropColor)
 	d.Init(d, theme)
+
+	d.chooseDropSet()
+
 	d.SetDirection(gxui.LeftToRight)
 	d.SetText(name)
 	d.Label().SetColor(dirColor)
@@ -467,6 +499,19 @@ func newTreeButton(driver gxui.Driver, theme *basic.Theme, name string) *treeBut
 	return d
 }
 
+func (d *treeButton) chooseDropSet() {
+	font := d.theme.DefaultFont()
+	for _, d.dropSet = range preferred {
+		if font.Index(d.dropSet.collapsed) == 0 {
+			continue
+		}
+		if font.Index(d.dropSet.expanded) == 0 {
+			continue
+		}
+		return
+	}
+}
+
 func (d *treeButton) SetExpandable(expandable bool) {
 	if expandable && d.drop.Text() != "" {
 		return
@@ -476,13 +521,13 @@ func (d *treeButton) SetExpandable(expandable bool) {
 	}
 	text := ""
 	if expandable {
-		text = " ►"
+		text = fmt.Sprintf(" %c", d.dropSet.collapsed)
 	}
 	d.drop.SetText(text)
 }
 
 func (d *treeButton) Expanded() bool {
-	return d.Expandable() && d.drop.Text() == " ▼"
+	return d.Expandable() && d.drop.Text() == fmt.Sprintf(" %c", d.dropSet.expanded)
 }
 
 func (d *treeButton) Expandable() bool {
@@ -490,11 +535,11 @@ func (d *treeButton) Expandable() bool {
 }
 
 func (d *treeButton) Expand() {
-	d.drop.SetText(" ▼")
+	d.drop.SetText(fmt.Sprintf(" %c", d.dropSet.expanded))
 }
 
 func (d *treeButton) Collapse() {
-	d.drop.SetText(" ►")
+	d.drop.SetText(fmt.Sprintf(" %c", d.dropSet.collapsed))
 }
 
 func (d *treeButton) DesiredSize(min, max math.Size) math.Size {
