@@ -103,7 +103,7 @@ func Projects() (projs []Project) {
 }
 
 func AddProject(project Project) {
-	projects.Set("projects", append(projects.Get("projects").([]Project), project))
+	projects.Set("projects", append(Projects(), project))
 	if err := writeConfig(projects, projectsFilename); err != nil {
 		log.Printf("Error updating projects file")
 	}
