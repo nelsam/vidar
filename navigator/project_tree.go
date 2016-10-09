@@ -7,13 +7,11 @@ package navigator
 import (
 	"fmt"
 	"go/token"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/nelsam/gxui"
@@ -240,350 +238,6 @@ func (p *ProjectTree) OnComplete(callback func(controller.Executor)) {
 	go attachCallback(p.TOC(), callback)
 }
 
-type parent interface {
-	Children() gxui.Children
-}
-
-type irrespParent interface {
-	MissingChild() gxui.Control
-}
-
-type selectionButton interface {
-	OnSelected(func(controller.Executor))
-}
-
-func attachCallback(control gxui.Control, callback func(controller.Executor)) {
-	if b, ok := control.(selectionButton); ok {
-		b.OnSelected(callback)
-	}
-	if p, ok := control.(parent); ok {
-		for _, c := range p.Children() {
-			attachCallback(c.Control, callback)
-		}
-	}
-	if p, ok := control.(irrespParent); ok {
-		attachCallback(p.MissingChild(), callback)
-	}
-}
-
-type directory struct {
-	mixins.LinearLayout
-
-	driver gxui.Driver
-	button *treeButton
-	tree   *dirTree
-
-	// length is an atomically updated list of child nodes of
-	// this directory.  Only access via atomics.
-	length int64
-}
-
-func newDirectory(projTree *ProjectTree, path string) *directory {
-	driver := projTree.driver
-	theme := projTree.theme
-
-	button := newTreeButton(driver, theme, filepath.Base(path))
-	tree := newDirTree(projTree, path)
-	tree.SetMargin(math.Spacing{L: 10})
-	d := &directory{
-		driver: driver,
-		button: button,
-		tree:   tree,
-	}
-	d.Init(d, theme)
-	d.AddChild(button)
-	button.OnClick(func(gxui.MouseEvent) {
-		if projTree.tocCtl != nil {
-			projTree.layout.RemoveChild(projTree.tocCtl)
-		}
-		toc := NewTOC(projTree.driver, projTree.theme, path)
-		if projTree.callback != nil {
-			go attachCallback(toc, projTree.callback)
-		}
-		projTree.SetTOC(toc)
-		scrollable := theme.CreateScrollLayout()
-		// Disable horiz scrolling until we can figure out an accurate
-		// way to calculate our width.
-		scrollable.SetScrollAxis(false, true)
-		scrollable.SetChild(toc)
-		projTree.tocCtl = scrollable
-		projTree.layout.AddChild(projTree.tocCtl)
-		projTree.layout.SetChildWeight(projTree.tocCtl, 2)
-		if d.Length() == 0 {
-			return
-		}
-		if d.tree.Attached() {
-			d.button.Collapse()
-			d.RemoveChild(d.tree)
-			return
-		}
-		d.tree.Load()
-		d.button.Expand()
-		d.AddChild(d.tree)
-	})
-	d.reload()
-	return d
-}
-
-func (d *directory) update(path string) {
-	if !strings.HasPrefix(path, d.tree.path) {
-		return
-	}
-	if d.tree.path == filepath.Dir(path) {
-		d.driver.Call(d.reload)
-		return
-	}
-	for _, dir := range d.tree.Dirs() {
-		dir.update(path)
-	}
-}
-
-func (d *directory) ExpandTo(dir string) {
-	if !strings.HasPrefix(dir, d.tree.path) {
-		return
-	}
-	if !d.button.Expanded() {
-		d.button.Click(gxui.MouseEvent{})
-	}
-	for _, child := range d.tree.Dirs() {
-		child.ExpandTo(dir)
-	}
-}
-
-func (d *directory) Length() int64 {
-	return atomic.LoadInt64(&d.length)
-}
-
-func (d *directory) updateExpandable(children int64) {
-	if children == 0 {
-		d.button.SetExpandable(false)
-		return
-	}
-	d.button.SetExpandable(true)
-}
-
-func (d *directory) reload() {
-	finfos, err := ioutil.ReadDir(d.tree.path)
-	if err != nil {
-		log.Printf("Unexpected error reading directory %s: %s", d.tree.path, err)
-		return
-	}
-	defer d.driver.Call(d.Redraw)
-
-	children := int64(0)
-	for _, finfo := range finfos {
-		if finfo.IsDir() {
-			children++
-		}
-	}
-
-	d.updateExpandable(children)
-	atomic.StoreInt64(&d.length, children)
-	if d.tree.Attached() {
-		d.tree.parse(finfos)
-	}
-}
-
-type dirTree struct {
-	mixins.LinearLayout
-
-	projTree *ProjectTree
-	driver   gxui.Driver
-	theme    gxui.Theme
-	path     string
-}
-
-func newDirTree(projTree *ProjectTree, path string) *dirTree {
-	t := &dirTree{
-		projTree: projTree,
-		driver:   projTree.driver,
-		theme:    projTree.theme,
-		path:     path,
-	}
-	t.Init(t, projTree.theme)
-	t.SetDirection(gxui.TopToBottom)
-	return t
-}
-
-func (d *dirTree) Dirs() (dirs []*directory) {
-	for _, c := range d.Children() {
-		dirs = append(dirs, c.Control.(*directory))
-	}
-	return dirs
-}
-
-func (d *dirTree) Load() error {
-	finfos, err := ioutil.ReadDir(d.path)
-	if err != nil {
-		return err
-	}
-	d.parse(finfos)
-	return nil
-}
-
-func (d *dirTree) parse(finfos []os.FileInfo) {
-	d.RemoveAll()
-	for _, finfo := range finfos {
-		if !finfo.IsDir() {
-			continue
-		}
-		if strings.HasPrefix(finfo.Name(), ".") {
-			continue
-		}
-		dir := newDirectory(d.projTree, filepath.Join(d.path, finfo.Name()))
-		d.AddChild(dir)
-	}
-}
-
-type dropdownCharSet struct {
-	expanded, collapsed rune
-}
-
-var preferred = []dropdownCharSet{
-	{
-		expanded:  '▼',
-		collapsed: '►',
-	},
-	{
-		expanded:  '∨',
-		collapsed: '›',
-	},
-	{
-		expanded:  '◊',
-		collapsed: '›',
-	},
-	{
-		expanded:  'v',
-		collapsed: '>',
-	},
-}
-
-type treeButton struct {
-	mixins.Button
-
-	driver gxui.Driver
-	theme  *basic.Theme
-	drop   *mixins.Label
-
-	dropSet dropdownCharSet
-}
-
-type indexable interface {
-	Index(r rune) int
-}
-
-func newTreeButton(driver gxui.Driver, theme *basic.Theme, name string) *treeButton {
-	d := &treeButton{
-		driver: driver,
-		theme:  theme,
-		drop:   &mixins.Label{},
-	}
-	d.drop.Init(d.drop, d.theme, d.theme.DefaultMonospaceFont(), dropColor)
-	d.Init(d, theme)
-
-	d.chooseDropSet()
-
-	d.SetDirection(gxui.LeftToRight)
-	d.SetText(name)
-	d.Label().SetColor(dirColor)
-	d.AddChild(d.drop)
-	d.SetPadding(math.Spacing{L: 1, R: 1, B: 1, T: 1})
-	d.SetMargin(math.Spacing{L: 3})
-	d.SetBackgroundBrush(d.theme.ButtonDefaultStyle.Brush)
-	d.OnMouseEnter(func(gxui.MouseEvent) { d.Redraw() })
-	d.OnMouseExit(func(gxui.MouseEvent) { d.Redraw() })
-	d.OnMouseDown(func(gxui.MouseEvent) { d.Redraw() })
-	d.OnMouseUp(func(gxui.MouseEvent) { d.Redraw() })
-	d.OnGainedFocus(d.Redraw)
-	d.OnLostFocus(d.Redraw)
-	return d
-}
-
-func (d *treeButton) chooseDropSet() {
-	font := d.theme.DefaultFont()
-	for _, d.dropSet = range preferred {
-		if font.Index(d.dropSet.collapsed) == 0 {
-			continue
-		}
-		if font.Index(d.dropSet.expanded) == 0 {
-			continue
-		}
-		return
-	}
-}
-
-func (d *treeButton) SetExpandable(expandable bool) {
-	if expandable && d.drop.Text() != "" {
-		return
-	}
-	if !expandable && d.drop.Text() == "" {
-		return
-	}
-	text := ""
-	if expandable {
-		text = fmt.Sprintf(" %c", d.dropSet.collapsed)
-	}
-	d.drop.SetText(text)
-}
-
-func (d *treeButton) Expanded() bool {
-	return d.Expandable() && d.drop.Text() == fmt.Sprintf(" %c", d.dropSet.expanded)
-}
-
-func (d *treeButton) Expandable() bool {
-	return d.drop.Text() != ""
-}
-
-func (d *treeButton) Expand() {
-	d.drop.SetText(fmt.Sprintf(" %c", d.dropSet.expanded))
-}
-
-func (d *treeButton) Collapse() {
-	d.drop.SetText(fmt.Sprintf(" %c", d.dropSet.collapsed))
-}
-
-func (d *treeButton) DesiredSize(min, max math.Size) math.Size {
-	s := d.Button.DesiredSize(min, max)
-	s.W = max.W
-	return s
-}
-
-func (d *treeButton) Style() (s basic.Style) {
-	if d.IsMouseDown(gxui.MouseButtonLeft) && d.IsMouseOver() {
-		return d.theme.ButtonPressedStyle
-	}
-	if d.IsMouseOver() {
-		return d.theme.ButtonOverStyle
-	}
-	return d.theme.ButtonDefaultStyle
-}
-
-func (d *treeButton) Paint(canvas gxui.Canvas) {
-	style := d.Style()
-
-	rect := d.Size().Rect()
-	poly := gxui.Polygon{
-		{Position: math.Point{
-			X: rect.Min.X,
-			Y: rect.Max.Y,
-		}},
-		{Position: math.Point{
-			X: rect.Min.X,
-			Y: rect.Min.Y,
-		}},
-		{Position: math.Point{
-			X: rect.Max.X,
-			Y: rect.Min.Y,
-		}},
-		{Position: math.Point{
-			X: rect.Max.X,
-			Y: rect.Max.Y,
-		}},
-	}
-	canvas.DrawPolygon(poly, gxui.TransparentPen, style.Brush)
-	d.PaintChildren.Paint(canvas)
-}
-
 type splitterLayout struct {
 	mixins.SplitterLayout
 
@@ -617,4 +271,30 @@ func (l *splitterLayout) CreateSplitterBar() gxui.Control {
 	bar := editor.NewSplitterBar(l.window.Viewport(), l.theme)
 	bar.OnSplitterDragged(func(wndPnt math.Point) { l.SplitterDragged(bar, wndPnt) })
 	return bar
+}
+
+type parent interface {
+	Children() gxui.Children
+}
+
+type irrespParent interface {
+	MissingChild() gxui.Control
+}
+
+type selectionButton interface {
+	OnSelected(func(controller.Executor))
+}
+
+func attachCallback(control gxui.Control, callback func(controller.Executor)) {
+	if b, ok := control.(selectionButton); ok {
+		b.OnSelected(callback)
+	}
+	if p, ok := control.(parent); ok {
+		for _, c := range p.Children() {
+			attachCallback(c.Control, callback)
+		}
+	}
+	if p, ok := control.(irrespParent); ok {
+		attachCallback(p.MissingChild(), callback)
+	}
 }
