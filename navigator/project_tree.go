@@ -23,6 +23,12 @@ import (
 	"github.com/nelsam/vidar/settings"
 )
 
+// maxWatchDirs is here just to ensure that we don't take too long to
+// open up a project.  If the project has an excessive number of files,
+// watching will fail when it hits this number.
+//
+// TODO: think about alternate limits, and possibly rely on polling
+// when watching fails.
 const maxWatchDirs = 4096
 
 var (
@@ -145,13 +151,20 @@ func (p *ProjectTree) startWatch(root string) {
 		if err != nil {
 			return fmt.Errorf("Error walking directory %s: %s", root, err)
 		}
+		if finfo.IsDir() {
+			if filepath.Base(path)[0] == '.' {
+				// This is mostly to skip .git directories, which contain
+				// a pretty deep structure and can eat up a lot of our
+				// watches.  Especially important on OS X, where the default
+				// max number of watches is 256.
+				return filepath.SkipDir
+			}
+			count++
+			p.watcher.Add(path)
+		}
 		if count > maxWatchDirs {
 			p.watcher.Close()
 			return fmt.Errorf("Could not watch project: exceeded directory watch limit of %d", maxWatchDirs)
-		}
-		if finfo.IsDir() {
-			count++
-			p.watcher.Add(path)
 		}
 		return nil
 	})
