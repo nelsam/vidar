@@ -5,25 +5,43 @@
 package navigator
 
 import (
+	"fmt"
 	"go/token"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commands"
 	"github.com/nelsam/vidar/controller"
+	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/settings"
 )
+
+// maxWatchDirs is here just to ensure that we don't take too long to
+// open up a project.  If the project has an excessive number of files,
+// watching will fail when it hits this number.
+//
+// TODO: think about alternate limits, and possibly rely on polling
+// when watching fails.
+const maxWatchDirs = 4096
 
 var (
 	dirColor = gxui.Color{
 		R: 0.8,
 		G: 1,
 		B: 0.7,
+		A: 1,
+	}
+	dropColor = gxui.Color{
+		R: 0.7,
+		G: 0.7,
+		B: 0.1,
 		A: 1,
 	}
 	fileColor = gxui.Gray80
@@ -53,44 +71,42 @@ type ProjectTree struct {
 	driver gxui.Driver
 	theme  *basic.Theme
 
-	dirs        *dirTree
-	dirsAdapter *dirTreeAdapter
+	callback func(controller.Executor)
+	dirs     *directory
+	tocCtl   gxui.Control
+	toc      *TOC
+	tocLock  sync.RWMutex
 
-	project        *dirTree
-	projectAdapter *TOC
+	watcher    *fsnotify.Watcher
+	reloadLock chan struct{}
 
-	layout gxui.LinearLayout
+	layout *splitterLayout
 }
 
-func NewProjectTree(driver gxui.Driver, theme *basic.Theme) *ProjectTree {
+func NewProjectTree(driver gxui.Driver, window gxui.Window, theme *basic.Theme) *ProjectTree {
 	tree := &ProjectTree{
-		driver:  driver,
-		theme:   theme,
-		button:  createIconButton(driver, theme, "folder.png"),
-		dirs:    newDirTree(theme),
-		project: newDirTree(theme),
-		layout:  theme.CreateLinearLayout(),
+		driver:     driver,
+		theme:      theme,
+		reloadLock: make(chan struct{}, 1),
+		button:     createIconButton(driver, theme, "folder.png"),
+		layout:     newSplitterLayout(window, theme),
 	}
-	tree.layout.SetDirection(gxui.TopToBottom)
-	tree.layout.AddChild(tree.dirs)
-	tree.layout.AddChild(tree.project)
-
+	tree.layout.SetOrientation(gxui.Vertical)
 	tree.SetProject(settings.DefaultProject)
-
-	tree.dirs.OnSelectionChanged(func(selection gxui.AdapterItem) {
-		tree.dirs.Show(selection)
-		tree.projectAdapter.Close()
-		tree.projectAdapter = NewTOC(selection.(string))
-		tree.project.SetAdapter(tree.projectAdapter)
-		tree.project.ExpandAll()
-	})
 
 	return tree
 }
 
-func (p *ProjectTree) SetHeight(height int) {
-	p.project.height = height - p.dirs.height
-	p.project.SizeChanged()
+func (p *ProjectTree) SetTOC(toc *TOC) {
+	p.tocLock.Lock()
+	defer p.tocLock.Unlock()
+	p.toc = toc
+}
+
+func (p *ProjectTree) TOC() *TOC {
+	p.tocLock.RLock()
+	defer p.tocLock.RUnlock()
+	return p.toc
 }
 
 func (p *ProjectTree) Button() gxui.Button {
@@ -98,184 +114,200 @@ func (p *ProjectTree) Button() gxui.Button {
 }
 
 func (p *ProjectTree) SetRoot(path string) {
-	p.dirsAdapter = &dirTreeAdapter{}
-	p.dirsAdapter.children = []string{path}
-	p.dirsAdapter.dirs = true
-	p.dirs.SetAdapter(p.dirsAdapter)
+	p.layout.RemoveAll()
+	p.SetTOC(nil)
+	p.tocCtl = nil
 
-	if p.projectAdapter != nil {
-		p.projectAdapter.Close()
+	if p.watcher != nil {
+		p.watcher.Close()
 	}
-	p.projectAdapter = NewTOC(path)
-	p.project.SetAdapter(p.projectAdapter)
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Printf("Error creating project tree watcher: %s", err)
+	}
+	p.watcher = watcher
+	p.startWatch(path)
 
-	p.project.ExpandAll()
+	p.dirs = newDirectory(p, path)
+	scrollable := p.theme.CreateScrollLayout()
+	// Disable horiz scrolling until we can figure out an accurate
+	// way to calculate our width.
+	scrollable.SetScrollAxis(false, true)
+	scrollable.SetChild(p.dirs)
+	p.layout.AddChild(scrollable)
+	p.layout.SetChildWeight(p.dirs, 1)
+
+	// Expand the top level
+	p.dirs.button.Click(gxui.MouseEvent{})
+}
+
+func (p *ProjectTree) startWatch(root string) {
+	if p.watcher == nil {
+		return
+	}
+
+	count := 0
+	err := filepath.Walk(root, func(path string, finfo os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("Error walking directory %s: %s", root, err)
+		}
+		if finfo.IsDir() {
+			if filepath.Base(path)[0] == '.' {
+				// This is mostly to skip .git directories, which contain
+				// a pretty deep structure and can eat up a lot of our
+				// watches.  Especially important on OS X, where the default
+				// max number of watches is 256.
+				return filepath.SkipDir
+			}
+			count++
+			p.watcher.Add(path)
+		}
+		if count > maxWatchDirs {
+			p.watcher.Close()
+			return fmt.Errorf("Could not watch project: exceeded directory watch limit of %d", maxWatchDirs)
+		}
+		return nil
+	})
+	if err != nil {
+		log.Printf("Warning: %s", err)
+		return
+	}
+	go p.watch()
+	go p.watchErrs()
+}
+
+func (p *ProjectTree) watchErrs() {
+	for err := range p.watcher.Errors {
+		log.Printf("Watcher received error %s", err)
+	}
+}
+
+// watch waits for events from p.watcher.  For each event, the tree will
+// spin off a goroutine to update the its children.
+//
+// Events are processed in separate goroutines to help us keep up with
+// rapidly occurring events, e.g. in the case of a `git checkout` that
+// touches many, many files and directories.  It doesn't completely
+// prevent UI lock up, but it mitigates it some.
+func (p *ProjectTree) watch() {
+	for e := range p.watcher.Events {
+		switch e.Op {
+		case fsnotify.Write, fsnotify.Create, fsnotify.Remove, fsnotify.Rename:
+			go p.update(e.Name)
+		}
+	}
+}
+
+// update will update any parts of p that changes to path would affect.
+//
+// If other concurrent calls to update are running, update may bail out
+// in order to prevent locking up the UI.
+//
+// KNOWN ISSUE: This logic could cause the UI to get out of sync with
+// the filesystem.  Either an event for /bar could be ignored while
+// we process an event for /foo, or an event for /foo could be ignored
+// when the current state of the filesystem has already been processed,
+// but before the lock has been released.
+//
+// So far, though, I haven't seen a situation where fsnotify overwhelms
+// this logic to the point that the UI displays incorrect data, so maybe
+// it's good enough?  I'll be keeping my eye out for the UI getting in
+// to a bad state, but I'm not going to solve the issue until I know
+// it really is an issue.
+func (p *ProjectTree) update(path string) {
+	select {
+	case p.reloadLock <- struct{}{}:
+	default:
+		return
+	}
+	defer func() {
+		<-p.reloadLock
+	}()
+
+	p.driver.CallSync(func() {
+		p.dirs.update(path)
+	})
+	toc := p.TOC()
+	if toc != nil && strings.HasPrefix(path, toc.dir) {
+		p.driver.CallSync(toc.Reload)
+	}
 }
 
 func (p *ProjectTree) SetProject(project settings.Project) {
 	p.SetRoot(project.Path)
 }
 
-func (p *ProjectTree) Open(filePath string) {
-	dir, _ := filepath.Split(filePath)
-	p.dirs.Select(dir)
+func (p *ProjectTree) Open(path string, pos token.Position) {
+	dir, _ := filepath.Split(path)
+	p.dirs.ExpandTo(dir)
 }
 
 func (p *ProjectTree) Frame() gxui.Control {
 	return p.layout
 }
 
-func (p *ProjectTree) OnComplete(onComplete func(controller.Executor)) {
-	cmd := commands.NewFileOpener(p.driver, p.theme)
-	p.project.OnSelectionChanged(func(selected gxui.AdapterItem) {
-		var node gxui.TreeNode = p.projectAdapter
-		for i := node.ItemIndex(selected); i != -1; i = node.ItemIndex(selected) {
-			node = node.NodeAt(i)
-		}
-		locationer, ok := node.(Locationer)
-		if !ok {
-			return
-		}
-		cmd.SetLocation(locationer.File(), locationer.Position())
-		onComplete(cmd)
-	})
+func (p *ProjectTree) OnComplete(callback func(controller.Executor)) {
+	p.callback = callback
+	go attachCallback(p.TOC(), callback)
 }
 
-type fsAdapter struct {
-	gxui.AdapterBase
-	path     string
-	children []string
-	dirs     bool
+type splitterLayout struct {
+	mixins.SplitterLayout
+
+	window gxui.Window
+	theme  gxui.Theme
 }
 
-func fsList(dirPath string, dirs bool) fsAdapter {
-	fs := fsAdapter{
-		path: dirPath,
-		dirs: dirs,
-	}
-	fs.Walk()
-	return fs
-}
-
-func (a *fsAdapter) Walk() {
-	filepath.Walk(a.path, func(path string, info os.FileInfo, err error) error {
-		if err == nil && path != a.path {
-			use := (a.dirs && info.IsDir()) || (!a.dirs && !info.IsDir())
-			if use && !strings.HasPrefix(info.Name(), ".") {
-				a.children = append(a.children, path)
-			}
-			if info.IsDir() {
-				return filepath.SkipDir
-			}
-		}
-		return nil
-	})
-}
-
-func (a *fsAdapter) Count() int {
-	return len(a.children)
-}
-
-func (a *fsAdapter) ItemIndex(item gxui.AdapterItem) int {
-	path := item.(string)
-	for i, subDir := range a.children {
-		if strings.HasPrefix(path, subDir) {
-			return i
-		}
-	}
-	return -1
-}
-
-func (a *fsAdapter) Size(theme gxui.Theme) math.Size {
-	return math.Size{
-		W: 20 * theme.DefaultMonospaceFont().GlyphMaxSize().W,
-		H: theme.DefaultMonospaceFont().GlyphMaxSize().H,
-	}
-}
-
-func (a *fsAdapter) create(theme gxui.Theme, path string) gxui.Label {
-	label := theme.CreateLabel()
-	label.SetText(filepath.Base(path))
-	return label
-}
-
-type dirTree struct {
-	mixins.Tree
-	theme  *basic.Theme
-	height int
-}
-
-func newDirTree(theme *basic.Theme) *dirTree {
-	t := &dirTree{
+func newSplitterLayout(window gxui.Window, theme gxui.Theme) *splitterLayout {
+	l := &splitterLayout{
+		window: window,
 		theme:  theme,
-		height: 20 * theme.DefaultMonospaceFont().GlyphMaxSize().H,
 	}
-	t.Init(t, theme)
-	return t
+	l.Init(l, theme)
+	return l
 }
 
-func (t *dirTree) DesiredSize(min, max math.Size) math.Size {
-	width := 20 * t.theme.DefaultMonospaceFont().GlyphMaxSize().W
+func (l *splitterLayout) DesiredSize(min, max math.Size) math.Size {
+	s := l.SplitterLayout.DesiredSize(min, max)
+	width := 20 * l.theme.DefaultMonospaceFont().GlyphMaxSize().W
 	if min.W > width {
 		width = min.W
 	}
 	if max.W < width {
 		width = max.W
 	}
-	height := t.height
-	if min.H > height {
-		height = min.H
+	s.W = width
+	return s
+}
+
+func (l *splitterLayout) CreateSplitterBar() gxui.Control {
+	bar := editor.NewSplitterBar(l.window.Viewport(), l.theme)
+	bar.OnSplitterDragged(func(wndPnt math.Point) { l.SplitterDragged(bar, wndPnt) })
+	return bar
+}
+
+type parent interface {
+	Children() gxui.Children
+}
+
+type irrespParent interface {
+	MissingChild() gxui.Control
+}
+
+type selectionButton interface {
+	OnSelected(func(controller.Executor))
+}
+
+func attachCallback(control gxui.Control, callback func(controller.Executor)) {
+	if b, ok := control.(selectionButton); ok {
+		b.OnSelected(callback)
 	}
-	if max.H < height {
-		height = max.H
+	if p, ok := control.(parent); ok {
+		for _, c := range p.Children() {
+			attachCallback(c.Control, callback)
+		}
 	}
-	size := math.Size{
-		W: width,
-		H: height,
+	if p, ok := control.(irrespParent); ok {
+		attachCallback(p.MissingChild(), callback)
 	}
-	return size
-}
-
-type dirTreeAdapter struct {
-	fsAdapter
-}
-
-func loadDirTreeAdapter(dirPath string) *dirTreeAdapter {
-	return &dirTreeAdapter{
-		fsAdapter: fsList(dirPath, true),
-	}
-}
-
-func (a *dirTreeAdapter) Item() gxui.AdapterItem {
-	return a.path
-}
-
-func (a *dirTreeAdapter) NodeAt(index int) gxui.TreeNode {
-	return loadDirTreeAdapter(a.children[index])
-}
-
-func (a *dirTreeAdapter) Create(theme gxui.Theme) gxui.Control {
-	label := a.create(theme, a.path)
-	label.SetColor(dirColor)
-	return label
-}
-
-type fileListAdapter struct {
-	fsAdapter
-}
-
-func fileList(dirPath string) *fileListAdapter {
-	return &fileListAdapter{
-		fsAdapter: fsList(dirPath, false),
-	}
-}
-
-func (a *fileListAdapter) ItemAt(index int) gxui.AdapterItem {
-	return a.children[index]
-}
-
-func (a *fileListAdapter) Create(theme gxui.Theme, index int) gxui.Control {
-	label := a.create(theme, a.children[index])
-	label.SetColor(fileColor)
-	return label
 }

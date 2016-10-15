@@ -101,7 +101,7 @@ func uiMain(driver gxui.Driver) {
 	editor := editor.New(driver, window, theme, theme.DefaultMonospaceFont())
 	controller.SetEditor(editor)
 
-	projTree := navigator.NewProjectTree(driver, theme)
+	projTree := navigator.NewProjectTree(driver, window, theme)
 	projects := navigator.NewProjectsPane(driver, theme, projTree.Frame())
 
 	nav.Add(projects)

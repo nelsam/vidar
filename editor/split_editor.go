@@ -15,6 +15,21 @@ import (
 	"github.com/nelsam/gxui/themes/basic"
 )
 
+var (
+	splitterBG = gxui.Color{
+		R: .05,
+		G: .05,
+		B: .05,
+		A: 1,
+	}
+	splitterFG = gxui.Color{
+		R: .2,
+		G: .2,
+		B: .2,
+		A: 1,
+	}
+)
+
 type Orienter interface {
 	SetOrientation(gxui.Orientation)
 }
@@ -382,6 +397,8 @@ func NewSplitterBar(viewport gxui.Viewport, theme gxui.Theme) *SplitterBar {
 		vertResize:  glfw.CreateStandardCursor(int(glfw.VResizeCursor)),
 	}
 	s.SplitterBar.Init(s, theme)
+	s.SetBackgroundColor(splitterBG)
+	s.SetForegroundColor(splitterFG)
 	return s
 }
 
