@@ -40,7 +40,7 @@ func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, t
 	e.SetMargin(math.Spacing{L: 0, T: 2, R: 0, B: 0})
 }
 
-func (e *TabbedEditor) Open(hiddenPrefix, path, gopath, headerText string) *CodeEditor {
+func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []string) *CodeEditor {
 	name := relPath(hiddenPrefix, path)
 	if editor, ok := e.editors[name]; ok {
 		e.Select(e.PanelIndex(editor))
@@ -68,7 +68,7 @@ func (e *TabbedEditor) Open(hiddenPrefix, path, gopath, headerText string) *Code
 	})
 	editor.Init(e.driver, e.theme, e.font, path, headerText)
 	editor.SetTabWidth(4)
-	suggester := suggestions.NewGoCodeProvider(editor, gopath)
+	suggester := suggestions.NewGoCodeProvider(editor, environ)
 	editor.SetSuggestionProvider(suggester)
 	e.Add(name, editor)
 	return editor

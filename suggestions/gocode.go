@@ -8,9 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"log"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 
 	"github.com/nelsam/gxui"
@@ -25,22 +23,19 @@ type FileContainer interface {
 // GoCodeProvider is a gocode-based implementation of gxui.CodeSyntaxProvider.
 type GoCodeProvider struct {
 	fileContainer FileContainer
-	gopath        string
+	environ       []string
 }
 
-func NewGoCodeProvider(fileContainer FileContainer, gopath string) *GoCodeProvider {
+func NewGoCodeProvider(fileContainer FileContainer, environ []string) *GoCodeProvider {
 	return &GoCodeProvider{
 		fileContainer: fileContainer,
-		gopath:        gopath,
+		environ:       environ,
 	}
 }
 
 func (p *GoCodeProvider) SuggestionsAt(runeIndex int) []gxui.CodeSuggestion {
 	cmd := exec.Command("gocode", "-f", "json", "autocomplete", p.fileContainer.Filepath(), strconv.Itoa(runeIndex))
-	cmd.Env = []string{
-		"PATH=" + os.Getenv("PATH") + string(os.PathListSeparator) + filepath.Join(p.gopath, "bin"),
-		"GOPATH=" + p.gopath,
-	}
+	cmd.Env = p.environ
 	cmd.Stdin = bytes.NewBufferString(p.fileContainer.Text())
 	outputJSON, err := cmd.Output()
 	if err != nil {
