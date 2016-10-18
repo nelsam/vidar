@@ -287,6 +287,9 @@ func newDirLabel(theme *basic.Theme) *dirLabel {
 }
 
 func (l *dirLabel) SetText(dir string) {
+	if len(dir) == 0 {
+		return
+	}
 	if dir[len(dir)-1] != filepath.Separator {
 		dir += string(filepath.Separator)
 	}
