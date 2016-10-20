@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/casimir/xdg-go"
@@ -80,6 +81,31 @@ func (p Project) LicenseHeader() string {
 
 func (p Project) String() string {
 	return p.Name
+}
+
+func (p Project) Environ() []string {
+	environ := os.Environ()
+	if p.Gopath == "" {
+		return environ
+	}
+	environ = addEnv(environ, "GOPATH", p.Gopath, true)
+	return addEnv(environ, "PATH", filepath.Join(p.Gopath, "bin"), false)
+}
+
+func addEnv(environ []string, key, value string, replace bool) []string {
+	envKey := key + "="
+	env := envKey + value
+	for i, v := range environ {
+		if !strings.HasPrefix(v, envKey) {
+			continue
+		}
+		if !replace {
+			env = fmt.Sprintf("%s%c%s", v, os.PathSeparator, value)
+		}
+		environ[i] = env
+		return environ
+	}
+	return append(environ, env)
 }
 
 func Projects() (projs []Project) {

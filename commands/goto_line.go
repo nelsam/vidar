@@ -85,6 +85,10 @@ func (g *GotoLine) Exec(on interface{}) (executed, consume bool) {
 		g.err = fmt.Sprintf("Line %d is past the end of the file", line)
 		return true, true
 	}
+	if line == -1 {
+		g.err = "0 line is not exist"
+		return true, true
+	}
 	g.editor.Controller().SetCaret(g.editor.LineStart(line))
 	g.editor.ScrollToLine(line)
 	return true, true

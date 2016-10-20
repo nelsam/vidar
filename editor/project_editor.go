@@ -54,7 +54,7 @@ func (p *ProjectEditor) OpenLine(path string, line, col int) {
 }
 
 func (p *ProjectEditor) open(path string) *CodeEditor {
-	return p.SplitEditor.Open(p.project.Path, path, p.project.Gopath, p.project.LicenseHeader())
+	return p.SplitEditor.Open(p.project.Path, path, p.project.LicenseHeader(), p.project.Environ())
 }
 
 func (p *ProjectEditor) Project() settings.Project {
