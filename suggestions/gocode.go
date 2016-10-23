@@ -52,6 +52,10 @@ func (p *GoCodeProvider) SuggestionsAt(runeIndex int) []gxui.CodeSuggestion {
 		return nil
 	}
 	completions := output[1].([]interface{})
+	if completions[0].(map[string]interface{})["name"].(string) == "PANIC" {
+		log.Println("gocode working incorrectly")
+		return nil
+	}
 	suggestions := make([]gxui.CodeSuggestion, 0, len(completions))
 	for _, completionItem := range completions {
 		completion := completionItem.(map[string]interface{})
