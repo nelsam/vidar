@@ -44,6 +44,7 @@ func (p *ProjectOpener) Menu() string {
 }
 
 func (p *ProjectOpener) Start(gxui.Control) gxui.Control {
+	p.name.SetText("")
 	input := make(chan gxui.Focusable, 1)
 	p.input = input
 	input <- p.name
