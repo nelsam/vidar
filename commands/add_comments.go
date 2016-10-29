@@ -38,7 +38,7 @@ func (c *Comments) Exec(target interface{}) (executed, consume bool) {
 	selections := editor.Controller().Selections()
 
 	for i := selections.Len(); i != 0; i-- {
-		begin, end := selections.GetInterval(i - 1)
+		begin, end := selections.Interval(i - 1)
 		str := string(editor.Runes()[begin:end])
 		re, replace := getRegexpAndReplace(str)
 		newstr := re.ReplaceAllString(str, replace)
