@@ -118,26 +118,27 @@ func (c *Controller) Execute(executor Executor) {
 func execRecursively(executor Executor, element interface{}) (executed, consume bool) {
 	executed, consume = executor.Exec(element)
 	if consume {
-		return
+		return executed, consume
 	}
 	var childExecuted bool
-	if parent, ok := element.(gxui.Parent); ok {
-		for _, child := range parent.Children() {
-			childExecuted, consume = execRecursively(executor, child.Control)
-			executed = executed || childExecuted
-			if consume {
-				return
-			}
-		}
-	}
 	if elementer, ok := element.(Elementer); ok {
 		for _, element := range elementer.Elements() {
 			childExecuted, consume = execRecursively(executor, element)
 			executed = executed || childExecuted
 			if consume {
-				return
+				break
+			}
+		}
+		return executed, consume
+	}
+	if parent, ok := element.(gxui.Parent); ok {
+		for _, child := range parent.Children() {
+			childExecuted, consume = execRecursively(executor, child.Control)
+			executed = executed || childExecuted
+			if consume {
+				break
 			}
 		}
 	}
-	return
+	return executed, consume
 }

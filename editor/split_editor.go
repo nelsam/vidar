@@ -81,6 +81,10 @@ func NewSplitEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme, 
 	return editor
 }
 
+func (e *SplitEditor) Elements() []interface{} {
+	return []interface{}{e.current}
+}
+
 func (e *SplitEditor) Split(orientation gxui.Orientation) {
 	if e.current.Editors() <= 1 {
 		return
