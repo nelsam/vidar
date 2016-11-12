@@ -140,13 +140,11 @@ func uiMain(driver gxui.Driver) {
 		}
 	})
 
-	workingDir, err := os.Getwd()
-	if err != nil {
-		log.Printf("Failed to read working directory: %s", err)
-		workingDir = os.Getenv("HOME")
-	}
 	for _, file := range files {
-		filepath := filepath.Join(workingDir, file)
+		filepath, err := filepath.Abs(file)
+		if err != nil {
+			log.Printf("Failed to get path: %s", err)
+		}
 		commander.Controller().Editor().Open(filepath, token.Position{})
 	}
 

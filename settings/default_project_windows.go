@@ -11,7 +11,7 @@ import "os"
 var (
 	DefaultProject = Project{
 		Name:   "*default*",
-		Path:   os.Getenv("SYSTEMDRIVE"),
+		Path:   os.Getenv("SYSTEMDRIVE") + string(os.PathSeparator),
 		Gopath: os.Getenv("GOPATH"),
 	}
 )
