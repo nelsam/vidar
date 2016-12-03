@@ -11,10 +11,11 @@ import (
 
 // An Undo is a command which undoes an action.
 type Undo struct {
+	statusKeeper
 }
 
-func NewUndo() *Undo {
-	return &Undo{}
+func NewUndo(theme gxui.Theme) *Undo {
+	return &Undo{statusKeeper: statusKeeper{theme: theme}}
 }
 
 func (u *Undo) Name() string {
@@ -32,24 +33,38 @@ func (u *Undo) Exec(target interface{}) (executed, consume bool) {
 	}
 	editor := finder.CurrentEditor()
 	if editor == nil {
+		u.err = "undo: no file open"
 		return true, true
 	}
 	history := editor.History()
-	edit := history.Undo()
+	edit, ok := history.Undo()
+	if !ok {
+		u.warn = "undo: nothing to undo"
+		return true, true
+	}
 	text, _ := editor.Controller().ReplaceAt(editor.Runes(), edit.At, edit.At+len(edit.New), edit.Old)
 	editor.Controller().SetTextRunes(text)
+	absDelta := edit.Delta
+	if absDelta < 0 {
+		absDelta = -absDelta
+	}
+	editor.Controller().SetSelection(gxui.CreateTextSelection(edit.At, edit.At+absDelta, true))
+	editor.ScrollToRune(edit.At)
 	return true, true
 }
 
 // A Redo is a command which redoes an action.
 type Redo struct {
+	statusKeeper
+
 	theme  gxui.Theme
 	editor *editor.CodeEditor
 }
 
 func NewRedo(theme gxui.Theme) *Redo {
 	return &Redo{
-		theme: theme,
+		theme:        theme,
+		statusKeeper: statusKeeper{theme: theme},
 	}
 }
 
@@ -72,11 +87,22 @@ func (r *Redo) Next() gxui.Focusable {
 
 func (r *Redo) Exec(interface{}) (executed, consume bool) {
 	if r.editor == nil {
+		r.err = "redo: no file open"
 		return true, true
 	}
 	history := r.editor.History()
-	edit := history.RedoCurrent()
+	edit, ok := history.RedoCurrent()
+	if !ok {
+		r.warn = "redo: nothing to redo"
+		return true, true
+	}
 	text, _ := r.editor.Controller().ReplaceAt(r.editor.Runes(), edit.At, edit.At+len(edit.Old), edit.New)
 	r.editor.Controller().SetTextRunes(text)
+	absDelta := edit.Delta
+	if absDelta < 0 {
+		absDelta = -absDelta
+	}
+	r.editor.Controller().SetSelection(gxui.CreateTextSelection(edit.At, edit.At+absDelta, true))
+	r.editor.ScrollToRune(edit.At)
 	return true, true
 }

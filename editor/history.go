@@ -88,23 +88,25 @@ func (h *History) Shrink(size int) {
 	}
 }
 
-func (h *History) Undo() gxui.TextBoxEdit {
+func (h *History) Undo() (gxui.TextBoxEdit, bool) {
 	if h.current.Parent == nil {
-		return gxui.TextBoxEdit{}
+		return gxui.TextBoxEdit{}, false
 	}
 	edit := h.current.Edit
 	h.current = h.current.Parent
-	return edit
+	return edit, true
 }
 
-func (h *History) RedoCurrent() gxui.TextBoxEdit {
+func (h *History) RedoCurrent() (gxui.TextBoxEdit, bool) {
 	return h.Redo(uint(h.current.CurrentIdx))
 }
 
-func (h *History) Redo(index uint) gxui.TextBoxEdit {
+func (h *History) Redo(index uint) (gxui.TextBoxEdit, bool) {
 	if index >= uint(len(h.current.Children)) {
-		return gxui.TextBoxEdit{}
+		return gxui.TextBoxEdit{}, false
 	}
+	// TODO: this is probably wrong - redoing an edit without redoing
+	// intermediate edits probably doesn't work.
 	h.current = h.current.Children[index]
-	return h.current.Edit
+	return h.current.Edit, true
 }

@@ -23,7 +23,7 @@ func Commands(driver gxui.Driver, theme *basic.Theme, projPane gxui.Control) []c
 		NewCloseTab(),
 
 		// Edit menu
-		NewUndo(),
+		NewUndo(theme),
 		NewRedo(theme),
 		NewFind(driver, theme),
 		NewCopy(driver),
