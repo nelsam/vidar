@@ -115,7 +115,7 @@ func (e *TabbedEditor) ShiftTab(delta int) {
 	current := e.PanelIndex(e.SelectedPanel())
 	next := current + delta
 	for next < 0 {
-		next = panels - next
+		next = panels + next
 	}
 	next = next % panels
 	e.Select(next)
