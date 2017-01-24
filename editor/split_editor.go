@@ -48,6 +48,7 @@ type MultiEditor interface {
 	CurrentFile() string
 	CloseCurrentEditor() (name string, editor *CodeEditor)
 	Add(name string, editor *CodeEditor)
+	SaveAll()
 }
 
 type Direction int
@@ -253,6 +254,16 @@ func (e *SplitEditor) ShiftSplit(direction Direction) {
 		if !e.shiftRight() {
 			e.focus(Left)
 		}
+	}
+}
+
+func (e *SplitEditor) SaveAll() {
+	for _, child := range e.Children() {
+		editor, ok := child.Control.(MultiEditor)
+		if !ok {
+			continue
+		}
+		editor.SaveAll()
 	}
 }
 

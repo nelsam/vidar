@@ -20,6 +20,7 @@ func Commands(driver gxui.Driver, theme *basic.Theme, projPane gxui.Control) []c
 		NewFileOpener(driver, theme),
 		NewSelectAll(),
 		NewMulti(theme, "File", NewGoImports(theme), NewSave(theme)),
+		NewSaveAll(theme),
 		NewCloseTab(),
 
 		// Edit menu

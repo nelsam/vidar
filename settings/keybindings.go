@@ -78,6 +78,7 @@ func setDefaultBindings() {
 	bindings.SetDefault("Ctrl-O", "open-file")
 	bindings.SetDefault("Ctrl-A", "select-all")
 	bindings.SetDefault("Ctrl-S", "goimports, save-current-file")
+	bindings.SetDefault("Ctrl-Shift-S", "save-all-files")
 	bindings.SetDefault("Ctrl-W", "close-current-tab")
 
 	bindings.SetDefault("Ctrl-Z", "undo-last-edit")
