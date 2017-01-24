@@ -5,6 +5,8 @@
 package editor
 
 import (
+	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -137,6 +139,19 @@ func (e *TabbedEditor) CloseCurrentEditor() (name string, editor *CodeEditor) {
 		}
 	}
 	return "", nil
+}
+
+func (e *TabbedEditor) SaveAll() {
+	for name, editor := range e.editors {
+		f, err := os.Create(name)
+		if err != nil {
+			log.Printf("Could not save %s : %s", name, err)
+		}
+		defer f.Close()
+		if _, err := f.WriteString(editor.Text()); err != nil {
+			log.Printf("Could not write to file %s: %s", name, err)
+		}
+	}
 }
 
 func (e *TabbedEditor) CurrentEditor() *CodeEditor {
