@@ -27,6 +27,7 @@ func Commands(driver gxui.Driver, theme *basic.Theme, projPane gxui.Control) []c
 		NewUndo(theme),
 		NewRedo(theme),
 		NewFind(driver, theme),
+		NewRegexFind(driver, theme),
 		NewCopy(driver),
 		NewCut(driver),
 		NewPaste(driver, theme),
