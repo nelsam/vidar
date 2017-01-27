@@ -84,6 +84,7 @@ func setDefaultBindings() {
 	bindings.SetDefault("Ctrl-Z", "undo-last-edit")
 	bindings.SetDefault("Ctrl-Shift-Z", "redo-next-edit")
 	bindings.SetDefault("Ctrl-F", "find")
+	bindings.SetDefault("Ctrl-Alt-F", "regex-find")
 	bindings.SetDefault("Ctrl-C", "copy-selection")
 	bindings.SetDefault("Ctrl-X", "cut-selection")
 	bindings.SetDefault("Ctrl-V", "paste")
