@@ -7,6 +7,7 @@ package commands
 import (
 	"fmt"
 	"regexp"
+	"unicode/utf8"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
@@ -57,7 +58,9 @@ func (f *RegexFind) Start(control gxui.Control) gxui.Control {
 
 		for _, indexes := range arr {
 			for i := 0; i < len(indexes); i += 2 {
-				selection := gxui.CreateTextSelection(indexes[i], indexes[i+1], false)
+				start := utf8.RuneCountInString(haystack[0:indexes[i]])
+				end := start + utf8.RuneCountInString(haystack[indexes[i]:indexes[i+1]])
+				selection := gxui.CreateTextSelection(start, end, false)
 				selections = append(selections, selection)
 
 			}

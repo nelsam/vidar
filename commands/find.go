@@ -7,6 +7,7 @@ package commands
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
@@ -59,11 +60,16 @@ func (f *Find) Start(control gxui.Control) gxui.Control {
 		haystack := f.editor.Text()
 		start := 0
 		var selections gxui.TextSelectionList
+
+		count := utf8.RuneCountInString(needle)
+		length := len(needle)
+		pos := 0
 		for next := strings.Index(haystack, needle); next != -1; next = strings.Index(haystack[start:], needle) {
-			start += next
-			selection := gxui.CreateTextSelection(start, start+len(needle), false)
+			pos += utf8.RuneCountInString(haystack[start : start+next])
+			selection := gxui.CreateTextSelection(pos, pos+count, false)
 			selections = append(selections, selection)
-			start++
+			pos += count
+			start += (next + length)
 		}
 		f.editor.Select(selections)
 		f.display.SetText(fmt.Sprintf("%s: %d results found", needle, len(selections)))
