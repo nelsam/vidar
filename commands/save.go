@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/editor"
 )
 
@@ -19,15 +20,15 @@ type CurrentFileFinder interface {
 }
 
 type SaveCurrent struct {
-	statusKeeper
+	commander.GenericStatuser
 
 	filepath string
 }
 
 func NewSave(theme gxui.Theme) *SaveCurrent {
-	return &SaveCurrent{
-		statusKeeper: statusKeeper{theme: theme},
-	}
+	s := &SaveCurrent{}
+	s.Theme = theme
+	return s
 }
 
 func (s *SaveCurrent) Name() string {
@@ -51,18 +52,18 @@ func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {
 	if !editor.LastKnownMTime().IsZero() {
 		finfo, err := os.Stat(s.filepath)
 		if err != nil {
-			s.err = fmt.Sprintf("Could not stat file %s: %s", s.filepath, err)
+			s.Err = fmt.Sprintf("Could not stat file %s: %s", s.filepath, err)
 			return true, false
 		}
 		if finfo.ModTime().After(editor.LastKnownMTime()) {
 			// TODO: prompt for override
-			s.err = fmt.Sprintf("File %s changed on disk.  Cowardly refusing to overwrite.", s.filepath)
+			s.Err = fmt.Sprintf("File %s changed on disk.  Cowardly refusing to overwrite.", s.filepath)
 			return true, false
 		}
 	}
 	f, err := os.Create(s.filepath)
 	if err != nil {
-		s.err = fmt.Sprintf("Could not open %s for writing: %s", s.filepath, err)
+		s.Err = fmt.Sprintf("Could not open %s for writing: %s", s.filepath, err)
 		return true, false
 	}
 	defer f.Close()
@@ -70,10 +71,10 @@ func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {
 		editor.SetText(editor.Text() + "\n")
 	}
 	if _, err := f.WriteString(editor.Text()); err != nil {
-		s.err = fmt.Sprintf("Could not write to file %s: %s", s.filepath, err)
+		s.Err = fmt.Sprintf("Could not write to file %s: %s", s.filepath, err)
 		return true, false
 	}
-	s.info = fmt.Sprintf("Successfully saved %s", s.filepath)
+	s.Info = fmt.Sprintf("Successfully saved %s", s.filepath)
 	editor.FlushedChanges()
 	return true, true
 }

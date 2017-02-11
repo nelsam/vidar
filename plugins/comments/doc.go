@@ -2,8 +2,6 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package commands
-
-func oneToZeroBased(value int) int {
-	return value - 1
-}
+// Package comments contains logic for working with comments.  It's
+// currently go-specific (only works with //).
+package comments

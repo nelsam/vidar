@@ -6,16 +6,19 @@ package commands
 
 import (
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/editor"
 )
 
 // An Undo is a command which undoes an action.
 type Undo struct {
-	statusKeeper
+	commander.GenericStatuser
 }
 
 func NewUndo(theme gxui.Theme) *Undo {
-	return &Undo{statusKeeper: statusKeeper{theme: theme}}
+	u := &Undo{}
+	u.Theme = theme
+	return u
 }
 
 func (u *Undo) Name() string {
@@ -33,13 +36,13 @@ func (u *Undo) Exec(target interface{}) (executed, consume bool) {
 	}
 	editor := finder.CurrentEditor()
 	if editor == nil {
-		u.err = "undo: no file open"
+		u.Err = "undo: no file open"
 		return true, true
 	}
 	history := editor.History()
 	edit, ok := history.Undo()
 	if !ok {
-		u.warn = "undo: nothing to undo"
+		u.Warn = "undo: nothing to undo"
 		return true, true
 	}
 	text, _ := editor.Controller().ReplaceAt(editor.Runes(), edit.At, edit.At+len(edit.New), edit.Old)
@@ -55,17 +58,15 @@ func (u *Undo) Exec(target interface{}) (executed, consume bool) {
 
 // A Redo is a command which redoes an action.
 type Redo struct {
-	statusKeeper
+	commander.GenericStatuser
 
-	theme  gxui.Theme
 	editor *editor.CodeEditor
 }
 
 func NewRedo(theme gxui.Theme) *Redo {
-	return &Redo{
-		theme:        theme,
-		statusKeeper: statusKeeper{theme: theme},
-	}
+	r := &Redo{}
+	r.Theme = theme
+	return r
 }
 
 func (r *Redo) Start(target gxui.Control) gxui.Control {
@@ -87,13 +88,13 @@ func (r *Redo) Next() gxui.Focusable {
 
 func (r *Redo) Exec(interface{}) (executed, consume bool) {
 	if r.editor == nil {
-		r.err = "redo: no file open"
+		r.Err = "redo: no file open"
 		return true, true
 	}
 	history := r.editor.History()
 	edit, ok := history.RedoCurrent()
 	if !ok {
-		r.warn = "redo: nothing to redo"
+		r.Warn = "redo: nothing to redo"
 		return true, true
 	}
 	text, _ := r.editor.Controller().ReplaceAt(r.editor.Runes(), edit.At, edit.At+len(edit.Old), edit.New)

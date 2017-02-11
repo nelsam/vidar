@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package commands
+package goimports
 
 import (
 	"bytes"
@@ -13,16 +13,26 @@ import (
 	"strings"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/settings"
 )
 
 const stdinPathPattern = "<standard input>:"
 
-type GoImports struct {
-	statusKeeper
+type OpenProject interface {
+	CurrentEditor() *editor.CodeEditor
+	Project() settings.Project
 }
 
-func NewGoImports(theme gxui.Theme) *GoImports {
-	return &GoImports{statusKeeper: statusKeeper{theme: theme}}
+type GoImports struct {
+	commander.GenericStatuser
+}
+
+func New(theme gxui.Theme) *GoImports {
+	g := &GoImports{}
+	g.Theme = theme
+	return g
 }
 
 func (gi *GoImports) Name() string {
@@ -34,15 +44,15 @@ func (gi *GoImports) Menu() string {
 }
 
 func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
-	finder, ok := on.(ProjectFinder)
+	current, ok := on.(OpenProject)
 	if !ok {
 		return false, false
 	}
-	editor := finder.CurrentEditor()
+	editor := current.CurrentEditor()
 	if editor == nil {
 		return true, true
 	}
-	proj := finder.Project()
+	proj := current.Project()
 	text := editor.Text()
 	cmd := exec.Command("goimports", "-srcdir", filepath.Dir(editor.Filepath()))
 	cmd.Stdin = bytes.NewBufferString(text)
@@ -57,7 +67,7 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 	if err != nil {
 		msg := errBuffer.String()
 		if msg == "" {
-			gi.err = err.Error()
+			gi.Err = err.Error()
 			return true, true
 		}
 		stdinPatternStart := strings.Index(msg, stdinPathPattern)
@@ -65,7 +75,7 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 			pathEnd := stdinPatternStart + len(stdinPathPattern)
 			msg = msg[pathEnd:]
 		}
-		gi.err = fmt.Sprintf("goimports error: %s", msg)
+		gi.Err = fmt.Sprintf("goimports error: %s", msg)
 		return true, true
 	}
 	edits := []gxui.TextBoxEdit{

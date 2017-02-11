@@ -8,6 +8,10 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/plugins/comments"
+	"github.com/nelsam/vidar/plugins/godef"
+	"github.com/nelsam/vidar/plugins/goimports"
+	"github.com/nelsam/vidar/plugins/license"
 )
 
 // Commands returns all known commands, in the order they should be
@@ -19,7 +23,7 @@ func Commands(driver gxui.Driver, theme *basic.Theme, projPane gxui.Control) []c
 		NewProjectOpener(theme, projPane),
 		NewFileOpener(driver, theme),
 		NewSelectAll(),
-		NewMulti(theme, "File", NewGoImports(theme), NewSave(theme)),
+		NewMulti(theme, "File", goimports.New(theme), NewSave(theme)),
 		NewSaveAll(theme),
 		NewCloseTab(),
 
@@ -33,10 +37,10 @@ func Commands(driver gxui.Driver, theme *basic.Theme, projPane gxui.Control) []c
 		NewPaste(driver, theme),
 		NewShowSuggestions(),
 		NewGotoLine(theme),
-		NewGotoDef(theme),
-		NewLicenseHeaderUpdate(theme),
-		NewGoImports(theme),
-		NewComments(),
+		godef.New(theme),
+		license.NewHeaderUpdate(theme),
+		goimports.New(theme),
+		comments.NewToggle(),
 
 		// View menu
 		NewHorizontalSplit(),

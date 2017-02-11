@@ -11,6 +11,7 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/settings"
 )
 
@@ -21,7 +22,7 @@ type projectPane interface {
 }
 
 type ProjectAdder struct {
-	statusKeeper
+	commander.GenericStatuser
 
 	status gxui.Label
 
@@ -38,7 +39,7 @@ func NewProjectAdder(driver gxui.Driver, theme *basic.Theme) *ProjectAdder {
 }
 
 func (p *ProjectAdder) Init(driver gxui.Driver, theme *basic.Theme) {
-	p.theme = theme
+	p.Theme = theme
 	p.status = theme.CreateLabel()
 	p.path = NewFSLocator(driver, theme)
 	p.name = theme.CreateTextBox()
@@ -99,7 +100,7 @@ func (p *ProjectAdder) Exec(element interface{}) (executed, consume bool) {
 		for _, prevProject := range settings.Projects() {
 			if prevProject.Name == project.Name {
 				// TODO: Let the user choose a new name
-				p.err = fmt.Sprintf("There is already a project named %s", project.Name)
+				p.Err = fmt.Sprintf("There is already a project named %s", project.Name)
 				return true, true
 			}
 		}

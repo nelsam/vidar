@@ -11,11 +11,12 @@ import (
 	"unicode"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/editor"
 )
 
 type GotoLine struct {
-	statusKeeper
+	commander.GenericStatuser
 
 	editor       *editor.CodeEditor
 	lineNumInput gxui.TextBox
@@ -37,10 +38,10 @@ func NewGotoLine(theme gxui.Theme) *GotoLine {
 			input.SetText(text)
 		}
 	})
-	return &GotoLine{
-		statusKeeper: statusKeeper{theme: theme},
-		lineNumInput: input,
-	}
+	g := &GotoLine{}
+	g.Theme = theme
+	g.lineNumInput = input
+	return g
 }
 
 func (g *GotoLine) Start(on gxui.Control) gxui.Control {
@@ -70,7 +71,7 @@ func (g *GotoLine) Next() gxui.Focusable {
 func (g *GotoLine) Exec(on interface{}) (executed, consume bool) {
 	lineStr := g.lineNumInput.Text()
 	if lineStr == "" {
-		g.warn = "No line number provided"
+		g.Warn = "No line number provided"
 		return true, true
 	}
 	line, err := strconv.Atoi(lineStr)
@@ -80,13 +81,14 @@ func (g *GotoLine) Exec(on interface{}) (executed, consume bool) {
 		log.Printf("ERR: goto-line: failed to parse %s as a line number", g.lineNumInput.Text())
 		return true, true
 	}
-	line = oneToZeroBased(line)
+	line-- // Convert to zero-based.
+
 	if line >= g.editor.Controller().LineCount() {
-		g.err = fmt.Sprintf("Line %d is past the end of the file", line)
+		g.Err = fmt.Sprintf("Line %d is past the end of the file", line)
 		return true, true
 	}
 	if line == -1 {
-		g.err = "0 line is not exist"
+		g.Err = "0 line is not exist"
 		return true, true
 	}
 	g.editor.Controller().SetCaret(g.editor.LineStart(line))

@@ -2,7 +2,10 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package commands
+// Package godef contains logic for interacting with the godef
+// command line tool.  It can be imported directly or used as a
+// plugin.
+package godef
 
 import (
 	"bytes"
@@ -13,6 +16,7 @@ import (
 	"strconv"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/settings"
 )
@@ -23,23 +27,25 @@ type LineOpener interface {
 	CurrentEditor() *editor.CodeEditor
 }
 
-type GotoDef struct {
-	statusKeeper
+type Godef struct {
+	commander.GenericStatuser
 }
 
-func NewGotoDef(theme gxui.Theme) *GotoDef {
-	return &GotoDef{statusKeeper: statusKeeper{theme: theme}}
+func New(theme gxui.Theme) *Godef {
+	g := &Godef{}
+	g.Theme = theme
+	return g
 }
 
-func (gi *GotoDef) Name() string {
+func (gi *Godef) Name() string {
 	return "goto-definition"
 }
 
-func (gi *GotoDef) Menu() string {
+func (gi *Godef) Menu() string {
 	return "Edit"
 }
 
-func (gi *GotoDef) Exec(on interface{}) (executed, consume bool) {
+func (gi *Godef) Exec(on interface{}) (executed, consume bool) {
 	opener, ok := on.(LineOpener)
 	if !ok {
 		return false, false
@@ -61,12 +67,12 @@ func (gi *GotoDef) Exec(on interface{}) (executed, consume bool) {
 	}
 	output, err := cmd.Output()
 	if err != nil {
-		gi.err = fmt.Sprintf("godef error: %s", string(output))
+		gi.Err = fmt.Sprintf("godef error: %s", string(output))
 		return true, true
 	}
 	path, line, column, err := parseGodef(output)
 	if err != nil {
-		gi.err = err.Error()
+		gi.Err = err.Error()
 		return true, true
 	}
 	opener.OpenLine(path, line, column)
@@ -87,5 +93,5 @@ func parseGodef(output []byte) (path string, line, column int, err error) {
 	if err != nil {
 		return "", 0, 0, fmt.Errorf("godef output: %s is not a column number", string(colBytes))
 	}
-	return string(pathBytes), oneToZeroBased(line), oneToZeroBased(col), nil
+	return string(pathBytes), line - 1, col - 1, nil
 }

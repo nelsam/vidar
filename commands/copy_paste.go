@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander"
 )
 
 type Copy struct {
@@ -79,16 +80,16 @@ func (c *Cut) Exec(target interface{}) (executed, consume bool) {
 }
 
 type Paste struct {
-	statusKeeper
+	commander.GenericStatuser
 
 	driver gxui.Driver
 }
 
 func NewPaste(driver gxui.Driver, theme gxui.Theme) *Paste {
-	return &Paste{
-		statusKeeper: statusKeeper{theme: theme},
-		driver:       driver,
-	}
+	p := &Paste{}
+	p.Theme = theme
+	p.driver = driver
+	return p
 }
 
 func (p *Paste) Name() string {
@@ -110,7 +111,7 @@ func (p *Paste) Exec(target interface{}) (executed, consume bool) {
 	}
 	contents, err := p.driver.GetClipboard()
 	if err != nil {
-		p.err = fmt.Sprintf("Error reading clipboard: %s", err)
+		p.Err = fmt.Sprintf("Error reading clipboard: %s", err)
 		return true, false
 	}
 	editor.Controller().Replace(func(sel gxui.TextSelection) string {

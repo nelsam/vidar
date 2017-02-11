@@ -2,42 +2,50 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package commands
+package license
 
 import (
 	"strings"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/settings"
 )
 
-type LicenseHeaderUpdate struct {
-	statusKeeper
+type OpenProject interface {
+	CurrentEditor() *editor.CodeEditor
+	Project() settings.Project
 }
 
-func NewLicenseHeaderUpdate(theme gxui.Theme) *LicenseHeaderUpdate {
-	return &LicenseHeaderUpdate{
-		statusKeeper: statusKeeper{theme: theme},
-	}
+type HeaderUpdate struct {
+	commander.GenericStatuser
 }
 
-func (u *LicenseHeaderUpdate) Name() string {
+func NewHeaderUpdate(theme gxui.Theme) *HeaderUpdate {
+	u := &HeaderUpdate{}
+	u.Theme = theme
+	return u
+}
+
+func (u *HeaderUpdate) Name() string {
 	return "update-license"
 }
 
-func (u *LicenseHeaderUpdate) Menu() string {
+func (u *HeaderUpdate) Menu() string {
 	return "Edit"
 }
 
-func (u *LicenseHeaderUpdate) Exec(on interface{}) (executed, consume bool) {
-	finder, ok := on.(ProjectFinder)
+func (u *HeaderUpdate) Exec(on interface{}) (executed, consume bool) {
+	proj, ok := on.(OpenProject)
 	if !ok {
 		return false, false
 	}
-	edit := u.LicenseEdit(finder)
+	edit := u.LicenseEdit(proj)
 	if edit == nil {
 		return true, true
 	}
-	editor := finder.CurrentEditor()
+	editor := proj.CurrentEditor()
 	oldRunes := editor.Controller().TextRunes()
 	runes := make([]rune, 0, len(oldRunes)+edit.Delta)
 	runes = append(runes, edit.New...)
@@ -47,12 +55,12 @@ func (u *LicenseHeaderUpdate) Exec(on interface{}) (executed, consume bool) {
 	return true, true
 }
 
-func (u *LicenseHeaderUpdate) LicenseEdit(finder ProjectFinder) *gxui.TextBoxEdit {
-	editor := finder.CurrentEditor()
+func (u *HeaderUpdate) LicenseEdit(proj OpenProject) *gxui.TextBoxEdit {
+	editor := proj.CurrentEditor()
 	if editor == nil {
 		return nil
 	}
-	licenseHeader := strings.TrimSpace(finder.Project().LicenseHeader())
+	licenseHeader := strings.TrimSpace(proj.Project().LicenseHeader())
 	if licenseHeader != "" {
 		licenseHeader += "\n\n"
 	}
@@ -76,7 +84,7 @@ func (u *LicenseHeaderUpdate) LicenseEdit(finder ProjectFinder) *gxui.TextBoxEdi
 		commentText = ""
 	}
 	if commentText == licenseHeader {
-		u.info = "license is already set correctly"
+		u.Info = "license is already set correctly"
 		return nil
 	}
 	return &gxui.TextBoxEdit{
