@@ -46,7 +46,14 @@ func init() {
 	settings.SetConfigName(settingsFilename)
 	settings.SetTypeByDefaultValue(true)
 	settings.SetDefault("fonts", []string(nil))
-	err = settings.ReadInConfig()
+	readSettings()
+}
+
+func readSettings() {
+	err := settings.ReadInConfig()
+	if _, notFound := err.(viper.ConfigFileNotFoundError); notFound {
+		return
+	}
 	if _, unsupported := err.(viper.UnsupportedConfigError); unsupported {
 		err = convertSettings()
 	}
@@ -110,6 +117,9 @@ func addEnv(environ []string, key, value string, replace bool) []string {
 
 func Projects() (projs []Project) {
 	err := projects.ReadInConfig()
+	if _, notFound := err.(viper.ConfigFileNotFoundError); notFound {
+		return nil
+	}
 	if _, unsupported := err.(viper.UnsupportedConfigError); unsupported {
 		err = convertProjects()
 	}
