@@ -19,6 +19,7 @@ import (
 	"github.com/nelsam/gxui/themes/dark"
 	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/commands"
+	"github.com/nelsam/vidar/plugins"
 	"github.com/nelsam/vidar/settings"
 	"github.com/tmc/fonts"
 
@@ -126,6 +127,7 @@ func uiMain(driver gxui.Driver) {
 	for _, h := range commands.Hooks(driver, theme, projTree.Frame()) {
 		bindings = append(bindings, h)
 	}
+	bindings = append(bindings, plugins.Bindables(theme)...)
 	cmdr.Push(bindings...)
 
 	window.OnKeyDown(func(event gxui.KeyboardEvent) {

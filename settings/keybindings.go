@@ -5,10 +5,7 @@
 package settings
 
 import (
-	"fmt"
-	"io/ioutil"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/nelsam/gxui"
@@ -23,6 +20,31 @@ func init() {
 	bindings.AddConfigPath(defaultConfigDir)
 	bindings.SetConfigName(keysFilename)
 	setDefaultBindings()
+	err := bindings.ReadInConfig()
+	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		err = writeConfig(bindings, keysFilename)
+	}
+	if err != nil {
+		log.Printf("Error parsing key bindings: %s", err)
+	}
+	updateBindings()
+}
+
+func updateBindings() {
+	updated := false
+	for event, action := range bindings.AllSettings() {
+		// 2017-03-05: goimports now registers itself as a hook in
+		// save-current-file when a go file is open.
+		if action == "goimports, save-current-file" {
+			updated = true
+			bindings.Set(event, "save-current-file")
+		}
+	}
+	if updated {
+		if err := writeConfig(bindings, keysFilename); err != nil {
+			log.Printf("Error updating config: %s", err)
+		}
+	}
 }
 
 func Bindings(commandName string) (events []gxui.KeyboardEvent) {
@@ -77,7 +99,7 @@ func setDefaultBindings() {
 	bindings.SetDefault("Ctrl-Shift-O", "open-project")
 	bindings.SetDefault("Ctrl-O", "open-file")
 	bindings.SetDefault("Ctrl-A", "select-all")
-	bindings.SetDefault("Ctrl-S", "goimports, save-current-file")
+	bindings.SetDefault("Ctrl-S", "save-current-file")
 	bindings.SetDefault("Ctrl-Shift-S", "save-all-files")
 	bindings.SetDefault("Ctrl-W", "close-current-tab")
 
@@ -120,44 +142,4 @@ func setDefaultBindings() {
 	bindings.SetDefault("Shift-End", "select-to-line-end")
 	bindings.SetDefault("Home", "line-start")
 	bindings.SetDefault("Shift-Home", "select-to-line-start")
-}
-
-func writeBindings() error {
-	return writeConfig(bindings, keysFilename)
-}
-
-func readBindings() error {
-	err := bindings.ReadInConfig()
-	if _, unsupported := err.(viper.UnsupportedConfigError); unsupported {
-		err = writeBindings()
-	}
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func bindingConfigBytes() ([]byte, error) {
-	f, err := os.Open(bindings.ConfigFileUsed())
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	return ioutil.ReadAll(f)
-}
-
-func updateBindingConfigBytes(bytes []byte) error {
-	f, err := os.Create(bindings.ConfigFileUsed())
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	written, err := f.Write(bytes)
-	if err != nil {
-		return err
-	}
-	if written < len(bytes) {
-		return fmt.Errorf("Error: expected %d bytes to be written, got %d", len(bytes), written)
-	}
-	return nil
 }

@@ -8,10 +8,6 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander"
-	"github.com/nelsam/vidar/plugins/comments"
-	"github.com/nelsam/vidar/plugins/godef"
-	"github.com/nelsam/vidar/plugins/goimports"
-	"github.com/nelsam/vidar/plugins/license"
 )
 
 type EditHook struct {
@@ -39,9 +35,5 @@ func (h EditHook) FileBindables(string) []commander.Bindable {
 		NewPaste(h.Driver, h.Theme),
 		NewShowSuggestions(),
 		NewGotoLine(h.Theme),
-		godef.New(h.Theme),
-		license.NewHeaderUpdate(h.Theme),
-		goimports.New(h.Theme),
-		comments.NewToggle(),
 	}
 }

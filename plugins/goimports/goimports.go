@@ -25,6 +25,21 @@ type OpenProject interface {
 	Project() settings.Project
 }
 
+type OnSave struct {
+}
+
+func (o OnSave) Name() string {
+	return "goimports-on-save"
+}
+
+func (o OnSave) CommandName() string {
+	return "save-current-file"
+}
+
+func (o OnSave) BeforeSave(proj settings.Project, path, text string) (newText string, err error) {
+	return goimports(proj.Gopath, path, text)
+}
+
 type GoImports struct {
 	commander.GenericStatuser
 }
@@ -54,28 +69,9 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 	}
 	proj := current.Project()
 	text := editor.Text()
-	cmd := exec.Command("goimports", "-srcdir", filepath.Dir(editor.Filepath()))
-	cmd.Stdin = bytes.NewBufferString(text)
-	errBuffer := &bytes.Buffer{}
-	cmd.Stderr = errBuffer
-	cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
-	if proj.Gopath != "" {
-		cmd.Env[0] += string(os.PathListSeparator) + filepath.Join(proj.Gopath, "bin")
-		cmd.Env = append(cmd.Env, "GOPATH="+proj.Gopath)
-	}
-	formatted, err := cmd.Output()
+	formatted, err := goimports(proj.Gopath, editor.Filepath(), text)
 	if err != nil {
-		msg := errBuffer.String()
-		if msg == "" {
-			gi.Err = err.Error()
-			return true, true
-		}
-		stdinPatternStart := strings.Index(msg, stdinPathPattern)
-		if stdinPatternStart > 0 {
-			pathEnd := stdinPatternStart + len(stdinPathPattern)
-			msg = msg[pathEnd:]
-		}
-		gi.Err = fmt.Sprintf("goimports error: %s", msg)
+		gi.Err = err.Error()
 		return true, true
 	}
 	edits := []gxui.TextBoxEdit{
@@ -83,9 +79,35 @@ func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
 			At:    0,
 			Delta: len(formatted) - len(text),
 			Old:   []rune(text),
-			New:   []rune(string(formatted)),
+			New:   []rune(formatted),
 		},
 	}
-	editor.Controller().SetTextEdits([]rune(string(formatted)), edits)
+	editor.Controller().SetTextEdits([]rune(formatted), edits)
 	return true, true
+}
+
+func goimports(gopath, path, text string) (newText string, err error) {
+	cmd := exec.Command("goimports", "-srcdir", filepath.Dir(path))
+	cmd.Stdin = bytes.NewBufferString(text)
+	errBuffer := &bytes.Buffer{}
+	cmd.Stderr = errBuffer
+	cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
+	if gopath != "" {
+		cmd.Env[0] += string(os.PathListSeparator) + filepath.Join(gopath, "bin")
+		cmd.Env = append(cmd.Env, "GOPATH="+gopath)
+	}
+	formatted, err := cmd.Output()
+	if err != nil {
+		msg := errBuffer.String()
+		if msg == "" {
+			return "", err
+		}
+		stdinPatternStart := strings.Index(msg, stdinPathPattern)
+		if stdinPatternStart > 0 {
+			pathEnd := stdinPatternStart + len(stdinPathPattern)
+			msg = msg[pathEnd:]
+		}
+		return "", fmt.Errorf("goimports: %s", msg)
+	}
+	return string(formatted), nil
 }

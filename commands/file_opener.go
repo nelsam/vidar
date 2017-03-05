@@ -93,6 +93,9 @@ func (f *FileOpener) Next() gxui.Focusable {
 func (f *FileOpener) Exec(element interface{}) (executed, consume bool) {
 	switch src := element.(type) {
 	case EditorOpener:
+		if f.editor != nil {
+			return false, false
+		}
 		f.editor = src.Open(f.file.Path(), f.cursor)
 		if f.binder != nil {
 			f.setupHooks()
@@ -102,6 +105,9 @@ func (f *FileOpener) Exec(element interface{}) (executed, consume bool) {
 		src.Open(f.file.Path(), f.cursor)
 		return false, false
 	case Binder:
+		if f.binder != nil {
+			return false, false
+		}
 		f.binder = src
 		if f.editor != nil {
 			f.setupHooks()
@@ -124,7 +130,9 @@ func (f *FileOpener) setupHooks() {
 	f.editor.OnLostFocus(func() {
 		binder.Pop()
 	})
-	f.editor.GainedFocus()
+	if f.editor.HasFocus() {
+		binder.Push(b...)
+	}
 }
 
 func (f *FileOpener) Clone() commander.CloneableCommand {
