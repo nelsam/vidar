@@ -20,8 +20,8 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/commands"
-	"github.com/nelsam/vidar/controller"
 )
 
 var (
@@ -224,7 +224,7 @@ func newName(driver gxui.Driver, theme gxui.Theme, name string, color gxui.Color
 	return node
 }
 
-func (n *Name) OnSelected(exec func(controller.Executor)) {
+func (n *Name) OnSelected(exec func(commander.Executor)) {
 	// OnSelected will often be called in non-UI goroutines because
 	// it's called by resource intensive tasks that shouldn't be
 	// holding up the UI.  However, creating the FileOpener and

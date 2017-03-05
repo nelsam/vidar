@@ -4,7 +4,10 @@
 
 package commands
 
-import "github.com/nelsam/vidar/editor"
+import (
+	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/editor"
+)
 
 type EditorCommand interface {
 	Name() string
@@ -59,6 +62,38 @@ func (m Mover) Exec(editor *editor.CodeEditor) {
 		return
 	}
 	m.EditorCommand.Exec(editor)
+}
+
+type NavHook struct {
+}
+
+func (n NavHook) Name() string {
+	return "navigation-hook"
+}
+
+func (n NavHook) CommandName() string {
+	return "open-file"
+}
+
+func (n NavHook) FileBindables(string) []commander.Bindable {
+	return []commander.Bindable{
+		NewPrevLine(),
+		NewSelectPrevLine(),
+		NewNextLine(),
+		NewSelectNextLine(),
+		NewPrevChar(),
+		NewPrevWord(),
+		NewSelectPrevChar(),
+		NewSelectPrevWord(),
+		NewNextChar(),
+		NewNextWord(),
+		NewSelectNextChar(),
+		NewSelectNextWord(),
+		NewLineStart(),
+		NewSelectLineStart(),
+		NewLineEnd(),
+		NewSelectLineEnd(),
+	}
 }
 
 type PrevLine struct {

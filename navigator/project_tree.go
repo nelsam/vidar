@@ -18,7 +18,7 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/controller"
+	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/settings"
 )
@@ -71,7 +71,7 @@ type ProjectTree struct {
 	driver gxui.Driver
 	theme  *basic.Theme
 
-	callback func(controller.Executor)
+	callback func(commander.Executor)
 	dirs     *directory
 	tocCtl   gxui.Control
 	toc      *TOC
@@ -246,7 +246,7 @@ func (p *ProjectTree) Frame() gxui.Control {
 	return p.layout
 }
 
-func (p *ProjectTree) OnComplete(callback func(controller.Executor)) {
+func (p *ProjectTree) OnComplete(callback func(commander.Executor)) {
 	p.callback = callback
 	go attachCallback(p.TOC(), callback)
 }
@@ -295,10 +295,10 @@ type irrespParent interface {
 }
 
 type selectionButton interface {
-	OnSelected(func(controller.Executor))
+	OnSelected(func(commander.Executor))
 }
 
-func attachCallback(control gxui.Control, callback func(controller.Executor)) {
+func attachCallback(control gxui.Control, callback func(commander.Executor)) {
 	if b, ok := control.(selectionButton); ok {
 		b.OnSelected(callback)
 	}

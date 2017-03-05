@@ -38,16 +38,21 @@ func newMenuBar(commander *Commander, theme *basic.Theme) *menuBar {
 	return m
 }
 
-func (m *menuBar) Add(menuName string, command Command, bindings ...gxui.KeyboardEvent) {
-	menu, ok := m.menus[menuName]
+func (m *menuBar) Add(command Command, bindings ...gxui.KeyboardEvent) {
+	menu, ok := m.menus[command.Menu()]
 	if !ok {
 		menu = newMenu(m.commander, m.theme)
-		m.menus[menuName] = menu
-		button := newMenuButton(m.commander, m.theme, menuName)
+		m.menus[command.Menu()] = menu
+		button := newMenuButton(m.commander, m.theme, command.Menu())
 		child := m.AddChild(button)
 		button.SetMenu(child, menu)
 	}
 	menu.Add(command, bindings...)
+}
+
+func (m *menuBar) Clear() {
+	m.RemoveAll()
+	m.menus = make(map[string]*menu)
 }
 
 func (m *menuBar) Paint(canvas gxui.Canvas) {
@@ -99,7 +104,7 @@ func (m *menu) Add(command Command, bindings ...gxui.KeyboardEvent) {
 			return
 		}
 		if executor, ok := command.(Executor); ok {
-			m.commander.Controller().Execute(executor)
+			m.commander.Execute(executor)
 		}
 		m.commander.box.Finish()
 	})

@@ -5,7 +5,7 @@
 package commander
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
@@ -13,13 +13,13 @@ import (
 	"github.com/nelsam/gxui/mixins/parts"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/controller"
+	"github.com/nelsam/vidar/settings"
 )
 
 // Controller is a type which is used by the Commander to control the
 // main UI.
 type Controller interface {
 	gxui.Control
-	Execute(controller.Executor)
 	Editor() controller.Editor
 	Navigator() controller.Navigator
 }
@@ -42,6 +42,7 @@ type Commander struct {
 	controller Controller
 	box        *commandBox
 
+	cmdStack [][]commandMapping
 	commands []commandMapping
 	menuBar  *menuBar
 }
@@ -102,36 +103,132 @@ func (c *Commander) Controller() Controller {
 	return c.controller
 }
 
-// Map maps a Command to a menu and an optional key binding.
-func (c *Commander) Map(command Command, bindings ...gxui.KeyboardEvent) error {
-	c.menuBar.Add(command.Menu(), command, bindings...)
-	for _, binding := range bindings {
-		if err := c.mapBinding(command, binding); err != nil {
-			return err
+func (c *Commander) archiveMap() []Command {
+	old := c.commands
+	c.commands = nil
+	c.cmdStack = append(c.cmdStack, old)
+
+	used := make(map[Command]struct{})
+	var cmds []Command
+	for _, o := range old {
+		if _, ok := used[o.command]; ok {
+			continue
 		}
+		used[o.command] = struct{}{}
+		cmds = append(cmds, o.command)
+
 	}
-	return nil
+	return cmds
 }
 
-func (c *Commander) mapBinding(command Command, binding gxui.KeyboardEvent) error {
-	if command := c.Binding(binding); command != nil {
-		return fmt.Errorf("Binding %s is already mapped", binding)
+// Push binds all bindables to c, pushing the previous
+// bindings down in the stack.
+func (c *Commander) Push(bindables ...Bindable) {
+	c.menuBar.Clear()
+	defer c.mapMenu()
+
+	old := c.archiveMap()
+	for _, cmd := range old {
+		if cloneable, ok := cmd.(CloneableCommand); ok {
+			cmd = cloneable.Clone()
+		}
+		c.bind(cmd, settings.Bindings(cmd.Name())...)
 	}
+
+	var hooks []CommandHook
+	for _, b := range bindables {
+		switch src := b.(type) {
+		case CommandHook:
+			hooks = append(hooks, src)
+		case Command:
+			c.bind(src, settings.Bindings(src.Name())...)
+		}
+	}
+
+	for _, h := range hooks {
+		cmd := c.command(h.CommandName())
+		if cmd == nil {
+			log.Printf("Warning: could not find command %s to bind %s to", h.CommandName(), h.Name())
+			continue
+		}
+		hooked, ok := cmd.(HookedCommand)
+		if !ok {
+			log.Printf("Warning: %s cannot bind to command %s (not a HookedCommand)", h.Name(), cmd.Name())
+			continue
+		}
+		if err := hooked.Bind(h); err != nil {
+			log.Printf("Warning: failed to bind hook %s to HookedCommand %s", h.Name(), hooked.Name())
+		}
+	}
+}
+
+func (c *Commander) mapMenu() {
+	keys := make(map[Command][]gxui.KeyboardEvent)
+	var cmds []Command
+	for _, bound := range c.commands {
+		if _, ok := keys[bound.command]; !ok {
+			cmds = append(cmds, bound.command)
+		}
+		keys[bound.command] = append(keys[bound.command], bound.binding)
+	}
+	for _, cmd := range cmds {
+		c.menuBar.Add(cmd, keys[cmd]...)
+	}
+}
+
+// Pop pops the most recent call to Bind, restoring the
+// previous bindings.
+func (c *Commander) Pop() {
+	c.menuBar.Clear()
+	defer c.mapMenu()
+
+	newLen := len(c.cmdStack) - 1
+	c.commands = c.cmdStack[newLen]
+	c.cmdStack = c.cmdStack[:newLen]
+}
+
+func (c *Commander) bind(command Command, bindings ...gxui.KeyboardEvent) {
+	for _, binding := range bindings {
+		if i := c.bindIdx(binding); i >= 0 {
+			log.Printf("Warning: command %s is overriding command %s at binding %v", command.Name(), c.commands[i].command.Name(), binding)
+			c.commands = append(c.commands[:i], c.commands[i+1:]...)
+		}
+		c.mapBinding(command, binding)
+	}
+}
+
+func (c *Commander) bindIdx(binding gxui.KeyboardEvent) int {
+	if binding.Key == gxui.KeyUnknown {
+		return -1
+	}
+	for i, mapping := range c.commands {
+		if mapping.binding == binding {
+			return i
+		}
+	}
+	return -1
+}
+
+func (c *Commander) mapBinding(command Command, binding gxui.KeyboardEvent) {
 	c.commands = append(c.commands, commandMapping{
 		binding: binding,
 		command: command,
 	})
-	return nil
 }
 
-// Binding finds the Command associated with binding.
+// Binding finds and returns the Command associated with binding.
 func (c *Commander) Binding(binding gxui.KeyboardEvent) Command {
-	if binding.Key == gxui.KeyUnknown {
+	i := c.bindIdx(binding)
+	if i < 0 {
 		return nil
 	}
-	for _, mapping := range c.commands {
-		if mapping.binding == binding {
-			return mapping.command
+	return c.commands[i].command
+}
+
+func (c *Commander) command(name string) Command {
+	for _, m := range c.commands {
+		if m.command.Name() == name {
+			return m.command
 		}
 	}
 	return nil
@@ -156,8 +253,46 @@ func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 		return false
 	}
 	if executor, ok := c.box.Current().(Executor); ok {
-		c.controller.Execute(executor)
+		c.Execute(executor)
 	}
 	c.box.Finish()
 	return true
+}
+
+func (c *Commander) Execute(e Executor) {
+	if before, ok := e.(BeforeExecutor); ok {
+		before.BeforeExec(c)
+	}
+	executed, _ := execute(e, c)
+	if !executed {
+		log.Printf("Warning: Executor of type %T ran without executing", e)
+	}
+}
+
+func execute(executor Executor, elem interface{}) (executed, consume bool) {
+	executed, consume = executor.Exec(elem)
+	if consume {
+		return executed, consume
+	}
+	var childExecuted bool
+	if elementer, ok := elem.(Elementer); ok {
+		for _, element := range elementer.Elements() {
+			childExecuted, consume = execute(executor, element)
+			executed = executed || childExecuted
+			if consume {
+				break
+			}
+		}
+		return executed, consume
+	}
+	if parent, ok := elem.(gxui.Parent); ok {
+		for _, child := range parent.Children() {
+			childExecuted, consume = execute(executor, child.Control)
+			executed = executed || childExecuted
+			if consume {
+				break
+			}
+		}
+	}
+	return executed, consume
 }

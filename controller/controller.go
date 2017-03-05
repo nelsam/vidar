@@ -6,7 +6,6 @@ package controller
 
 import (
 	"go/token"
-	"log"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
@@ -22,27 +21,6 @@ type Editor interface {
 	Focus()
 	CurrentFile() string
 	Open(path string, cursor token.Position)
-}
-
-type Elementer interface {
-	Elements() []interface{}
-}
-
-// An Executor is a type which can execute operations on the
-// controller and/or its children.
-type Executor interface {
-	// Exec executes the operation(s).  Exec will be called once for
-	// the controller and each of its children, until consume is
-	// true.  If Exec has been run against the controller and all its
-	// children without ever returning true for executed, it is
-	// assumed to be unexpected behavior, and an error will be shown.
-	Exec(interface{}) (executed, consume bool)
-}
-
-// A BeforeExecutor is an Executor which has tasks to run on the
-// Controller prior to running Exec.
-type BeforeExecutor interface {
-	BeforeExec(interface{})
 }
 
 type Controller struct {
@@ -102,43 +80,4 @@ func (c *Controller) SetEditor(editor Editor) {
 	if c.editor != nil {
 		c.AddChild(c.editor)
 	}
-}
-
-// Execute implements "../commander".Controller.
-func (c *Controller) Execute(executor Executor) {
-	if before, ok := executor.(BeforeExecutor); ok {
-		before.BeforeExec(c)
-	}
-	executed, _ := execRecursively(executor, c)
-	if !executed {
-		log.Printf("Warning: Executor of type %T ran without executing", executor)
-	}
-}
-
-func execRecursively(executor Executor, element interface{}) (executed, consume bool) {
-	executed, consume = executor.Exec(element)
-	if consume {
-		return executed, consume
-	}
-	var childExecuted bool
-	if elementer, ok := element.(Elementer); ok {
-		for _, element := range elementer.Elements() {
-			childExecuted, consume = execRecursively(executor, element)
-			executed = executed || childExecuted
-			if consume {
-				break
-			}
-		}
-		return executed, consume
-	}
-	if parent, ok := element.(gxui.Parent); ok {
-		for _, child := range parent.Children() {
-			childExecuted, consume = execRecursively(executor, child.Control)
-			executed = executed || childExecuted
-			if consume {
-				break
-			}
-		}
-	}
-	return executed, consume
 }

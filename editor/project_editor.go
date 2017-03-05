@@ -36,12 +36,13 @@ func NewProjectEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme
 	return p
 }
 
-func (p *ProjectEditor) Open(path string, cursor token.Position) {
+func (p *ProjectEditor) Open(path string, cursor token.Position) *CodeEditor {
 	editor := p.open(path)
 	p.driver.Call(func() {
 		editor.Controller().SetCaret(cursor.Offset)
 		editor.ScrollToRune(cursor.Offset)
 	})
+	return editor
 }
 
 func (p *ProjectEditor) OpenLine(path string, line, col int) {

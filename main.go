@@ -95,7 +95,9 @@ func uiMain(driver gxui.Driver) {
 	window := theme.CreateWindow(1600, 800, "Vidar - GXUI Go Editor")
 	controller := controller.New(driver, theme)
 
-	nav := navigator.New(driver, theme, controller)
+	cmdr := commander.New(driver, theme, controller)
+
+	nav := navigator.New(driver, theme, cmdr)
 	controller.SetNavigator(nav)
 
 	editor := editor.New(driver, window, theme, theme.DefaultMonospaceFont())
@@ -112,16 +114,19 @@ func uiMain(driver gxui.Driver) {
 		nav.Resize(window.Size().H)
 	})
 
-	commander := commander.New(driver, theme, controller)
-
 	// TODO: Check the system's DPI settings for this value
 	window.SetScale(1)
 
-	window.AddChild(commander)
+	window.AddChild(cmdr)
 
-	for _, command := range commands.Commands(driver, theme, projTree.Frame()) {
-		commander.Map(command, settings.Bindings(command.Name())...)
+	var bindings []commander.Bindable
+	for _, c := range commands.Commands(driver, theme, projTree.Frame()) {
+		bindings = append(bindings, c)
 	}
+	for _, h := range commands.Hooks(driver, theme, projTree.Frame()) {
+		bindings = append(bindings, h)
+	}
+	cmdr.Push(bindings...)
 
 	window.OnKeyDown(func(event gxui.KeyboardEvent) {
 		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {
@@ -131,12 +136,12 @@ func uiMain(driver gxui.Driver) {
 			window.SetFullscreen(!window.Fullscreen())
 		}
 		if window.Focus() == nil {
-			commander.KeyDown(event)
+			cmdr.KeyDown(event)
 		}
 	})
 	window.OnKeyUp(func(event gxui.KeyboardEvent) {
 		if window.Focus() == nil {
-			commander.KeyPress(event)
+			cmdr.KeyPress(event)
 		}
 	})
 
@@ -145,7 +150,7 @@ func uiMain(driver gxui.Driver) {
 		if err != nil {
 			log.Printf("Failed to get path: %s", err)
 		}
-		commander.Controller().Editor().Open(filepath, token.Position{})
+		cmdr.Controller().Editor().Open(filepath, token.Position{})
 	}
 
 	window.OnClose(driver.Terminate)
