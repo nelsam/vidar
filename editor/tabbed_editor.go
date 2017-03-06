@@ -42,14 +42,14 @@ func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, t
 	e.SetMargin(math.Spacing{L: 0, T: 2, R: 0, B: 0})
 }
 
-func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []string) *CodeEditor {
+func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []string) (editor *CodeEditor, existed bool) {
 	name := relPath(hiddenPrefix, path)
 	if editor, ok := e.editors[name]; ok {
 		e.Select(e.PanelIndex(editor))
 		e.Focus()
-		return editor
+		return editor, true
 	}
-	editor := &CodeEditor{}
+	editor = &CodeEditor{}
 	// We want the OnRename trigger set up before the editor opens the file
 	// in its Init method.
 	editor.OnRename(func(newPath string) {
@@ -73,7 +73,7 @@ func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []str
 	suggester := suggestions.NewGoCodeProvider(editor, environ)
 	editor.SetSuggestionProvider(suggester)
 	e.Add(name, editor)
-	return editor
+	return editor, false
 }
 
 func (e *TabbedEditor) Add(name string, editor *CodeEditor) {

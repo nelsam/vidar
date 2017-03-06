@@ -42,7 +42,7 @@ type MultiEditor interface {
 	gxui.Control
 	outer.LayoutChildren
 	Focus()
-	Open(name, path, headerText string, environ []string) *CodeEditor
+	Open(name, path, headerText string, environ []string) (editor *CodeEditor, existed bool)
 	Editors() uint
 	CurrentEditor() *CodeEditor
 	CurrentFile() string
@@ -195,7 +195,7 @@ func (e *SplitEditor) MouseUp(event gxui.MouseEvent) {
 	e.SplitterLayout.MouseUp(event)
 }
 
-func (e *SplitEditor) Open(name, path, headerText string, environ []string) *CodeEditor {
+func (e *SplitEditor) Open(name, path, headerText string, environ []string) (editor *CodeEditor, existed bool) {
 	return e.current.Open(name, path, headerText, environ)
 }
 

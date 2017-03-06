@@ -10,6 +10,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/editor"
 )
 
 type Navigator interface {
@@ -20,7 +21,7 @@ type Editor interface {
 	gxui.Control
 	Focus()
 	CurrentFile() string
-	Open(path string, cursor token.Position)
+	Open(path string, cursor token.Position) (editor *editor.CodeEditor, existed bool)
 }
 
 type Controller struct {

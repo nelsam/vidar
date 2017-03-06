@@ -222,6 +222,7 @@ type Opener interface {
 	Name() string
 	Menu() string
 	SetLocation(path string, pos token.Position)
+	Start(gxui.Control) gxui.Control
 	Exec(on interface{}) (executed, consume bool)
 }
 
@@ -241,6 +242,7 @@ func newName(cmdr Commander, driver gxui.Driver, theme gxui.Theme, name string, 
 func (n *Name) OnSelected(exec func(commander.Executor)) {
 	cmd := n.cmdr.Command("open-file").(Opener)
 	n.button.OnClick(func(gxui.MouseEvent) {
+		cmd.Start(nil)
 		cmd.SetLocation(n.File(), n.Position())
 		exec(cmd)
 	})

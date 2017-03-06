@@ -36,17 +36,17 @@ func NewProjectEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme
 	return p
 }
 
-func (p *ProjectEditor) Open(path string, cursor token.Position) *CodeEditor {
-	editor := p.open(path)
+func (p *ProjectEditor) Open(path string, cursor token.Position) (editor *CodeEditor, existed bool) {
+	editor, existed = p.open(path)
 	p.driver.Call(func() {
 		editor.Controller().SetCaret(cursor.Offset)
 		editor.ScrollToRune(cursor.Offset)
 	})
-	return editor
+	return editor, existed
 }
 
 func (p *ProjectEditor) OpenLine(path string, line, col int) {
-	editor := p.open(path)
+	editor, _ := p.open(path)
 	p.driver.Call(func() {
 		lineOffset := editor.LineStart(line)
 		editor.Controller().SetCaret(lineOffset + col)
@@ -54,7 +54,7 @@ func (p *ProjectEditor) OpenLine(path string, line, col int) {
 	})
 }
 
-func (p *ProjectEditor) open(path string) *CodeEditor {
+func (p *ProjectEditor) open(path string) (editor *CodeEditor, existed bool) {
 	return p.SplitEditor.Open(p.project.Path, path, p.project.LicenseHeader(), p.project.Environ())
 }
 
@@ -115,6 +115,6 @@ func (e *MultiProjectEditor) Focus() {
 	e.current.Focus()
 }
 
-func (e *MultiProjectEditor) Open(file string, cursor token.Position) {
-	e.current.Open(file, cursor)
+func (e *MultiProjectEditor) Open(file string, cursor token.Position) (editor *CodeEditor, existed bool) {
+	return e.current.Open(file, cursor)
 }

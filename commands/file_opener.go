@@ -15,7 +15,7 @@ import (
 )
 
 type EditorOpener interface {
-	Open(string, token.Position) *editor.CodeEditor
+	Open(string, token.Position) (editor *editor.CodeEditor, existed bool)
 }
 
 type Opener interface {
@@ -44,9 +44,10 @@ type FileOpener struct {
 	cursor token.Position
 	input  <-chan gxui.Focusable
 
-	binder Binder
-	editor *editor.CodeEditor
-	hooks  []FileBinder
+	binder    Binder
+	editor    *editor.CodeEditor
+	skipHooks bool
+	hooks     []FileBinder
 }
 
 func NewFileOpener(driver gxui.Driver, theme *basic.Theme) *FileOpener {
@@ -77,6 +78,7 @@ func (f *FileOpener) Menu() string {
 func (f *FileOpener) Start(control gxui.Control) gxui.Control {
 	f.binder = nil
 	f.editor = nil
+	f.skipHooks = false
 
 	f.file.loadEditorDir(control)
 	input := make(chan gxui.Focusable, 1)
@@ -96,7 +98,7 @@ func (f *FileOpener) Exec(element interface{}) (executed, consume bool) {
 		if f.editor != nil {
 			return false, false
 		}
-		f.editor = src.Open(f.file.Path(), f.cursor)
+		f.editor, f.skipHooks = src.Open(f.file.Path(), f.cursor)
 		if f.binder != nil {
 			f.setupHooks()
 			return true, false
@@ -118,6 +120,9 @@ func (f *FileOpener) Exec(element interface{}) (executed, consume bool) {
 }
 
 func (f *FileOpener) setupHooks() {
+	if f.skipHooks {
+		return
+	}
 	path := f.file.Path()
 	var b []commander.Bindable
 	for _, h := range f.hooks {

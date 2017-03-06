@@ -99,10 +99,8 @@ func (f *FSLocator) SetPath(filePath string) {
 	defer f.loadDirContents()
 	dir, file := filepath.Split(filePath)
 
-	f.driver.Call(func() {
-		f.dir.SetText(dir)
-		f.file.SetText(file)
-	})
+	f.dir.SetText(dir)
+	f.file.SetText(file)
 }
 
 func (f *FSLocator) KeyPress(event gxui.KeyboardEvent) bool {
