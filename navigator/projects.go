@@ -7,12 +7,19 @@ package navigator
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander"
-	"github.com/nelsam/vidar/commands"
 	"github.com/nelsam/vidar/settings"
 )
 
+type ProjectSetter interface {
+	Name() string
+	Menu() string
+	SetProject(settings.Project)
+	Exec(interface{}) (executed, consume bool)
+}
+
 type Projects struct {
 	theme gxui.Theme
+	cmdr  Commander
 
 	button          gxui.Button
 	projects        gxui.List
@@ -21,8 +28,9 @@ type Projects struct {
 	projectFrame gxui.Control
 }
 
-func NewProjectsPane(driver gxui.Driver, theme gxui.Theme, projFrame gxui.Control) *Projects {
+func NewProjectsPane(cmdr Commander, driver gxui.Driver, theme gxui.Theme, projFrame gxui.Control) *Projects {
 	pane := &Projects{
+		cmdr:            cmdr,
 		theme:           theme,
 		projectFrame:    projFrame,
 		button:          createIconButton(driver, theme, "projects.png"),
@@ -52,7 +60,7 @@ func (p *Projects) Projects() []settings.Project {
 }
 
 func (p *Projects) OnComplete(onComplete func(commander.Executor)) {
-	opener := commands.NewProjectOpener(p.theme, p.projectFrame)
+	opener := p.cmdr.Command("open-project").(ProjectSetter)
 	p.projects.OnSelectionChanged(func(selected gxui.AdapterItem) {
 		opener.SetProject(selected.(settings.Project))
 		onComplete(opener)

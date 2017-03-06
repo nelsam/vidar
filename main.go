@@ -96,7 +96,18 @@ func uiMain(driver gxui.Driver) {
 	window := theme.CreateWindow(1600, 800, "Vidar - GXUI Go Editor")
 	controller := controller.New(driver, theme)
 
+	// Bindings should be added immediately after creating the commander,
+	// since other types rely on the bindings having been bound.
 	cmdr := commander.New(driver, theme, controller)
+	var bindings []commander.Bindable
+	for _, c := range commands.Commands(driver, theme) {
+		bindings = append(bindings, c)
+	}
+	for _, h := range commands.Hooks(driver, theme) {
+		bindings = append(bindings, h)
+	}
+	bindings = append(bindings, plugins.Bindables(theme)...)
+	cmdr.Push(bindings...)
 
 	nav := navigator.New(driver, theme, cmdr)
 	controller.SetNavigator(nav)
@@ -104,8 +115,8 @@ func uiMain(driver gxui.Driver) {
 	editor := editor.New(driver, window, theme, theme.DefaultMonospaceFont())
 	controller.SetEditor(editor)
 
-	projTree := navigator.NewProjectTree(driver, window, theme)
-	projects := navigator.NewProjectsPane(driver, theme, projTree.Frame())
+	projTree := navigator.NewProjectTree(cmdr, driver, window, theme)
+	projects := navigator.NewProjectsPane(cmdr, driver, theme, projTree.Frame())
 
 	nav.Add(projects)
 	nav.Add(projTree)
@@ -119,16 +130,6 @@ func uiMain(driver gxui.Driver) {
 	window.SetScale(1)
 
 	window.AddChild(cmdr)
-
-	var bindings []commander.Bindable
-	for _, c := range commands.Commands(driver, theme, projTree.Frame()) {
-		bindings = append(bindings, c)
-	}
-	for _, h := range commands.Hooks(driver, theme, projTree.Frame()) {
-		bindings = append(bindings, h)
-	}
-	bindings = append(bindings, plugins.Bindables(theme)...)
-	cmdr.Push(bindings...)
 
 	window.OnKeyDown(func(event gxui.KeyboardEvent) {
 		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {

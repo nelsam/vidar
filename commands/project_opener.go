@@ -9,30 +9,32 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/navigator"
 	"github.com/nelsam/vidar/settings"
 )
 
-type Nav interface {
-	ShowNavPane(gxui.Control)
+type ProjectSetter interface {
+	SetProject(settings.Project)
 }
 
-type projectSetter interface {
-	SetProject(settings.Project)
+type PaneDisplayer interface {
+	ShowNavPane(gxui.Control)
 }
 
 type ProjectOpener struct {
 	commander.GenericStatuser
 
-	name     gxui.TextBox
-	input    <-chan gxui.Focusable
-	projPane gxui.Control
+	name  gxui.TextBox
+	input <-chan gxui.Focusable
+
+	proj settings.Project
+	nav  PaneDisplayer
 }
 
-func NewProjectOpener(theme gxui.Theme, projPane gxui.Control) *ProjectOpener {
+func NewProjectOpener(theme gxui.Theme) *ProjectOpener {
 	p := &ProjectOpener{}
 	p.Theme = theme
 	p.name = theme.CreateTextBox()
-	p.projPane = projPane
 	return p
 }
 
@@ -45,6 +47,9 @@ func (p *ProjectOpener) Menu() string {
 }
 
 func (p *ProjectOpener) Start(gxui.Control) gxui.Control {
+	p.nav = nil
+	p.proj = settings.Project{}
+
 	p.name.SetText("")
 	input := make(chan gxui.Focusable, 1)
 	p.input = input
@@ -61,29 +66,34 @@ func (p *ProjectOpener) SetProject(proj settings.Project) {
 	p.name.SetText(proj.Name)
 }
 
-func (p *ProjectOpener) BeforeExec(element interface{}) {
-	for _, child := range element.(gxui.Parent).Children() {
-		if nav, ok := child.Control.(Nav); ok {
-			nav.ShowNavPane(p.projPane)
+func (p *ProjectOpener) BeforeExec(interface{}) {
+	for _, proj := range settings.Projects() {
+		if proj.Name == p.name.Text() {
+			p.proj = proj
+			break
 		}
 	}
 }
 
 func (p *ProjectOpener) Exec(element interface{}) (executed, consume bool) {
-	setter, ok := element.(projectSetter)
-	if !ok {
-		return false, false
-	}
-	var proj settings.Project
-	for _, proj = range settings.Projects() {
-		if proj.Name == p.name.Text() {
-			break
-		}
-	}
-	if proj.Name != p.name.Text() {
+	if p.proj.Name != p.name.Text() {
 		p.Err = fmt.Sprintf("No project by the name of %s found", p.name.Text())
-		return false, false
+		return false, true
 	}
-	setter.SetProject(proj)
-	return true, false
+	switch src := element.(type) {
+	case *navigator.ProjectTree:
+		if p.nav == nil {
+			p.Warn = "No navigation pane found to bind project tree to"
+			return false, false
+		}
+		src.SetProject(p.proj)
+		p.nav.ShowNavPane(src.Frame())
+		return true, false
+	case ProjectSetter:
+		src.SetProject(p.proj)
+		return true, false
+	case PaneDisplayer:
+		p.nav = src
+	}
+	return false, false
 }

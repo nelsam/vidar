@@ -6,6 +6,7 @@ package commander
 
 import (
 	"log"
+	"sync"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
@@ -41,6 +42,8 @@ type Commander struct {
 
 	controller Controller
 	box        *commandBox
+
+	lock sync.RWMutex
 
 	cmdStack [][]commandMapping
 	commands []commandMapping
@@ -124,6 +127,9 @@ func (c *Commander) archiveMap() []Command {
 // Push binds all bindables to c, pushing the previous
 // bindings down in the stack.
 func (c *Commander) Push(bindables ...Bindable) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	c.menuBar.Clear()
 	defer c.mapMenu()
 
@@ -179,6 +185,9 @@ func (c *Commander) mapMenu() {
 // Pop pops the most recent call to Bind, restoring the
 // previous bindings.
 func (c *Commander) Pop() {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	c.menuBar.Clear()
 	defer c.mapMenu()
 
@@ -218,11 +227,21 @@ func (c *Commander) mapBinding(command Command, binding gxui.KeyboardEvent) {
 
 // Binding finds and returns the Command associated with binding.
 func (c *Commander) Binding(binding gxui.KeyboardEvent) Command {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
 	i := c.bindIdx(binding)
 	if i < 0 {
 		return nil
 	}
 	return c.commands[i].command
+}
+
+func (c *Commander) Command(name string) Command {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	return c.command(name)
 }
 
 func (c *Commander) command(name string) Command {
@@ -275,8 +294,9 @@ func execute(executor Executor, elem interface{}) (executed, consume bool) {
 		return executed, consume
 	}
 	var childExecuted bool
-	if elementer, ok := elem.(Elementer); ok {
-		for _, element := range elementer.Elements() {
+	switch src := elem.(type) {
+	case Elementer:
+		for _, element := range src.Elements() {
 			childExecuted, consume = execute(executor, element)
 			executed = executed || childExecuted
 			if consume {
@@ -284,15 +304,15 @@ func execute(executor Executor, elem interface{}) (executed, consume bool) {
 			}
 		}
 		return executed, consume
-	}
-	if parent, ok := elem.(gxui.Parent); ok {
-		for _, child := range parent.Children() {
+	case gxui.Parent:
+		for _, child := range src.Children() {
 			childExecuted, consume = execute(executor, child.Control)
 			executed = executed || childExecuted
 			if consume {
 				break
 			}
 		}
+		return executed, consume
 	}
-	return executed, consume
+	return false, false
 }

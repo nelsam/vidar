@@ -2,14 +2,15 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-// Package godef contains logic for interacting with the godef
+// Package godef contains logc for interacting with the godef
 // command line tool.  It can be imported directly or used as a
-// plugin.
+// plugn.
 package godef
 
 import (
 	"bytes"
 	"fmt"
+	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,14 +22,28 @@ import (
 	"github.com/nelsam/vidar/settings"
 )
 
-type LineOpener interface {
+type OpenProject interface {
 	Project() settings.Project
-	OpenLine(path string, line, column int)
 	CurrentEditor() *editor.CodeEditor
+}
+
+type Commander interface {
+	Command(name string) commander.Command
+}
+
+type Opener interface {
+	SetLocation(filepath string, position token.Position)
+	Exec(interface{}) (executed, consume bool)
 }
 
 type Godef struct {
 	commander.GenericStatuser
+
+	proj   OpenProject
+	cmdr   Commander
+	opener Opener
+
+	callables []interface{}
 }
 
 func New(theme gxui.Theme) *Godef {
@@ -37,24 +52,64 @@ func New(theme gxui.Theme) *Godef {
 	return g
 }
 
-func (gi *Godef) Name() string {
+func (g *Godef) Name() string {
 	return "goto-definition"
 }
 
-func (gi *Godef) Menu() string {
+func (g *Godef) Menu() string {
 	return "Edit"
 }
 
-func (gi *Godef) Exec(on interface{}) (executed, consume bool) {
-	opener, ok := on.(LineOpener)
-	if !ok {
+func (g *Godef) Start(gxui.Control) gxui.Control {
+	g.proj = nil
+	g.cmdr = nil
+	g.callables = nil
+	g.opener = nil
+	return nil
+}
+
+func (g *Godef) Exec(on interface{}) (executed, consume bool) {
+	// TODO: Refactor this!  Seriously, vidar's design is forcing
+	// this to be more complicated than it needs to be.
+	backtrack := false
+	switch src := on.(type) {
+	case OpenProject:
+		g.proj = src
+		if g.cmdr != nil {
+			backtrack = true
+			g.opener = g.setup()
+		}
+	case Commander:
+		g.cmdr = src
+		if g.proj != nil {
+			backtrack = true
+			g.opener = g.setup()
+		}
+	}
+	if g.opener == nil {
+		g.callables = append(g.callables, on)
 		return false, false
 	}
-	editor := opener.CurrentEditor()
-	if editor == nil {
-		return true, true
+
+	if backtrack {
+		for _, c := range g.callables {
+			subExecuted, subConsume := g.opener.Exec(c)
+			executed = executed || subExecuted
+			if subConsume {
+				return executed, subConsume
+			}
+		}
 	}
-	proj := opener.Project()
+
+	return g.opener.Exec(on)
+}
+
+func (g *Godef) setup() Opener {
+	editor := g.proj.CurrentEditor()
+	if editor == nil {
+		return nil
+	}
+	proj := g.proj.Project()
 	lastCaret := editor.Controller().LastCaret()
 	cmd := exec.Command("godef", "-f", editor.Filepath(), "-o", strconv.Itoa(lastCaret), "-i")
 	cmd.Stdin = bytes.NewBufferString(editor.Text())
@@ -67,16 +122,24 @@ func (gi *Godef) Exec(on interface{}) (executed, consume bool) {
 	}
 	output, err := cmd.Output()
 	if err != nil {
-		gi.Err = fmt.Sprintf("godef error: %s", string(output))
-		return true, true
+		g.Err = fmt.Sprintf("godef error: %s", string(output))
+		return nil
 	}
 	path, line, column, err := parseGodef(output)
 	if err != nil {
-		gi.Err = err.Error()
-		return true, true
+		g.Err = err.Error()
+		return nil
 	}
-	opener.OpenLine(path, line, column)
-	return true, true
+	open, ok := g.cmdr.Command("open-file").(Opener)
+	if !ok {
+		g.Err = "no open-file command found"
+		return nil
+	}
+	open.SetLocation(path, token.Position{
+		Line:   line,
+		Column: column,
+	})
+	return open
 }
 
 func parseGodef(output []byte) (path string, line, column int, err error) {

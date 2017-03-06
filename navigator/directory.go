@@ -47,7 +47,7 @@ func newDirectory(projTree *ProjectTree, path string) *directory {
 		if projTree.tocCtl != nil {
 			projTree.layout.RemoveChild(projTree.tocCtl)
 		}
-		toc := NewTOC(projTree.driver, projTree.theme, path)
+		toc := NewTOC(projTree.cmdr, projTree.driver, projTree.theme, path)
 		if projTree.callback != nil {
 			go attachCallback(toc, projTree.callback)
 		}

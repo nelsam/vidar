@@ -21,7 +21,6 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander"
-	"github.com/nelsam/vidar/commands"
 )
 
 var (
@@ -128,12 +127,14 @@ func (n *genericNode) MissingChild() gxui.Control {
 type packageNode struct {
 	genericNode
 
+	cmdr                       Commander
 	consts, vars, types, funcs *genericNode
 	typeMap                    map[string]*Name
 }
 
-func newPackageNode(driver gxui.Driver, theme gxui.Theme, name string) *packageNode {
+func newPackageNode(cmdr Commander, driver gxui.Driver, theme gxui.Theme, name string) *packageNode {
 	node := &packageNode{
+		cmdr:    cmdr,
 		consts:  newGenericNode(driver, theme, "constants", genericColor),
 		vars:    newGenericNode(driver, theme, "vars", genericColor),
 		types:   newGenericNode(driver, theme, "types", genericColor),
@@ -193,7 +194,7 @@ func (p *packageNode) addFuncs(funcs ...*Name) {
 func (p *packageNode) addMethod(typeName string, method *Name) {
 	typ, ok := p.typeMap[typeName]
 	if !ok {
-		typ = newName(p.driver, p.theme, typeName, nameColor)
+		typ = newName(p.cmdr, p.driver, p.theme, typeName, nameColor)
 		p.typeMap[typeName] = typ
 		p.types.AddChild(typ)
 	}
@@ -213,28 +214,34 @@ func (l Location) Position() token.Position {
 	return l.position
 }
 
+type Commander interface {
+	Command(name string) commander.Command
+}
+
+type Opener interface {
+	Name() string
+	Menu() string
+	SetLocation(path string, pos token.Position)
+	Exec(on interface{}) (executed, consume bool)
+}
+
 type Name struct {
 	genericNode
 	Location
+
+	cmdr Commander
 }
 
-func newName(driver gxui.Driver, theme gxui.Theme, name string, color gxui.Color) *Name {
-	node := &Name{}
+func newName(cmdr Commander, driver gxui.Driver, theme gxui.Theme, name string, color gxui.Color) *Name {
+	node := &Name{cmdr: cmdr}
 	node.Init(node, driver, theme, name, color)
 	return node
 }
 
 func (n *Name) OnSelected(exec func(commander.Executor)) {
-	// OnSelected will often be called in non-UI goroutines because
-	// it's called by resource intensive tasks that shouldn't be
-	// holding up the UI.  However, creating the FileOpener and
-	// setting its location needs to be done on the UI goroutine.
-	var cmd *commands.FileOpener
-	n.driver.CallSync(func() {
-		cmd = commands.NewFileOpener(n.driver, n.theme.(*basic.Theme))
-		cmd.SetLocation(n.File(), n.Position())
-	})
+	cmd := n.cmdr.Command("open-file").(Opener)
 	n.button.OnClick(func(gxui.MouseEvent) {
+		cmd.SetLocation(n.File(), n.Position())
 		exec(cmd)
 	})
 }
@@ -242,6 +249,7 @@ func (n *Name) OnSelected(exec func(commander.Executor)) {
 type TOC struct {
 	mixins.LinearLayout
 
+	cmdr   Commander
 	driver gxui.Driver
 	theme  gxui.Theme
 
@@ -252,8 +260,9 @@ type TOC struct {
 	lock sync.Mutex
 }
 
-func NewTOC(driver gxui.Driver, theme gxui.Theme, dir string) *TOC {
+func NewTOC(cmdr Commander, driver gxui.Driver, theme gxui.Theme, dir string) *TOC {
 	toc := &TOC{
+		cmdr:   cmdr,
 		driver: driver,
 		theme:  theme,
 		dir:    dir,
@@ -305,15 +314,15 @@ func (t *TOC) parseFiles(dir string, files ...os.FileInfo) {
 
 func (t *TOC) parseFile(dir string, file os.FileInfo) *Name {
 	if !strings.HasSuffix(file.Name(), ".go") {
-		return newName(t.driver, t.theme, file.Name(), nonGoColor)
+		return newName(t.cmdr, t.driver, t.theme, file.Name(), nonGoColor)
 	}
 	path := filepath.Join(dir, file.Name())
 	f, err := parser.ParseFile(t.fileSet, path, nil, parser.ParseComments)
 	if err != nil {
-		return newName(t.driver, t.theme, file.Name(), errColor)
+		return newName(t.cmdr, t.driver, t.theme, file.Name(), errColor)
 	}
 	t.parseAstFile(path, f)
-	return newName(t.driver, t.theme, file.Name(), nameColor)
+	return newName(t.cmdr, t.driver, t.theme, file.Name(), nameColor)
 }
 
 func (t *TOC) parseAstFile(filepath string, file *ast.File) *packageNode {
@@ -323,7 +332,7 @@ func (t *TOC) parseAstFile(filepath string, file *ast.File) *packageNode {
 	packageName := file.Name.String()
 	pkgNode, ok := t.packageMap[packageName]
 	if !ok {
-		pkgNode = newPackageNode(t.driver, t.theme, packageName)
+		pkgNode = newPackageNode(t.cmdr, t.driver, t.theme, packageName)
 		t.packageMap[pkgNode.button.Text()] = pkgNode
 		t.AddChild(pkgNode)
 	}
@@ -341,7 +350,7 @@ func (t *TOC) parseAstFile(filepath string, file *ast.File) *packageNode {
 			if buildTagLine != "" {
 				text = fmt.Sprintf("%s (%s)", text, buildTagLine)
 			}
-			name := newName(t.driver, t.theme, text, nameColor)
+			name := newName(t.cmdr, t.driver, t.theme, text, nameColor)
 			name.filepath = filepath
 			name.position = t.fileSet.Position(src.Pos())
 			if src.Recv == nil {
@@ -372,7 +381,7 @@ func (t *TOC) parseGenDecl(pkgNode *packageNode, decl *ast.GenDecl, filepath, bu
 		if buildTags != "" {
 			name = fmt.Sprintf("%s (%s)", name, buildTags)
 		}
-		typ := newName(t.driver, t.theme, name, nameColor)
+		typ := newName(t.cmdr, t.driver, t.theme, name, nameColor)
 		typ.filepath = filepath
 		typ.position = t.fileSet.Position(typeSpec.Pos())
 		pkgNode.addTypes(typ)
@@ -395,7 +404,7 @@ func (t *TOC) valueNamesFrom(filepath, buildTags string, specs []ast.Spec) (name
 			if buildTags != "" {
 				n = fmt.Sprintf("%s (%s)", n, buildTags)
 			}
-			node := newName(t.driver, t.theme, n, nameColor)
+			node := newName(t.cmdr, t.driver, t.theme, n, nameColor)
 			node.filepath = filepath
 			node.position = t.fileSet.Position(name.Pos())
 			names = append(names, node)

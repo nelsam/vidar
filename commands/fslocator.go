@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
@@ -51,6 +52,8 @@ type ProjectGetter interface {
 type FSLocator struct {
 	mixins.LinearLayout
 
+	lock sync.RWMutex
+
 	theme       *basic.Theme
 	driver      gxui.Driver
 	dir         *dirLabel
@@ -71,7 +74,7 @@ func (f *FSLocator) Init(driver gxui.Driver, theme *basic.Theme) {
 	f.driver = driver
 
 	f.SetDirection(gxui.LeftToRight)
-	f.dir = newDirLabel(theme)
+	f.dir = newDirLabel(driver, theme)
 	f.AddChild(f.dir)
 	f.file = newFileBox(driver, theme)
 	f.AddChild(f.file)
@@ -96,28 +99,32 @@ func (f *FSLocator) SetPath(filePath string) {
 	defer f.loadDirContents()
 	dir, file := filepath.Split(filePath)
 
-	f.dir.SetText(dir)
-	f.file.SetText(file)
+	f.driver.Call(func() {
+		f.dir.SetText(dir)
+		f.file.SetText(file)
+	})
 }
 
 func (f *FSLocator) KeyPress(event gxui.KeyboardEvent) bool {
 	if event.Modifier == 0 {
+		f.lock.RLock()
+		defer f.lock.RUnlock()
+
 		switch event.Key {
 		case gxui.KeyEscape:
 			if len(f.completions) > 0 {
-				f.clearCompletions()
+				f.clearCompletions(f.completions)
 				f.completions = nil
 				return true
 			}
 		case gxui.KeySlash:
-			// TODO: directory creation
 			fullPath := f.Path()
 			if len(f.completions) > 0 {
 				fullPath = filepath.Join(f.dir.Text(), f.completions[0].Text())
 			}
 			f.dir.SetText(fullPath)
 			f.file.setFile("")
-			f.loadDirContents()
+			go f.loadDirContents()
 			return true
 		case gxui.KeyEnter:
 			if len(f.completions) == 0 {
@@ -137,21 +144,21 @@ func (f *FSLocator) KeyPress(event gxui.KeyboardEvent) bool {
 			}
 			f.dir.SetText(fullPath)
 			f.file.setFile("")
-			f.loadDirContents()
+			go f.loadDirContents()
 			return true
 		case gxui.KeyRight:
-			f.clearCompletions()
+			f.clearCompletions(f.completions)
 			for i := 1; i < len(f.completions); i++ {
 				f.completions[i-1], f.completions[i] = f.completions[i], f.completions[i-1]
 			}
-			f.addCompletions()
+			f.addCompletions(f.completions)
 			return true
 		case gxui.KeyLeft:
-			f.clearCompletions()
+			f.clearCompletions(f.completions)
 			for i := len(f.completions) - 1; i > 0; i-- {
 				f.completions[i-1], f.completions[i] = f.completions[i], f.completions[i-1]
 			}
-			f.addCompletions()
+			f.addCompletions(f.completions)
 			return true
 		case gxui.KeyBackspace:
 			if len(f.file.Text()) == 0 {
@@ -223,38 +230,54 @@ func (f *FSLocator) OnLostFocus(callback func()) gxui.EventSubscription {
 }
 
 func (f *FSLocator) updateCompletions() {
-	f.clearCompletions()
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	f.clearCompletions(f.completions)
+
 	f.completions = nil
 	newCompletions := scoring.Sort(f.files, f.file.Text())
+
 	for _, comp := range newCompletions {
 		color := f.theme.LabelStyle.FontColor
 		if strings.HasSuffix(comp, "/") {
 			color = dirColor
 		}
-		l := newCompletionLabel(f.theme, color)
-		l.SetText(comp)
+		l := newCompletionLabel(f.driver, f.theme, color)
+		l.text = comp
 		f.completions = append(f.completions, l)
 	}
-	f.addCompletions()
+
+	f.addCompletions(f.completions)
 }
 
-func (f *FSLocator) clearCompletions() {
-	for _, l := range f.completions {
-		f.RemoveChild(l)
-	}
+func (f *FSLocator) clearCompletions(completions []gxui.Label) {
+	cloned := make([]gxui.Label, 0, len(completions))
+	cloned = append(cloned, completions...)
+	f.driver.Call(func() {
+		for _, l := range cloned {
+			f.RemoveChild(l)
+		}
+	})
 }
 
-func (f *FSLocator) addCompletions() {
-	for _, l := range f.completions {
-		f.AddChild(l)
-	}
+func (f *FSLocator) addCompletions(completions []gxui.Label) {
+	cloned := make([]gxui.Label, 0, len(completions))
+	cloned = append(cloned, completions...)
+	f.driver.Call(func() {
+		for _, l := range cloned {
+			f.AddChild(l)
+			l.SetHorizontalAlignment(gxui.AlignCenter)
+		}
+	})
 }
 
 func (f *FSLocator) loadDirContents() {
 	defer f.updateCompletions()
+
 	dir := f.dir.Text()
 	if dir == "" {
-		log.Printf("This is odd")
+		log.Printf("This is odd: we have an empty directory")
 		return
 	}
 	f.files = nil
@@ -277,10 +300,12 @@ func (f *FSLocator) loadDirContents() {
 
 type dirLabel struct {
 	mixins.Label
+
+	driver gxui.Driver
 }
 
-func newDirLabel(theme *basic.Theme) *dirLabel {
-	label := new(dirLabel)
+func newDirLabel(driver gxui.Driver, theme *basic.Theme) *dirLabel {
+	label := &dirLabel{driver: driver}
 	label.Label.Init(label, theme, theme.DefaultMonospaceFont(), theme.LabelStyle.FontColor)
 	label.SetMargin(math.Spacing{L: 3, T: 3, R: 3, B: 3})
 	return label
@@ -353,16 +378,20 @@ type completionLabel struct {
 	mixins.Label
 
 	padding math.Size
+
+	// text should be used for setting the label's text
+	// outside of the UI thread.  The next time Paint is
+	// called, SetText will be passed this value.
+	text string
 }
 
-func newCompletionLabel(theme gxui.Theme, color gxui.Color) *completionLabel {
+func newCompletionLabel(driver gxui.Driver, theme gxui.Theme, color gxui.Color) *completionLabel {
 	l := &completionLabel{}
 	l.Init(l, theme, theme.DefaultMonospaceFont(), color)
 	l.SetMargin(math.Spacing{
 		T: 3,
 		R: 3,
 	})
-	l.SetHorizontalAlignment(gxui.AlignCenter)
 	l.padding = completionPadding
 	return l
 }
@@ -374,7 +403,15 @@ func (l *completionLabel) DesiredSize(min, max math.Size) math.Size {
 	return size
 }
 
+func (l *completionLabel) SetText(text string) {
+	l.text = text
+	l.Label.SetText(text)
+}
+
 func (l *completionLabel) Paint(c gxui.Canvas) {
+	if l.Text() != l.text {
+		l.SetText(l.text)
+	}
 	l.Label.Paint(c)
 	r := l.Size().Rect()
 	c.DrawRoundedRect(r, 3, 3, 3, 3, gxui.TransparentPen, gxui.CreateBrush(completionBG))

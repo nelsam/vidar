@@ -68,6 +68,7 @@ type Locationer interface {
 type ProjectTree struct {
 	button gxui.Button
 
+	cmdr   Commander
 	driver gxui.Driver
 	theme  *basic.Theme
 
@@ -83,8 +84,9 @@ type ProjectTree struct {
 	layout *splitterLayout
 }
 
-func NewProjectTree(driver gxui.Driver, window gxui.Window, theme *basic.Theme) *ProjectTree {
+func NewProjectTree(cmdr Commander, driver gxui.Driver, window gxui.Window, theme *basic.Theme) *ProjectTree {
 	tree := &ProjectTree{
+		cmdr:       cmdr,
 		driver:     driver,
 		theme:      theme,
 		reloadLock: make(chan struct{}, 1),

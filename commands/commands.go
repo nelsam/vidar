@@ -12,17 +12,17 @@ import (
 
 // Commands returns all known commands, in the order they should be
 // added to the menu.
-func Commands(driver gxui.Driver, theme *basic.Theme, projPane gxui.Control) []commander.Command {
+func Commands(driver gxui.Driver, theme *basic.Theme) []commander.Command {
 	return []commander.Command{
 		NewProjectAdder(driver, theme),
-		NewProjectOpener(theme, projPane),
+		NewProjectOpener(theme),
 		NewFileOpener(driver, theme),
 	}
 }
 
 // Hooks returns all known hooks that trigger off of events rather
 // than key bindings.
-func Hooks(driver gxui.Driver, theme *basic.Theme, projPane gxui.Control) []commander.CommandHook {
+func Hooks(driver gxui.Driver, theme *basic.Theme) []commander.CommandHook {
 	return []commander.CommandHook{
 		FileHook{Theme: theme},
 		EditHook{Theme: theme, Driver: driver},
