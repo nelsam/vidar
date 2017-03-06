@@ -148,12 +148,15 @@ func uiMain(driver gxui.Driver) {
 		}
 	})
 
+	opener := cmdr.Command("open-file").(*commands.FileOpener)
 	for _, file := range files {
 		filepath, err := filepath.Abs(file)
 		if err != nil {
 			log.Printf("Failed to get path: %s", err)
 		}
-		cmdr.Controller().Editor().Open(filepath, token.Position{})
+		opener.Start(nil)
+		opener.SetLocation(filepath, token.Position{})
+		cmdr.Execute(opener)
 	}
 
 	window.OnClose(driver.Terminate)
