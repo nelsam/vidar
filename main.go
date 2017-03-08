@@ -20,14 +20,13 @@ import (
 	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commands"
-	"github.com/nelsam/vidar/plugin"
-	"github.com/nelsam/vidar/settings"
-	"github.com/tmc/fonts"
-
 	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/navigator"
+	"github.com/nelsam/vidar/plugin"
+	"github.com/nelsam/vidar/settings"
 	"github.com/spf13/cobra"
+	"github.com/tmc/fonts"
 )
 
 var (
