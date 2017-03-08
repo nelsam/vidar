@@ -2,8 +2,9 @@ language: go
 
 go:
 - 1.7
+- 1.8
 
 install:
 - sudo apt-get -qq update
 - sudo apt-get install libxi-dev libxcursor-dev libxrandr-dev libxinerama-dev mesa-common-dev libgl1-mesa-dev libxxf86vm-dev
-- go get -t -v ./...
+- go get -t -v
