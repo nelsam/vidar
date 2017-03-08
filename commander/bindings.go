@@ -4,43 +4,15 @@
 
 package commander
 
-import "github.com/nelsam/gxui"
-
-// A Bindable is the base type for all types that can be bound to
-// events.
-type Bindable interface {
-	// Name returns the name of the Bindable.  It must be unique.
-	Name() string
-}
-
-// A CommandHook is a binding that is bound to a Command.  It is
-// up to the Command that the hook is being bound to to define the
-// types that may be bound.
-//
-// The Command that is found by looking up the CommandName() value
-// must be a HookedCommand.
-type CommandHook interface {
-	Bindable
-
-	// CommandName returns the name of the command that this hook
-	// wants to bind to.
-	CommandName() string
-}
-
-// A Command is a binding that happens due to the user explicitly
-// requesting an event, usually via a key binding.
-type Command interface {
-	Bindable
-
-	// Menu returns the name of the menu that the command should be
-	// displayed under.
-	Menu() string
-}
+import (
+	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander/bind"
+)
 
 // A ClonableCommand is a Command that can clone its internal state,
 // returning a clone referencing new memory.
 type CloneableCommand interface {
-	Command
+	bind.Command
 
 	// Clone creates a clone of the CloneableCommand, returning an
 	// exact clone referencing new memory.
@@ -61,13 +33,13 @@ type HookedCommand interface {
 	// Bind takes a CommandHook to bind to the command.  An error
 	// should be returned if the CommandHook does not implement
 	// any types bindable by the HookedCommand.
-	Bind(CommandHook) error
+	Bind(bind.CommandHook) error
 }
 
 // A Starter is a type of Command which needs to initialize itself
 // whenever the user wants to run it.
 type Starter interface {
-	Command
+	bind.Command
 
 	// Start starts the command.  The element that the command is
 	// targeting will be passed in as target.  If the returned
@@ -79,7 +51,7 @@ type Starter interface {
 
 // An InputQueue is a type of Command which needs to read user input.
 type InputQueue interface {
-	Command
+	bind.Command
 
 	// Next returns the next element for reading user input. By
 	// default, this is called every time the commander receives a
@@ -100,24 +72,11 @@ type InputQueue interface {
 // This allows them to consume enter events as newlines or trigger
 // completeness off of key presses other than enter.
 type Completer interface {
-	Command
+	bind.Command
 
 	// Complete returns whether or not the event signals a completion
 	// of the input.
 	Complete(gxui.KeyboardEvent) bool
-}
-
-// An Executor is a Command that needs to execute some
-// operation on one or more elements after it is complete.  It will
-// continue to be called for every element currently in the UI until
-// it returns a true consume value.
-//
-// If a true value is never returned for executed, it is assumed that
-// the command could not run and is therefor in an errored state.
-type Executor interface {
-	Command
-
-	Exec(interface{}) (executed, consume bool)
 }
 
 // A Statuser is a Bindable that needs to display its status after being
@@ -125,7 +84,7 @@ type Executor interface {
 // but colors for some common message types are exported by this
 // package to keep things consistent.
 type Statuser interface {
-	Bindable
+	bind.Bindable
 
 	// Status returns the element to display for the binding's status.
 	// The element will be removed after some time.

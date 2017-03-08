@@ -6,13 +6,13 @@ package commands
 
 import (
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/plugin/status"
 )
 
 // An Undo is a command which undoes an action.
 type Undo struct {
-	commander.GenericStatuser
+	status.General
 }
 
 func NewUndo(theme gxui.Theme) *Undo {
@@ -58,7 +58,7 @@ func (u *Undo) Exec(target interface{}) (executed, consume bool) {
 
 // A Redo is a command which redoes an action.
 type Redo struct {
-	commander.GenericStatuser
+	status.General
 
 	editor *editor.CodeEditor
 }

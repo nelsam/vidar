@@ -5,7 +5,7 @@
 package commands
 
 import (
-	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/editor"
 )
 
@@ -75,8 +75,8 @@ func (n NavHook) CommandName() string {
 	return "open-file"
 }
 
-func (n NavHook) FileBindables(string) []commander.Bindable {
-	return []commander.Bindable{
+func (n NavHook) FileBindables(string) []bind.Bindable {
+	return []bind.Bindable{
 		NewPrevLine(),
 		NewSelectPrevLine(),
 		NewNextLine(),

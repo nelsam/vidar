@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/settings"
 )
 
@@ -19,7 +19,7 @@ type OpenProject interface {
 }
 
 type HeaderUpdate struct {
-	commander.GenericStatuser
+	status.General
 }
 
 func NewHeaderUpdate(theme gxui.Theme) *HeaderUpdate {

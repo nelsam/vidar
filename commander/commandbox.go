@@ -9,6 +9,7 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
+	"github.com/nelsam/vidar/commander/bind"
 )
 
 const maxStatusAge = 5 * time.Second
@@ -26,25 +27,6 @@ var (
 		B: 0.6,
 		A: 1,
 	}
-
-	ColorErr = gxui.Color{
-		R: 1,
-		G: 0.2,
-		B: 0,
-		A: 1,
-	}
-	ColorWarn = gxui.Color{
-		R: 0.8,
-		G: 0.7,
-		B: 0.1,
-		A: 1,
-	}
-	ColorInfo = gxui.Color{
-		R: 0.1,
-		G: 0.8,
-		B: 0,
-		A: 1,
-	}
 )
 
 type commandBox struct {
@@ -54,7 +36,7 @@ type commandBox struct {
 	controller Controller
 
 	label   gxui.Label
-	current Command
+	current bind.Command
 	display gxui.Control
 	input   gxui.Focusable
 	status  gxui.Control
@@ -108,7 +90,7 @@ func (b *commandBox) Clear() {
 	b.current = nil
 }
 
-func (b *commandBox) Run(command Command) (needsInput bool) {
+func (b *commandBox) Run(command bind.Command) (needsInput bool) {
 	b.Clear()
 	if b.statusTimer != nil {
 		b.statusTimer.Stop()
@@ -135,7 +117,7 @@ func (b *commandBox) startCurrent() {
 	b.AddChild(b.display)
 }
 
-func (b *commandBox) Current() Command {
+func (b *commandBox) Current() bind.Command {
 	return b.current
 }
 

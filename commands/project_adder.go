@@ -11,7 +11,7 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/settings"
 )
 
@@ -22,7 +22,7 @@ type projectPane interface {
 }
 
 type ProjectAdder struct {
-	commander.GenericStatuser
+	status.General
 
 	status gxui.Label
 

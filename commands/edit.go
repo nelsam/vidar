@@ -7,7 +7,7 @@ package commands
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/commander/bind"
 )
 
 type EditHook struct {
@@ -23,8 +23,8 @@ func (h EditHook) CommandName() string {
 	return "open-file"
 }
 
-func (h EditHook) FileBindables(string) []commander.Bindable {
-	return []commander.Bindable{
+func (h EditHook) FileBindables(string) []bind.Bindable {
+	return []bind.Bindable{
 		NewUndo(h.Theme),
 		NewRedo(h.Theme),
 		NewSelectAll(),

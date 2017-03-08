@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/settings"
 )
 
@@ -41,7 +41,7 @@ func (o OnSave) BeforeSave(proj settings.Project, path, text string) (newText st
 }
 
 type GoImports struct {
-	commander.GenericStatuser
+	status.General
 }
 
 func New(theme gxui.Theme) *GoImports {

@@ -8,8 +8,8 @@ import (
 	"fmt"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/navigator"
+	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/settings"
 )
 
@@ -22,7 +22,7 @@ type PaneDisplayer interface {
 }
 
 type ProjectOpener struct {
-	commander.GenericStatuser
+	status.General
 
 	name  gxui.TextBox
 	input <-chan gxui.Focusable

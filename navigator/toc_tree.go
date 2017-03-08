@@ -20,7 +20,7 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/commander/bind"
 )
 
 var (
@@ -65,6 +65,18 @@ var (
 		"mips64le", "mips64p32", "mips64p32le", "ppc", "s390", "s390x", "sparc", "sparc64",
 	}
 )
+
+type Commander interface {
+	Command(name string) bind.Command
+}
+
+type Opener interface {
+	Name() string
+	Menu() string
+	SetLocation(path string, pos token.Position)
+	Start(gxui.Control) gxui.Control
+	Exec(on interface{}) (executed, consume bool)
+}
 
 type genericNode struct {
 	mixins.LinearLayout
@@ -214,18 +226,6 @@ func (l Location) Position() token.Position {
 	return l.position
 }
 
-type Commander interface {
-	Command(name string) commander.Command
-}
-
-type Opener interface {
-	Name() string
-	Menu() string
-	SetLocation(path string, pos token.Position)
-	Start(gxui.Control) gxui.Control
-	Exec(on interface{}) (executed, consume bool)
-}
-
 type Name struct {
 	genericNode
 	Location
@@ -239,7 +239,7 @@ func newName(cmdr Commander, driver gxui.Driver, theme gxui.Theme, name string, 
 	return node
 }
 
-func (n *Name) OnSelected(exec func(commander.Executor)) {
+func (n *Name) OnSelected(exec func(bind.Executor)) {
 	cmd := n.cmdr.Command("open-file").(Opener)
 	n.button.OnClick(func(gxui.MouseEvent) {
 		cmd.Start(nil)

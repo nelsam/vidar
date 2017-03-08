@@ -11,12 +11,12 @@ import (
 	"unicode"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/plugin/status"
 )
 
 type GotoLine struct {
-	commander.GenericStatuser
+	status.General
 
 	editor       *editor.CodeEditor
 	lineNumInput gxui.TextBox

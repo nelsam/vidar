@@ -7,7 +7,7 @@ package navigator
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
-	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/commander/bind"
 )
 
 // Pane is a type that has a button and a window frame.
@@ -22,12 +22,12 @@ type Pane interface {
 
 	// OnComplete takes a function which takes a command, and runs
 	// that function when the Pane's action is complete.
-	OnComplete(func(commander.Executor))
+	OnComplete(func(bind.Executor))
 }
 
 // CommandExecutor is a type that can execute a commands.Command
 type CommandExecutor interface {
-	Execute(commander.Executor)
+	Execute(bind.Executor)
 }
 
 // Caller is any type that can call a function on the UI goroutine

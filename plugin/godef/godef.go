@@ -17,8 +17,9 @@ import (
 	"strconv"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/settings"
 )
 
@@ -28,7 +29,7 @@ type OpenProject interface {
 }
 
 type Commander interface {
-	Command(name string) commander.Command
+	Command(name string) bind.Command
 }
 
 type Opener interface {
@@ -37,7 +38,7 @@ type Opener interface {
 }
 
 type Godef struct {
-	commander.GenericStatuser
+	status.General
 
 	proj   OpenProject
 	cmdr   Commander

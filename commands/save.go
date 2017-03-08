@@ -11,7 +11,9 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/settings"
 )
 
@@ -32,7 +34,7 @@ type AfterSaver interface {
 }
 
 type SaveCurrent struct {
-	commander.GenericStatuser
+	status.General
 
 	before []BeforeSaver
 	after  []AfterSaver
@@ -59,7 +61,7 @@ func (s *SaveCurrent) Clone() commander.CloneableCommand {
 	return newS
 }
 
-func (s *SaveCurrent) Bind(h commander.CommandHook) error {
+func (s *SaveCurrent) Bind(h bind.CommandHook) error {
 	switch src := h.(type) {
 	case BeforeSaver:
 		s.before = append(s.before, src)
@@ -100,6 +102,7 @@ func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {
 	if !strings.HasSuffix(formatted, "\n") {
 		formatted += "\n"
 	}
+
 	for _, b := range s.before {
 		newText, err := b.BeforeSave(proj.Project(), filepath, text)
 		if err != nil {
@@ -119,6 +122,7 @@ func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {
 			},
 		}
 		editor.Controller().SetTextEdits([]rune(formatted), edits)
+		text = formatted
 	}
 
 	f, err := os.Create(filepath)

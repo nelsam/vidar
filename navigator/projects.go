@@ -6,7 +6,7 @@ package navigator
 
 import (
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/settings"
 )
 
@@ -59,7 +59,7 @@ func (p *Projects) Projects() []settings.Project {
 	return p.projectsAdapter.Items().([]settings.Project)
 }
 
-func (p *Projects) OnComplete(onComplete func(commander.Executor)) {
+func (p *Projects) OnComplete(onComplete func(bind.Executor)) {
 	opener := p.cmdr.Command("open-project").(ProjectSetter)
 	p.projects.OnSelectionChanged(func(selected gxui.AdapterItem) {
 		opener.SetProject(selected.(settings.Project))

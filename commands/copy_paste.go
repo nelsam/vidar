@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/plugin/status"
 )
 
 type Copy struct {
@@ -80,7 +80,7 @@ func (c *Cut) Exec(target interface{}) (executed, consume bool) {
 }
 
 type Paste struct {
-	commander.GenericStatuser
+	status.General
 
 	driver gxui.Driver
 }

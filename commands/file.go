@@ -6,7 +6,7 @@ package commands
 
 import (
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/commander/bind"
 )
 
 type FileHook struct {
@@ -21,8 +21,8 @@ func (h FileHook) CommandName() string {
 	return "open-file"
 }
 
-func (h FileHook) FileBindables(string) []commander.Bindable {
-	return []commander.Bindable{
+func (h FileHook) FileBindables(string) []bind.Bindable {
+	return []bind.Bindable{
 		NewSave(h.Theme),
 		NewSaveAll(h.Theme),
 		NewCloseTab(),

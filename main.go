@@ -18,8 +18,9 @@ import (
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/gxui/themes/dark"
 	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commands"
-	"github.com/nelsam/vidar/plugins"
+	"github.com/nelsam/vidar/plugin"
 	"github.com/nelsam/vidar/settings"
 	"github.com/tmc/fonts"
 
@@ -99,14 +100,14 @@ func uiMain(driver gxui.Driver) {
 	// Bindings should be added immediately after creating the commander,
 	// since other types rely on the bindings having been bound.
 	cmdr := commander.New(driver, theme, controller)
-	var bindings []commander.Bindable
+	var bindings []bind.Bindable
 	for _, c := range commands.Commands(driver, theme) {
 		bindings = append(bindings, c)
 	}
 	for _, h := range commands.Hooks(driver, theme) {
 		bindings = append(bindings, h)
 	}
-	bindings = append(bindings, plugins.Bindables(theme)...)
+	bindings = append(bindings, plugin.Bindables(cmdr, driver, theme)...)
 	cmdr.Push(bindings...)
 
 	nav := navigator.New(driver, theme, cmdr)

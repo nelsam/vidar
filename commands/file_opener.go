@@ -11,6 +11,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/editor"
 )
 
@@ -27,12 +28,12 @@ type Opener interface {
 type FileBinder interface {
 	// Bindables returns the bindables that should be registered
 	// for the given file.
-	FileBindables(path string) []commander.Bindable
+	FileBindables(path string) []bind.Bindable
 }
 
 // A Binder is a type which can bind bindables
 type Binder interface {
-	Push(...commander.Bindable)
+	Push(...bind.Bindable)
 	Pop()
 }
 
@@ -124,7 +125,7 @@ func (f *FileOpener) setupHooks() {
 		return
 	}
 	path := f.file.Path()
-	var b []commander.Bindable
+	var b []bind.Bindable
 	for _, h := range f.hooks {
 		b = append(b, h.FileBindables(path)...)
 	}
@@ -146,7 +147,7 @@ func (f *FileOpener) Clone() commander.CloneableCommand {
 	return newF
 }
 
-func (f *FileOpener) Bind(h commander.CommandHook) error {
+func (f *FileOpener) Bind(h bind.CommandHook) error {
 	bndr, ok := h.(FileBinder)
 	if !ok {
 		return fmt.Errorf("expected hook to be FileBinder, was %T", h)

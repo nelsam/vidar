@@ -4,7 +4,7 @@
 
 package commands
 
-import "github.com/nelsam/vidar/commander"
+import "github.com/nelsam/vidar/commander/bind"
 
 type ViewHook struct{}
 
@@ -16,8 +16,8 @@ func (h ViewHook) CommandName() string {
 	return "open-file"
 }
 
-func (h ViewHook) FileBindables(string) []commander.Bindable {
-	return []commander.Bindable{
+func (h ViewHook) FileBindables(string) []bind.Bindable {
+	return []bind.Bindable{
 		NewHorizontalSplit(),
 		NewVerticalSplit(),
 		NewNextTab(),

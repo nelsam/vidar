@@ -12,6 +12,7 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/mixins/parts"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commander/bind"
 )
 
 type Boundser interface {
@@ -38,7 +39,7 @@ func newMenuBar(commander *Commander, theme *basic.Theme) *menuBar {
 	return m
 }
 
-func (m *menuBar) Add(command Command, bindings ...gxui.KeyboardEvent) {
+func (m *menuBar) Add(command bind.Command, bindings ...gxui.KeyboardEvent) {
 	menu, ok := m.menus[command.Menu()]
 	if !ok {
 		menu = newMenu(m.commander, m.theme)
@@ -95,7 +96,7 @@ func newMenu(commander *Commander, theme *basic.Theme) *menu {
 	return m
 }
 
-func (m *menu) Add(command Command, bindings ...gxui.KeyboardEvent) {
+func (m *menu) Add(command bind.Command, bindings ...gxui.KeyboardEvent) {
 	item := newMenuItem(m.theme, command.Name(), bindings...)
 	m.AddChild(item)
 	item.OnClick(func(gxui.MouseEvent) {
@@ -103,7 +104,7 @@ func (m *menu) Add(command Command, bindings ...gxui.KeyboardEvent) {
 			gxui.SetFocus(m.commander.box.input)
 			return
 		}
-		if executor, ok := command.(Executor); ok {
+		if executor, ok := command.(bind.Executor); ok {
 			m.commander.Execute(executor)
 		}
 		m.commander.box.Finish()

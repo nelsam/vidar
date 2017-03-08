@@ -160,12 +160,12 @@ func (f *FSLocator) KeyPress(event gxui.KeyboardEvent) bool {
 			return true
 		case gxui.KeyBackspace:
 			if len(f.file.Text()) == 0 {
-				defer f.loadDirContents()
 				newDir := filepath.Dir(f.dir.Text())
 				if newDir == f.dir.Text() {
 					newDir = systemRoot
 				}
 				f.dir.SetText(newDir)
+				go f.loadDirContents()
 				return true
 			}
 		}

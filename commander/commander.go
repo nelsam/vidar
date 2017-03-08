@@ -13,6 +13,7 @@ import (
 	"github.com/nelsam/gxui/mixins/base"
 	"github.com/nelsam/gxui/mixins/parts"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/settings"
 )
@@ -22,14 +23,13 @@ import (
 type Controller interface {
 	gxui.Control
 	Editor() controller.Editor
-	Navigator() controller.Navigator
 }
 
 // A commandMapping is a mapping between keyboard shortcuts (if any),
 // a menu name, and a command.  The menu name is required.
 type commandMapping struct {
 	binding gxui.KeyboardEvent
-	command Command
+	command bind.Command
 }
 
 // Commander is a gxui.LinearLayout that takes care of displaying the
@@ -101,18 +101,13 @@ func (c *Commander) Paint(canvas gxui.Canvas) {
 	c.BackgroundBorderPainter.PaintBorder(canvas, rect)
 }
 
-// Controller returns c's controller.
-func (c *Commander) Controller() Controller {
-	return c.controller
-}
-
-func (c *Commander) archiveMap() []Command {
+func (c *Commander) archiveMap() []bind.Command {
 	old := c.commands
 	c.commands = nil
 	c.cmdStack = append(c.cmdStack, old)
 
-	used := make(map[Command]struct{})
-	var cmds []Command
+	used := make(map[bind.Command]struct{})
+	var cmds []bind.Command
 	for _, o := range old {
 		if _, ok := used[o.command]; ok {
 			continue
@@ -125,8 +120,8 @@ func (c *Commander) archiveMap() []Command {
 }
 
 // Push binds all bindables to c, pushing the previous
-// bindings down in the stack.
-func (c *Commander) Push(bindables ...Bindable) {
+// binding down in the stack.
+func (c *Commander) Push(bindables ...bind.Bindable) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -141,12 +136,12 @@ func (c *Commander) Push(bindables ...Bindable) {
 		c.bind(cmd, settings.Bindings(cmd.Name())...)
 	}
 
-	var hooks []CommandHook
+	var hooks []bind.CommandHook
 	for _, b := range bindables {
 		switch src := b.(type) {
-		case CommandHook:
+		case bind.CommandHook:
 			hooks = append(hooks, src)
-		case Command:
+		case bind.Command:
 			c.bind(src, settings.Bindings(src.Name())...)
 		}
 	}
@@ -169,8 +164,8 @@ func (c *Commander) Push(bindables ...Bindable) {
 }
 
 func (c *Commander) mapMenu() {
-	keys := make(map[Command][]gxui.KeyboardEvent)
-	var cmds []Command
+	keys := make(map[bind.Command][]gxui.KeyboardEvent)
+	var cmds []bind.Command
 	for _, bound := range c.commands {
 		if _, ok := keys[bound.command]; !ok {
 			cmds = append(cmds, bound.command)
@@ -183,7 +178,7 @@ func (c *Commander) mapMenu() {
 }
 
 // Pop pops the most recent call to Bind, restoring the
-// previous bindings.
+// previous bind.
 func (c *Commander) Pop() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -196,8 +191,8 @@ func (c *Commander) Pop() {
 	c.cmdStack = c.cmdStack[:newLen]
 }
 
-func (c *Commander) bind(command Command, bindings ...gxui.KeyboardEvent) {
-	for _, binding := range bindings {
+func (c *Commander) bind(command bind.Command, binding ...gxui.KeyboardEvent) {
+	for _, binding := range binding {
 		if i := c.bindIdx(binding); i >= 0 {
 			log.Printf("Warning: command %s is overriding command %s at binding %v", command.Name(), c.commands[i].command.Name(), binding)
 			c.commands = append(c.commands[:i], c.commands[i+1:]...)
@@ -218,15 +213,15 @@ func (c *Commander) bindIdx(binding gxui.KeyboardEvent) int {
 	return -1
 }
 
-func (c *Commander) mapBinding(command Command, binding gxui.KeyboardEvent) {
+func (c *Commander) mapBinding(command bind.Command, binding gxui.KeyboardEvent) {
 	c.commands = append(c.commands, commandMapping{
 		binding: binding,
 		command: command,
 	})
 }
 
-// Binding finds and returns the Command associated with binding.
-func (c *Commander) Binding(binding gxui.KeyboardEvent) Command {
+// Binding finds and returns the Command associated with bind.
+func (c *Commander) Binding(binding gxui.KeyboardEvent) bind.Command {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -237,14 +232,15 @@ func (c *Commander) Binding(binding gxui.KeyboardEvent) Command {
 	return c.commands[i].command
 }
 
-func (c *Commander) Command(name string) Command {
+// Command looks up a bind.Command by name.
+func (c *Commander) Command(name string) bind.Command {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
 	return c.command(name)
 }
 
-func (c *Commander) command(name string) Command {
+func (c *Commander) command(name string) bind.Command {
 	for _, m := range c.commands {
 		if m.command.Name() == name {
 			return m.command
@@ -271,14 +267,14 @@ func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 	if !cmdDone {
 		return false
 	}
-	if executor, ok := c.box.Current().(Executor); ok {
+	if executor, ok := c.box.Current().(bind.Executor); ok {
 		c.Execute(executor)
 	}
 	c.box.Finish()
 	return true
 }
 
-func (c *Commander) Execute(e Executor) {
+func (c *Commander) Execute(e bind.Executor) {
 	if before, ok := e.(BeforeExecutor); ok {
 		before.BeforeExec(c)
 	}
@@ -288,7 +284,7 @@ func (c *Commander) Execute(e Executor) {
 	}
 }
 
-func execute(executor Executor, elem interface{}) (executed, consume bool) {
+func execute(executor bind.Executor, elem interface{}) (executed, consume bool) {
 	executed, consume = executor.Exec(elem)
 	if consume {
 		return executed, consume
