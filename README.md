@@ -22,6 +22,20 @@ Go code, and I don't think it's far off from being in a finished 1.0 state.
 1. [Install GXUI's C dependencies](https://github.com/google/gxui#dependencies)
 2. `go get github.com/nelsam/vidar`.
 
+### Plugins
+
+If you're on linux using go 1.8 or newer, you'll notice that vidar runs a little barebones.
+This is because most of the go-specific functionality is in plugins in vidar's `plugin`
+sub-package.
+
+To build and install plugins on linux, use make:
+
+```
+make plugins-install
+```
+
+This will build and install plugins to `~/.config/vidar/plugins/`
+
 ### Go Version
 
 I'm only supporting the latest stable version of Go.  This doesn't necessarily mean that vidar
@@ -83,6 +97,7 @@ instances, though, and the highlighting for the rest of the file should be fine.
 - Syntax highlighting
 - Rainbow parens
 - Most of the basic stuff you expect from a text editor (copy/paste, undo/redo, etc)
+- Plugins, if you're running linux with go 1.8.
 
 ## Important Missing Features
 
@@ -96,7 +111,5 @@ These are all planned, but have yet to be implemented.
   - There are some frustrating, but difficult-to-solve, bugs lingering around.  I squash them
     when I can, but some of the less annoying ones that either have difficult solutions or are
     difficult to reproduce regularly are going to be there for a while.
-- Support for Plugins (including languages other than Go)
-  - I've built the editor with plugins in mind, but it's not quite ready to have all that
-    abstracted away, right now.  It'll get there.
+- Plugins on operating systems other than linux.
 
