@@ -407,9 +407,9 @@ type SplitterBar struct {
 func NewSplitterBar(viewport gxui.Viewport, theme gxui.Theme) *SplitterBar {
 	s := &SplitterBar{
 		viewport:    viewport,
-		arrow:       glfw.CreateStandardCursor(int(glfw.ArrowCursor)),
-		horizResize: glfw.CreateStandardCursor(int(glfw.HResizeCursor)),
-		vertResize:  glfw.CreateStandardCursor(int(glfw.VResizeCursor)),
+		arrow:       glfw.CreateStandardCursor(glfw.ArrowCursor),
+		horizResize: glfw.CreateStandardCursor(glfw.HResizeCursor),
+		vertResize:  glfw.CreateStandardCursor(glfw.VResizeCursor),
 	}
 	s.SplitterBar.Init(s, theme)
 	s.SetBackgroundColor(splitterBG)
