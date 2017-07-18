@@ -103,6 +103,10 @@ func (e *MultiProjectEditor) SetProject(project settings.Project) {
 	e.current = editor
 }
 
+func (e *MultiProjectEditor) CurrentEditor() *CodeEditor {
+	return e.current.CurrentEditor()
+}
+
 func (e *MultiProjectEditor) CurrentFile() string {
 	return e.current.CurrentFile()
 }

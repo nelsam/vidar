@@ -46,7 +46,15 @@ func init() {
 	settings.SetConfigName(settingsFilename)
 	settings.SetTypeByDefaultValue(true)
 	settings.SetDefault("fonts", []string(nil))
-	err = settings.ReadInConfig()
+	readSettings()
+}
+
+func readSettings() {
+	err := settings.ReadInConfig()
+	if _, notFound := err.(viper.ConfigFileNotFoundError); notFound {
+		writeConfig(settings, settingsFilename)
+		return
+	}
 	if _, unsupported := err.(viper.UnsupportedConfigError); unsupported {
 		err = convertSettings()
 	}

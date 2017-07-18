@@ -7,6 +7,7 @@ package commander
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/editor"
 )
 
 // A ClonableCommand is a Command that can clone its internal state,
@@ -21,6 +22,27 @@ type CloneableCommand interface {
 	// needs to be stored prior to altering its state - especially
 	// when the CloneableCommand will be modified by a hook.
 	Clone() CloneableCommand
+}
+
+// InputHandler handles key strokes from the keyboard.  An InputHandler
+// is essentially the text engine for the text editor.  It takes each
+// character entered by the user and processes it into text (or commands)
+// to provide to the editor.  If you want vidar to feel like vim, this
+// is the type of command to implement.
+//
+// It is the responsibility of the input handler to correctly deal with
+// text input fast enough to keep up with a user.  Because of this,
+// it's recommended that any alternate input engines are careful about
+// how slow hooks are allowed to be.
+//
+// Since the InputHandler will handle all edits to the text, it should
+// accept both commands.ChangeHook and commands.ContextChangeHook as
+// hooks that can bind to it.
+type InputHandler interface {
+	bind.Bindable
+	Clone() InputHandler
+	Bind(bind.CommandHook) error
+	HandleInput(focused *editor.CodeEditor, stroke gxui.KeyStrokeEvent)
 }
 
 // A HookedCommand is a Command that has hooks, which CommandHook

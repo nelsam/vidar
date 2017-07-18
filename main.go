@@ -99,7 +99,7 @@ func uiMain(driver gxui.Driver) {
 	// Bindings should be added immediately after creating the commander,
 	// since other types rely on the bindings having been bound.
 	cmdr := commander.New(driver, theme, controller)
-	var bindings []bind.Bindable
+	bindings := []bind.Bindable{commands.NewInputHandler(driver)}
 	for _, c := range commands.Commands(driver, theme) {
 		bindings = append(bindings, c)
 	}

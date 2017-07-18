@@ -26,7 +26,7 @@ type Opener interface {
 // A FileBinder is a type that registers a list of commands
 // on file open.
 type FileBinder interface {
-	// Bindables returns the bindables that should be registered
+	// FileBindables returns the bindables that should be registered
 	// for the given file.
 	FileBindables(path string) []bind.Bindable
 }

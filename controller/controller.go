@@ -21,6 +21,7 @@ type Editor interface {
 	gxui.Control
 	Focus()
 	CurrentFile() string
+	CurrentEditor() *editor.CodeEditor
 	Open(path string, cursor token.Position) (editor *editor.CodeEditor, existed bool)
 }
 

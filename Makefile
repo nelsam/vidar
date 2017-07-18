@@ -1,7 +1,15 @@
 
 # Create the build directory.
 build:
-	@mkdir build
+	mkdir build
+
+# Create the plugin install directory.
+$(HOME)/.local/share/vidar/plugins:
+	mkdir -p $(HOME)/.local/share/vidar/plugins
+
+# Build the gosyntax plugin.
+build/gosyntax.so: | build
+	go build -buildmode plugin -o ./build/gosyntax.so github.com/nelsam/vidar/plugin/gosyntax/main
 
 # Build the goimports plugin.
 build/goimports.so: | build
@@ -20,21 +28,20 @@ build/license.so: | build
 	go build -buildmode plugin -o ./build/license.so github.com/nelsam/vidar/plugin/license/main
 
 # Build all plugins included with vidar.
-plugins: build/goimports.so build/comments.so build/godef.so build/license.so
+plugins: build/gosyntax.so build/goimports.so build/comments.so build/godef.so build/license.so
 .PHONY: plugins
 
 # Install all plugins included with vidar to
 # $HOME/.config/vidar/plugins.  If plugins have
 # not yet been built, they will be built before
 # installing.
-plugins-install: plugins
-	@mkdir -p $$HOME/.config/vidar/plugins
+plugins-install: plugins | $(HOME)/.local/share/vidar/plugins
 	@for plugin in $$(ls -1 build); do \
-		echo "Installing $$plugin to $$HOME/.config/vidar/plugins"; \
-		install build/$$plugin $$HOME/.config/vidar/plugins/; \
+		echo "Installing $$plugin to $$HOME/.local/share/vidar/plugins"; \
+		install build/$$plugin $$HOME/.local/share/vidar/plugins/; \
 	done
 .PHONY: plugins-install
-	
+
 clean:
 	@rm -rf build
 .PHONY: clean

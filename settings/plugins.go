@@ -13,7 +13,7 @@ import (
 const pluginsDirname = "plugins"
 
 func Plugins() []string {
-	pluginsPath := App.ConfigPath(pluginsDirname)
+	pluginsPath := App.DataPath(pluginsDirname)
 	dir, err := os.Open(pluginsPath)
 	if err == os.ErrNotExist {
 		return nil

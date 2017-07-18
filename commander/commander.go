@@ -43,6 +43,8 @@ type Commander struct {
 	controller Controller
 	box        *commandBox
 
+	inputHandler InputHandler
+
 	lock sync.RWMutex
 
 	cmdStack [][]commandMapping
@@ -142,7 +144,10 @@ func (c *Commander) Push(bindables ...bind.Bindable) {
 		case bind.CommandHook:
 			hooks = append(hooks, src)
 		case bind.Command:
+			log.Printf("Binding command %s", src.Name())
 			c.bind(src, settings.Bindings(src.Name())...)
+		case InputHandler:
+			c.inputHandler = src
 		}
 	}
 
@@ -271,6 +276,18 @@ func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 		c.Execute(executor)
 	}
 	c.box.Finish()
+	return true
+}
+
+func (c *Commander) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
+	if event.Modifier&^gxui.ModShift != 0 {
+		return false
+	}
+	e := c.controller.Editor().CurrentEditor()
+	if e == nil || !e.HasFocus() {
+		return false
+	}
+	c.inputHandler.HandleInput(e, event)
 	return true
 }
 
