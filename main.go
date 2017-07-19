@@ -60,9 +60,18 @@ func font(driver gxui.Driver) gxui.Font {
 	if len(desiredFonts) == 0 {
 		return nil
 	}
-	fontReader, err := fonts.Load(desiredFonts...)
+	var (
+		font       settings.Font
+		fontReader io.Reader
+		err        error
+	)
+	for _, font = range desiredFonts {
+		fontReader, err = fonts.Load(font.Name)
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
-		log.Printf("Error searching for fonts %v: %s", desiredFonts, err)
 		return nil
 	}
 	if closer, ok := fontReader.(io.Closer); ok {
@@ -73,12 +82,12 @@ func font(driver gxui.Driver) gxui.Font {
 		log.Printf("Failed to read font file: %s", err)
 		return nil
 	}
-	font, err := driver.CreateFont(fontBytes, 12)
+	gFont, err := driver.CreateFont(fontBytes, font.Size)
 	if err != nil {
 		log.Printf("Could not parse font: %s", err)
 		return nil
 	}
-	return font
+	return gFont
 }
 
 func uiMain(driver gxui.Driver) {

@@ -19,6 +19,7 @@ import (
 
 const (
 	LicenseHeaderFilename = ".license-header"
+	DefaultFontSize       = 12
 
 	projectsFilename = "projects"
 	settingsFilename = "settings"
@@ -45,7 +46,7 @@ func init() {
 	settings.AddConfigPath(defaultConfigDir)
 	settings.SetConfigName(settingsFilename)
 	settings.SetTypeByDefaultValue(true)
-	settings.SetDefault("fonts", []string(nil))
+	settings.SetDefault("fonts", []Font(nil))
 	readSettings()
 }
 
@@ -60,6 +61,11 @@ func readSettings() {
 	if err != nil {
 		log.Printf("Error reading settings: %s", err)
 	}
+}
+
+type Font struct {
+	Name string
+	Size int
 }
 
 type Project struct {
@@ -145,8 +151,36 @@ func AddProject(project Project) {
 	}
 }
 
-func DesiredFonts() []string {
-	return settings.Get("fonts").([]string)
+func DesiredFonts() (fonts []Font) {
+	if fonts, ok := settings.Get("fonts").([]Font); ok {
+		return fonts
+	}
+	// The following is to work around the same bug in viper as
+	// mentioned in Projects()
+	if err := settings.UnmarshalKey("fonts", &fonts); err != nil {
+		convertFonts()
+		return settings.Get("fonts").([]Font)
+	}
+	return fonts
+}
+
+func convertFonts() {
+	oldFonts, ok := settings.Get("fonts").([]interface{})
+	if !ok {
+		settings.Set("fonts", []Font(nil))
+		return
+	}
+	newFonts := make([]Font, 0, len(oldFonts))
+	for _, f := range oldFonts {
+		newFonts = append(newFonts, Font{
+			Name: f.(string),
+			Size: DefaultFontSize,
+		})
+	}
+	settings.Set("fonts", newFonts)
+	if err := writeConfig(settings, settingsFilename); err != nil {
+		log.Printf("Failed to update fonts: %s", err)
+	}
 }
 
 func writeConfig(cfg *viper.Viper, fname string) error {
