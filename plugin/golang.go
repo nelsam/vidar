@@ -14,6 +14,7 @@ import (
 	"github.com/nelsam/vidar/plugin/comments"
 	"github.com/nelsam/vidar/plugin/godef"
 	"github.com/nelsam/vidar/plugin/goimports"
+	"github.com/nelsam/vidar/plugin/gosyntax"
 	"github.com/nelsam/vidar/plugin/license"
 )
 
@@ -38,6 +39,7 @@ func (h GolangHook) FileBindables(path string) []bind.Bindable {
 		godef.New(h.Theme),
 		goimports.New(h.Theme),
 		goimports.OnSave{},
+		gosyntax.New(),
 		license.NewHeaderUpdate(h.Theme),
 	}
 }
