@@ -8,35 +8,16 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"unsafe"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/editor"
 )
-
-// Edit is a type containing details about edited text.
-type Edit struct {
-	At  int
-	Old []rune
-	New []rune
-}
-
-// Editor is the local set of methods that the Editor type passed
-// to hooks are guaranteed to have.  Other methods may be accessed
-// with type assertions, but we pass the Editor type instead of
-// *editor.Editor in order to allow the more common methods to be
-// accessed without needing to import the editor package.
-//
-// Due to the oddities in dependency versions and plugins, this
-// helps plugins avoid needing to be rebuilt every time the editor
-// package changes.
-type Editor interface {
-	SetText(string)
-	SetSyntaxLayers(gxui.CodeSyntaxLayers)
-}
 
 // ChangeHook is a hook that triggers events on text changing.
 // Each ChangeHook gets its own goroutine that will be used to
@@ -48,6 +29,10 @@ type Editor interface {
 // to the entire file instead of one edit at a time, implement
 // ContextChangeHook.
 type ChangeHook interface {
+	// Init is called when a file is opened, to initialize the
+	// hook.  The full text of the editor will be passed in.
+	Init(input.Editor, []rune)
+
 	// TextChanged is called for every text edit.
 	//
 	// TextChanged may be called multiple times prior to Apply if
@@ -55,18 +40,22 @@ type ChangeHook interface {
 	//
 	// Hooks that have to start over from scratch when new updates
 	// are made should implement ContextChangeHook, instead.
-	TextChanged(Editor, Edit)
+	TextChanged(input.Editor, input.Edit)
 
 	// Apply is called when there is a break in text changes, to
 	// apply the hook's event.  Unlike TextChanged, Apply is
 	// called in the main UI thread.
-	Apply(Editor) error
+	Apply(input.Editor) error
 }
 
 // ContextChangeHook is similar to a ChangeHook, but takes a
 // context.Context that will be cancelled if new changes show
 // up before Apply is called.
 type ContextChangeHook interface {
+	// Init is called when a file is opened, to initialize the
+	// hook.  The full text of the editor will be passed in.
+	Init(input.Editor, []rune)
+
 	// TextChanged is called in a new goroutine whenever any text
 	// is changed in the editor.  Any changes to the UI should be
 	// saved for Apply, since most of those calls must be called
@@ -76,17 +65,17 @@ type ContextChangeHook interface {
 	// through, the context.Context will be cancelled and
 	// TextChanged will be called again with the new edits appended
 	// to those from the previous call.
-	TextChanged(context.Context, Editor, []Edit)
+	TextChanged(context.Context, input.Editor, []input.Edit)
 
 	// Apply is called when there is a break in text changes, to
 	// apply the hook's event.  Unlike TextChanged, Apply is
 	// called in the main UI thread.
-	Apply(Editor) error
+	Apply(input.Editor) error
 }
 
 type editNode struct {
-	edit   Edit
-	editor Editor
+	edit   input.Edit
+	editor input.Editor
 	next   unsafe.Pointer
 }
 
@@ -127,7 +116,7 @@ func (r *hookReader) processEdits() error {
 	if nextPtr == nil {
 		return nil
 	}
-	editors := make(map[Editor]struct{})
+	editors := make(map[input.Editor]struct{})
 	for nextPtr != nil {
 		next := (*editNode)(nextPtr)
 		r.hook.TextChanged(next.editor, next.edit)
@@ -145,7 +134,12 @@ func (r *hookReader) processEdits() error {
 	return nil
 }
 
-func (r *hookReader) TextChanged(e Editor, changes []gxui.TextBoxEdit) error {
+func (r *hookReader) init(e input.Editor, text []rune) {
+	r.hook.Init(e, text)
+	r.hook.Apply(e)
+}
+
+func (r *hookReader) textChanged(e input.Editor, changes []input.Edit) error {
 	if len(changes) == 0 {
 		return nil
 	}
@@ -157,11 +151,7 @@ func (r *hookReader) TextChanged(e Editor, changes []gxui.TextBoxEdit) error {
 	for _, edit := range changes {
 		n := &editNode{
 			editor: e,
-			edit: Edit{
-				At:  edit.At,
-				Old: edit.Old,
-				New: edit.New,
-			},
+			edit:   edit,
 		}
 		atomic.StorePointer(&l.next, unsafe.Pointer(n))
 		if atomic.CompareAndSwapPointer(&r.next, nil, unsafe.Pointer(n)) {
@@ -176,12 +166,17 @@ func (r *hookReader) TextChanged(e Editor, changes []gxui.TextBoxEdit) error {
 type ctxHookReader struct {
 	driver gxui.Driver
 	cancel func()
-	edits  []Edit
+	edits  []input.Edit
 	mu     sync.Mutex
 	hook   ContextChangeHook
 }
 
-func (r *ctxHookReader) TextChanged(e Editor, changes []gxui.TextBoxEdit) error {
+func (r *ctxHookReader) init(e input.Editor, text []rune) {
+	r.hook.Init(e, text)
+	r.hook.Apply(e)
+}
+
+func (r *ctxHookReader) textChanged(e input.Editor, changes []input.Edit) error {
 	if len(changes) == 0 {
 		return nil
 	}
@@ -196,11 +191,7 @@ func (r *ctxHookReader) TextChanged(e Editor, changes []gxui.TextBoxEdit) error 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, c := range changes {
-		r.edits = append(r.edits, Edit{
-			At:  c.At,
-			Old: c.Old,
-			New: c.New,
-		})
+		r.edits = append(r.edits, c)
 	}
 	go func() {
 		if contextDone(ctx) {
@@ -231,7 +222,8 @@ func (r *ctxHookReader) TextChanged(e Editor, changes []gxui.TextBoxEdit) error 
 }
 
 type textChangeHook interface {
-	TextChanged(Editor, []gxui.TextBoxEdit) error
+	init(input.Editor, []rune)
+	textChanged(input.Editor, []input.Edit) error
 }
 
 // InputHandler is vidar's default input handler.  It takes the runes typed
@@ -253,6 +245,10 @@ func (e *InputHandler) Name() string {
 	return "input-handler"
 }
 
+func (e *InputHandler) New() input.Handler {
+	return NewInputHandler(e.driver)
+}
+
 func (e *InputHandler) Bind(h bind.CommandHook) error {
 	switch src := h.(type) {
 	case ChangeHook:
@@ -267,14 +263,63 @@ func (e *InputHandler) Bind(h bind.CommandHook) error {
 	return nil
 }
 
-func (e *InputHandler) HandleInput(focused *editor.CodeEditor, ev gxui.KeyStrokeEvent) {
+func (e *InputHandler) Init(newEditor input.Editor, contents []rune) {
+	for _, h := range e.hooks {
+		h.init(newEditor, contents)
+	}
+}
+
+func (h *InputHandler) Apply(e input.Editor, edits ...input.Edit) {
+	c := e.(*editor.CodeEditor).Controller()
+	text := c.TextRunes()
+	delta := 0
+	sort.Slice(edits, func(i, j int) bool {
+		return edits[i].At < edits[j].At
+	})
+	scrollTo := 0
+	for _, edit := range edits {
+		oldE := edit.At + delta + len(edit.Old)
+		newE := edit.At + delta + len(edit.New)
+		if oldE != newE {
+			if newE > oldE {
+				text = append(text, make([]rune, newE-oldE)...)
+			}
+			copy(text[newE:], text[oldE:])
+			if oldE > newE {
+				text = text[:len(text)-(oldE-newE)]
+			}
+		}
+		copy(text[edit.At+delta:newE], edit.New)
+		scrollTo = edit.At + delta
+		delta += newE - oldE
+	}
+	h.driver.Call(func() {
+		c.SetTextRunes(text)
+		e.(*editor.CodeEditor).ScrollToRune(scrollTo)
+		h.textEdited(e, edits)
+	})
+}
+
+func (e *InputHandler) HandleInput(focused input.Editor, ev gxui.KeyStrokeEvent) {
 	if ev.Modifier&^gxui.ModShift != 0 {
 		return
 	}
-	changes := focused.Controller().ReplaceAllRunes([]rune{ev.Character})
-	focused.InputEventHandler.KeyStroke(ev)
+	editor := focused.(*editor.CodeEditor)
+	var edits []input.Edit
+	for _, c := range editor.Controller().ReplaceAllRunes([]rune{ev.Character}) {
+		edits = append(edits, input.Edit{
+			At:  c.At,
+			Old: c.Old,
+			New: c.New,
+		})
+	}
+	editor.InputEventHandler.KeyStroke(ev)
+	e.textEdited(focused, edits)
+}
+
+func (e *InputHandler) textEdited(focused input.Editor, edits []input.Edit) {
 	for _, h := range e.hooks {
-		if err := h.TextChanged(focused, changes); err != nil {
+		if err := h.textChanged(focused, edits); err != nil {
 			log.Printf("Hook %v failed: %s", h, err)
 		}
 	}

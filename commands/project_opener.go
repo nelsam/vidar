@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/navigator"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/settings"
@@ -75,25 +76,25 @@ func (p *ProjectOpener) BeforeExec(interface{}) {
 	}
 }
 
-func (p *ProjectOpener) Exec(element interface{}) (executed, consume bool) {
+func (p *ProjectOpener) Exec(element interface{}) bind.Status {
 	if p.proj.Name != p.name.Text() {
 		p.Err = fmt.Sprintf("No project by the name of %s found", p.name.Text())
-		return false, true
+		return bind.Failed
 	}
 	switch src := element.(type) {
 	case *navigator.ProjectTree:
 		if p.nav == nil {
 			p.Warn = "No navigation pane found to bind project tree to"
-			return false, false
+			return bind.Waiting
 		}
 		src.SetProject(p.proj)
 		p.nav.ShowNavPane(src.Frame())
-		return true, false
+		return bind.Executing
 	case ProjectSetter:
 		src.SetProject(p.proj)
-		return true, false
+		return bind.Executing
 	case PaneDisplayer:
 		p.nav = src
 	}
-	return false, false
+	return bind.Waiting
 }

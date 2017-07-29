@@ -19,17 +19,17 @@ type EditorExecutor struct {
 	EditorCommand
 }
 
-func (e EditorExecutor) Exec(target interface{}) (executed, consume bool) {
+func (e EditorExecutor) Exec(target interface{}) bind.Status {
 	finder, ok := target.(EditorFinder)
 	if !ok {
-		return false, false
+		return bind.Waiting
 	}
 	editor := finder.CurrentEditor()
 	if editor == nil {
-		return true, true
+		return bind.Done
 	}
 	e.EditorCommand.Exec(editor)
-	return true, true
+	return bind.Done
 }
 
 type Scroller struct {

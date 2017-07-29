@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander/bind"
 )
 
 type Splitter interface {
@@ -45,11 +46,11 @@ func (s *Split) Menu() string {
 	return "View"
 }
 
-func (s *Split) Exec(target interface{}) (executed, consume bool) {
+func (s *Split) Exec(target interface{}) bind.Status {
 	splitter, ok := target.(Splitter)
 	if !ok {
-		return false, false
+		return bind.Waiting
 	}
 	splitter.Split(s.orientation)
-	return true, true
+	return bind.Done
 }

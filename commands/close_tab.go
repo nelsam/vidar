@@ -4,7 +4,10 @@
 
 package commands
 
-import "github.com/nelsam/vidar/editor"
+import (
+	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/editor"
+)
 
 type CurrentEditorCloser interface {
 	CloseCurrentEditor() (string, *editor.CodeEditor)
@@ -24,11 +27,11 @@ func (s *CloseTab) Menu() string {
 	return "File"
 }
 
-func (s *CloseTab) Exec(target interface{}) (executed, consume bool) {
+func (s *CloseTab) Exec(target interface{}) bind.Status {
 	closer, ok := target.(CurrentEditorCloser)
 	if !ok {
-		return false, false
+		return bind.Waiting
 	}
 	closer.CloseCurrentEditor()
-	return true, true
+	return bind.Done
 }

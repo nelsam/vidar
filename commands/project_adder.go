@@ -11,6 +11,7 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/settings"
 )
@@ -94,19 +95,20 @@ func (p *ProjectAdder) Project() settings.Project {
 	}
 }
 
-func (p *ProjectAdder) Exec(element interface{}) (executed, consume bool) {
-	if projects, ok := element.(projectPane); ok {
-		project := p.Project()
-		for _, prevProject := range settings.Projects() {
-			if prevProject.Name == project.Name {
-				// TODO: Let the user choose a new name
-				p.Err = fmt.Sprintf("There is already a project named %s", project.Name)
-				return true, true
-			}
-		}
-		settings.AddProject(project)
-		projects.Add(project)
-		return true, true
+func (p *ProjectAdder) Exec(element interface{}) bind.Status {
+	projects, ok := element.(projectPane)
+	if !ok {
+		return bind.Waiting
 	}
-	return false, false
+	project := p.Project()
+	for _, prevProject := range settings.Projects() {
+		if prevProject.Name == project.Name {
+			// TODO: Let the user choose a new name
+			p.Err = fmt.Sprintf("There is already a project named %s", project.Name)
+			return bind.Failed
+		}
+	}
+	settings.AddProject(project)
+	projects.Add(project)
+	return bind.Done
 }

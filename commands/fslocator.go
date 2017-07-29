@@ -45,8 +45,8 @@ type FileGetter interface {
 	CurrentFile() string
 }
 
-type ProjectGetter interface {
-	CurrentProject() settings.Project
+type Elementer interface {
+	Elements() []interface{}
 }
 
 type FSLocator struct {
@@ -439,13 +439,15 @@ func findCurrentFile(control gxui.Control) string {
 	return ""
 }
 
-func findProject(control gxui.Control) (settings.Project, bool) {
-	switch src := control.(type) {
-	case ProjectGetter:
-		return src.CurrentProject(), true
-	case gxui.Parent:
-		for _, child := range src.Children() {
-			if proj, ok := findProject(child.Control); ok {
+func findProject(e interface{}) (settings.Project, bool) {
+	log.Printf("Looking for Projecter in %T", e)
+	switch src := e.(type) {
+	case Projecter:
+		return src.Project(), true
+	case Elementer:
+		log.Printf("%T is an Elementer, descending...", e)
+		for _, elem := range src.Elements() {
+			if proj, ok := findProject(elem); ok {
 				return proj, true
 			}
 		}

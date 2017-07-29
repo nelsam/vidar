@@ -4,6 +4,8 @@
 
 package commands
 
+import "github.com/nelsam/vidar/commander/bind"
+
 type SelectAll struct{}
 
 func NewSelectAll() *SelectAll {
@@ -18,15 +20,15 @@ func (s *SelectAll) Menu() string {
 	return "File"
 }
 
-func (s *SelectAll) Exec(target interface{}) (executed, consume bool) {
+func (s *SelectAll) Exec(target interface{}) bind.Status {
 	finder, ok := target.(EditorFinder)
 	if !ok {
-		return false, false
+		return bind.Waiting
 	}
 	editor := finder.CurrentEditor()
 	if editor == nil {
-		return true, true
+		return bind.Done
 	}
 	editor.SelectAll()
-	return true, true
+	return bind.Done
 }

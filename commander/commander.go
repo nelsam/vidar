@@ -14,6 +14,7 @@ import (
 	"github.com/nelsam/gxui/mixins/parts"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/settings"
 )
@@ -38,12 +39,14 @@ type Commander struct {
 	base.Container
 	parts.BackgroundBorderPainter
 
-	theme *basic.Theme
+	driver gxui.Driver
+	theme  *basic.Theme
 
 	controller Controller
 	box        *commandBox
 
-	inputHandler InputHandler
+	inputHandler input.Handler
+	inputStack   []input.Handler
 
 	lock sync.RWMutex
 
@@ -55,7 +58,8 @@ type Commander struct {
 // New creates and initializes a *Commander, then returns it.
 func New(driver gxui.Driver, theme *basic.Theme, controller Controller) *Commander {
 	commander := &Commander{
-		theme: theme,
+		driver: driver,
+		theme:  theme,
 	}
 	commander.Container.Init(commander, theme)
 	commander.BackgroundBorderPainter.Init(commander)
@@ -81,6 +85,10 @@ func New(driver gxui.Driver, theme *basic.Theme, controller Controller) *Command
 	mainLayout.AddChild(subLayout)
 	commander.AddChild(mainLayout)
 	return commander
+}
+
+func (c *Commander) InputHandler() input.Handler {
+	return c.inputHandler
 }
 
 func (c *Commander) DesiredSize(_, max math.Size) math.Size {
@@ -127,6 +135,8 @@ func (c *Commander) Push(bindables ...bind.Bindable) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	var newInputHandler input.Handler
+
 	c.menuBar.Clear()
 	defer c.mapMenu()
 
@@ -146,12 +156,39 @@ func (c *Commander) Push(bindables ...bind.Bindable) {
 		case bind.Command:
 			log.Printf("Binding command %s", src.Name())
 			c.bind(src, settings.Bindings(src.Name())...)
-		case InputHandler:
-			c.inputHandler = src
+		case input.Handler:
+			newInputHandler = src
+		default:
+			log.Printf("Error loading bindable %s: unknown bindable type", b.Name())
+		}
+	}
+	if newInputHandler == nil {
+		if c.inputHandler == nil {
+			panic("No input.Handler is assigned")
+		}
+		newInputHandler = c.inputHandler.New()
+	}
+	if c.inputHandler != nil {
+		c.inputStack = append(c.inputStack, c.inputHandler)
+	}
+	c.inputHandler = newInputHandler
+	multiEditor := c.controller.Editor()
+	if multiEditor != nil {
+		e := multiEditor.CurrentEditor()
+		if e != nil {
+			defer c.driver.Call(func() {
+				c.inputHandler.Init(e, e.Controller().TextRunes())
+			})
 		}
 	}
 
 	for _, h := range hooks {
+		if h.CommandName() == c.inputHandler.Name() {
+			if err := c.inputHandler.Bind(h); err != nil {
+				log.Printf("Warning: failed to bind hook %s to input.Handler: %s", h.Name(), err)
+			}
+			continue
+		}
 		cmd := c.command(h.CommandName())
 		if cmd == nil {
 			log.Printf("Warning: could not find command %s to bind %s to", h.CommandName(), h.Name())
@@ -163,7 +200,7 @@ func (c *Commander) Push(bindables ...bind.Bindable) {
 			continue
 		}
 		if err := hooked.Bind(h); err != nil {
-			log.Printf("Warning: failed to bind hook %s to HookedCommand %s", h.Name(), hooked.Name())
+			log.Printf("Warning: failed to bind hook %s to HookedCommand %s: %s", h.Name(), hooked.Name(), err)
 		}
 	}
 }
@@ -187,6 +224,10 @@ func (c *Commander) mapMenu() {
 func (c *Commander) Pop() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+
+	last := len(c.inputStack) - 1
+	c.inputHandler = c.inputStack[last]
+	c.inputStack = c.inputStack[:last]
 
 	c.menuBar.Clear()
 	defer c.mapMenu()
@@ -272,9 +313,7 @@ func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 	if !cmdDone {
 		return false
 	}
-	if executor, ok := c.box.Current().(bind.Executor); ok {
-		c.Execute(executor)
-	}
+	c.Execute(c.box.Current())
 	c.box.Finish()
 	return true
 }
@@ -291,41 +330,62 @@ func (c *Commander) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
 	return true
 }
 
-func (c *Commander) Execute(e bind.Executor) {
+func (c *Commander) Execute(e bind.Command) {
 	if before, ok := e.(BeforeExecutor); ok {
 		before.BeforeExec(c)
 	}
-	executed, _ := execute(e, c)
-	if !executed {
+	var status bind.Status
+	switch src := e.(type) {
+	case bind.Executor:
+		log.Printf("Executing with type %T", src)
+		status = execute(src.Exec, c)
+	case bind.MultiExecutor:
+		src.Reset()
+		status = execute(src.Store, c)
+		if status&bind.Executed == 0 {
+			break
+		}
+		if err := src.Exec(); err != nil {
+			log.Printf("Error executing multi-executor: %s", err)
+		}
+	default:
+		return
+	}
+	if status&bind.Executed == 0 {
 		log.Printf("Warning: Executor of type %T ran without executing", e)
 	}
 }
 
-func execute(executor bind.Executor, elem interface{}) (executed, consume bool) {
-	executed, consume = executor.Exec(elem)
-	if consume {
-		return executed, consume
+func (c *Commander) Elements() []interface{} {
+	all := make([]interface{}, 0, len(c.commands))
+	for _, command := range c.commands {
+		all = append(all, command)
 	}
-	var childExecuted bool
+	all = append(all, c.controller, c.inputHandler)
+	return all
+}
+
+func execute(executor func(interface{}) bind.Status, elem interface{}) bind.Status {
+	status := executor(elem)
+	if status&bind.Stop != 0 {
+		return status
+	}
+
 	switch src := elem.(type) {
 	case Elementer:
 		for _, element := range src.Elements() {
-			childExecuted, consume = execute(executor, element)
-			executed = executed || childExecuted
-			if consume {
+			status |= execute(executor, element)
+			if status&bind.Stop != 0 {
 				break
 			}
 		}
-		return executed, consume
 	case gxui.Parent:
 		for _, child := range src.Children() {
-			childExecuted, consume = execute(executor, child.Control)
-			executed = executed || childExecuted
-			if consume {
+			status |= execute(executor, child.Control)
+			if status&bind.Stop != 0 {
 				break
 			}
 		}
-		return executed, consume
 	}
-	return false, false
+	return status
 }

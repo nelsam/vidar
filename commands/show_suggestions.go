@@ -4,6 +4,8 @@
 
 package commands
 
+import "github.com/nelsam/vidar/commander/bind"
+
 type ShowSuggestions struct {
 }
 
@@ -19,15 +21,15 @@ func (s *ShowSuggestions) Menu() string {
 	return "Edit"
 }
 
-func (s *ShowSuggestions) Exec(target interface{}) (executed, consume bool) {
+func (s *ShowSuggestions) Exec(target interface{}) bind.Status {
 	finder, ok := target.(EditorFinder)
 	if !ok {
-		return false, false
+		return bind.Waiting
 	}
 	editor := finder.CurrentEditor()
 	if editor == nil {
-		return true, true
+		return bind.Done
 	}
 	editor.ShowSuggestionList()
-	return true, true
+	return bind.Done
 }

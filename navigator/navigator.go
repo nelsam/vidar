@@ -22,12 +22,12 @@ type Pane interface {
 
 	// OnComplete takes a function which takes a command, and runs
 	// that function when the Pane's action is complete.
-	OnComplete(func(bind.Executor))
+	OnComplete(func(bind.Command))
 }
 
 // CommandExecutor is a type that can execute a commands.Command
 type CommandExecutor interface {
-	Execute(bind.Executor)
+	Execute(bind.Command)
 }
 
 // Caller is any type that can call a function on the UI goroutine

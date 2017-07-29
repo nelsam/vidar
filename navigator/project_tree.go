@@ -72,7 +72,7 @@ type ProjectTree struct {
 	driver gxui.Driver
 	theme  *basic.Theme
 
-	callback func(bind.Executor)
+	callback func(bind.Command)
 	dirs     *directory
 	tocCtl   gxui.Control
 	toc      *TOC
@@ -248,7 +248,7 @@ func (p *ProjectTree) Frame() gxui.Control {
 	return p.layout
 }
 
-func (p *ProjectTree) OnComplete(callback func(bind.Executor)) {
+func (p *ProjectTree) OnComplete(callback func(bind.Command)) {
 	p.callback = callback
 	go attachCallback(p.TOC(), callback)
 }
@@ -297,10 +297,10 @@ type irrespParent interface {
 }
 
 type selectionButton interface {
-	OnSelected(func(bind.Executor))
+	OnSelected(func(bind.Command))
 }
 
-func attachCallback(control gxui.Control, callback func(bind.Executor)) {
+func attachCallback(control gxui.Control, callback func(bind.Command)) {
 	if b, ok := control.(selectionButton); ok {
 		b.OnSelected(callback)
 	}

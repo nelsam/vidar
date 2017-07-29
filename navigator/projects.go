@@ -14,7 +14,7 @@ type ProjectSetter interface {
 	Name() string
 	Menu() string
 	SetProject(settings.Project)
-	Exec(interface{}) (executed, consume bool)
+	Exec(interface{}) bind.Status
 }
 
 type Projects struct {
@@ -59,7 +59,7 @@ func (p *Projects) Projects() []settings.Project {
 	return p.projectsAdapter.Items().([]settings.Project)
 }
 
-func (p *Projects) OnComplete(onComplete func(bind.Executor)) {
+func (p *Projects) OnComplete(onComplete func(bind.Command)) {
 	opener := p.cmdr.Command("open-project").(ProjectSetter)
 	p.projects.OnSelectionChanged(func(selected gxui.AdapterItem) {
 		opener.SetProject(selected.(settings.Project))

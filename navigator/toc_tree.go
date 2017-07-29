@@ -75,7 +75,7 @@ type Opener interface {
 	Menu() string
 	SetLocation(path string, pos token.Position)
 	Start(gxui.Control) gxui.Control
-	Exec(on interface{}) (executed, consume bool)
+	Exec(on interface{}) bind.Status
 }
 
 type genericNode struct {

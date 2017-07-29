@@ -6,21 +6,32 @@ package commands
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/settings"
 )
 
-type OpenProject interface {
-	CurrentEditor() *editor.CodeEditor
-	CurrentFile() string
+type Projecter interface {
 	Project() settings.Project
+}
+
+type Applier interface {
+	Apply(input.Editor, ...input.Edit)
+}
+
+type Editor interface {
+	input.Editor
+	Filepath() string
+	FlushedChanges()
+	LastKnownMTime() time.Time
 }
 
 type BeforeSaver interface {
@@ -35,6 +46,10 @@ type AfterSaver interface {
 
 type SaveCurrent struct {
 	status.General
+
+	proj    *settings.Project
+	applier Applier
+	editor  Editor
 
 	before []BeforeSaver
 	after  []AfterSaver
@@ -73,38 +88,55 @@ func (s *SaveCurrent) Bind(h bind.CommandHook) error {
 	return nil
 }
 
-func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {
-	proj, ok := target.(OpenProject)
-	if !ok {
-		return false, false
-	}
-	editor := proj.CurrentEditor()
-	if editor == nil {
-		return true, true
-	}
+func (s *SaveCurrent) Reset() {
+	s.proj = nil
+	s.applier = nil
+	s.editor = nil
+}
 
-	filepath := proj.CurrentFile()
-	if !editor.LastKnownMTime().IsZero() {
+func (s *SaveCurrent) Store(target interface{}) bind.Status {
+	switch src := target.(type) {
+	case Projecter:
+		log.Printf("storing project")
+		proj := src.Project()
+		s.proj = &proj
+	case Applier:
+		log.Printf("storing applier")
+		s.applier = src
+	case Editor:
+		log.Printf("storing editor")
+		s.editor = src
+	}
+	if s.editor != nil && s.proj != nil && s.applier != nil && s.editor != nil {
+		return bind.Done
+	}
+	return bind.Waiting
+}
+
+func (s *SaveCurrent) Exec() error {
+	filepath := s.editor.Filepath()
+	if !s.editor.LastKnownMTime().IsZero() {
 		finfo, err := os.Stat(filepath)
 		if err != nil {
 			s.Err = fmt.Sprintf("Could not stat file %s: %s", filepath, err)
-			return true, false
+			return err
 		}
-		if finfo.ModTime().After(editor.LastKnownMTime()) {
+		if finfo.ModTime().After(s.editor.LastKnownMTime()) {
 			// TODO: prompt for override
 			s.Err = fmt.Sprintf("File %s changed on disk.  Cowardly refusing to overwrite.", filepath)
-			return true, false
+			return err
 		}
 	}
 
-	text := editor.Text()
+	text := s.editor.Text()
 	formatted := text
 	if !strings.HasSuffix(formatted, "\n") {
 		formatted += "\n"
 	}
 
+	proj := *s.proj
 	for _, b := range s.before {
-		newText, err := b.BeforeSave(proj.Project(), filepath, text)
+		newText, err := b.BeforeSave(proj, filepath, text)
 		if err != nil {
 			s.Warn += fmt.Sprintf("%s: %s  ", b.Name(), err)
 			continue
@@ -113,27 +145,23 @@ func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {
 	}
 
 	if formatted != text {
-		edits := []gxui.TextBoxEdit{
-			{
-				At:    0,
-				Delta: len(formatted) - len(text),
-				Old:   []rune(text),
-				New:   []rune(formatted),
-			},
-		}
-		editor.Controller().SetTextEdits([]rune(formatted), edits)
+		s.applier.Apply(s.editor, input.Edit{
+			At:  0,
+			Old: []rune(text),
+			New: []rune(formatted),
+		})
 		text = formatted
 	}
 
 	f, err := os.Create(filepath)
 	if err != nil {
 		s.Err = fmt.Sprintf("Could not open %s for writing: %s", filepath, err)
-		return true, false
+		return err
 	}
 	defer func() {
 		f.Close()
 		for _, a := range s.after {
-			if err := a.AfterSave(proj.Project(), filepath, text); err != nil {
+			if err := a.AfterSave(proj, filepath, text); err != nil {
 				s.Warn += fmt.Sprintf("%s: %s  ", a.Name(), err)
 			}
 		}
@@ -141,9 +169,9 @@ func (s *SaveCurrent) Exec(target interface{}) (executed, consume bool) {
 
 	if _, err := f.WriteString(text); err != nil {
 		s.Err = fmt.Sprintf("Could not write to file %s: %s", filepath, err)
-		return true, false
+		return err
 	}
 	s.Info = fmt.Sprintf("Successfully saved %s", filepath)
-	editor.FlushedChanges()
-	return true, true
+	s.editor.FlushedChanges()
+	return nil
 }

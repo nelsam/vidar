@@ -8,6 +8,8 @@ import (
 	"go/ast"
 	"go/token"
 	"log"
+
+	"github.com/nelsam/vidar/theme"
 )
 
 func (s *Syntax) addStmt(stmt ast.Stmt) {
@@ -63,7 +65,7 @@ func (s *Syntax) addStmt(stmt ast.Stmt) {
 }
 
 func (s *Syntax) addBadStmt(stmt *ast.BadStmt) {
-	s.addNode(s.Theme.Colors.Bad, stmt)
+	s.addNode(theme.Bad, stmt)
 }
 
 func (s *Syntax) addAssignStmt(stmt *ast.AssignStmt) {
@@ -76,14 +78,14 @@ func (s *Syntax) addAssignStmt(stmt *ast.AssignStmt) {
 }
 
 func (s *Syntax) addSwitchStmt(stmt *ast.SwitchStmt) {
-	s.add(s.Theme.Colors.Keyword, stmt.Switch, len("switch"))
+	s.add(theme.Keyword, stmt.Switch, len("switch"))
 	s.addStmt(stmt.Init)
 	s.addExpr(stmt.Tag)
 	s.addBlockStmt(stmt.Body)
 }
 
 func (s *Syntax) addTypeSwitchStmt(stmt *ast.TypeSwitchStmt) {
-	s.add(s.Theme.Colors.Keyword, stmt.Switch, len("switch"))
+	s.add(theme.Keyword, stmt.Switch, len("switch"))
 	s.addStmt(stmt.Init)
 	s.addStmt(stmt.Assign)
 	s.addBlockStmt(stmt.Body)
@@ -94,7 +96,7 @@ func (s *Syntax) addCaseStmt(stmt *ast.CaseClause) {
 	if stmt.List == nil {
 		length = len("default")
 	}
-	s.add(s.Theme.Colors.Keyword, stmt.Case, length)
+	s.add(theme.Keyword, stmt.Case, length)
 	for _, expr := range stmt.List {
 		s.addExpr(expr)
 	}
@@ -109,14 +111,14 @@ func (s *Syntax) addSendStmt(stmt *ast.SendStmt) {
 }
 
 func (s *Syntax) addReturnStmt(stmt *ast.ReturnStmt) {
-	s.add(s.Theme.Colors.Keyword, stmt.Return, len("return"))
+	s.add(theme.Keyword, stmt.Return, len("return"))
 	for _, res := range stmt.Results {
 		s.addExpr(res)
 	}
 }
 
 func (s *Syntax) addRangeStmt(stmt *ast.RangeStmt) {
-	s.add(s.Theme.Colors.Keyword, stmt.For, len("for"))
+	s.add(theme.Keyword, stmt.For, len("for"))
 	s.addExpr(stmt.Key)
 	s.addExpr(stmt.Value)
 	var rangeStart token.Pos
@@ -128,24 +130,24 @@ func (s *Syntax) addRangeStmt(stmt *ast.RangeStmt) {
 	case token.DEFINE:
 		rangeStart = stmt.TokPos + token.Pos(len(":= "))
 	}
-	s.add(s.Theme.Colors.Keyword, rangeStart, len("range"))
+	s.add(theme.Keyword, rangeStart, len("range"))
 	s.addExpr(stmt.X)
 	s.addBlockStmt(stmt.Body)
 }
 
 func (s *Syntax) addIfStmt(stmt *ast.IfStmt) {
-	s.add(s.Theme.Colors.Keyword, stmt.If, len("if"))
+	s.add(theme.Keyword, stmt.If, len("if"))
 	s.addStmt(stmt.Init)
 	s.addExpr(stmt.Cond)
 	s.addBlockStmt(stmt.Body)
 	if stmt.Else != nil {
-		s.add(s.Theme.Colors.Keyword, stmt.Body.End()+1, len("else"))
+		s.add(theme.Keyword, stmt.Body.End()+1, len("else"))
 	}
 	s.addStmt(stmt.Else)
 }
 
 func (s *Syntax) addForStmt(stmt *ast.ForStmt) {
-	s.add(s.Theme.Colors.Keyword, stmt.For, len("for"))
+	s.add(theme.Keyword, stmt.For, len("for"))
 	s.addStmt(stmt.Init)
 	s.addExpr(stmt.Cond)
 	s.addStmt(stmt.Post)
@@ -153,7 +155,7 @@ func (s *Syntax) addForStmt(stmt *ast.ForStmt) {
 }
 
 func (s *Syntax) addGoStmt(stmt *ast.GoStmt) {
-	s.add(s.Theme.Colors.Keyword, stmt.Go, len("go"))
+	s.add(theme.Keyword, stmt.Go, len("go"))
 	s.addCallExpr(stmt.Call)
 }
 
@@ -163,7 +165,7 @@ func (s *Syntax) addLabeledStmt(stmt *ast.LabeledStmt) {
 }
 
 func (s *Syntax) addDeferStmt(stmt *ast.DeferStmt) {
-	s.add(s.Theme.Colors.Keyword, stmt.Defer, len("defer"))
+	s.add(theme.Keyword, stmt.Defer, len("defer"))
 	s.addCallExpr(stmt.Call)
 }
 
@@ -176,20 +178,19 @@ func (s *Syntax) addExprStmt(stmt *ast.ExprStmt) {
 }
 
 func (s *Syntax) addSelectStmt(stmt *ast.SelectStmt) {
-	s.add(s.Theme.Colors.Keyword, stmt.Select, len("select"))
+	s.add(theme.Keyword, stmt.Select, len("select"))
 	s.addBlockStmt(stmt.Body)
 }
 
 func (s *Syntax) addBranchStmt(stmt *ast.BranchStmt) {
-	s.add(s.Theme.Colors.Keyword, stmt.TokPos, len(stmt.Tok.String()))
+	s.add(theme.Keyword, stmt.TokPos, len(stmt.Tok.String()))
 
 	// TODO: add stmt.Label
 }
 
 func (s *Syntax) addBlockStmt(stmt *ast.BlockStmt) {
-	s.add(s.Theme.Rainbow.New(), stmt.Lbrace, 1)
+	defer s.rainbowScope(stmt.Lbrace, 1, stmt.Rbrace, 1)()
 	for _, stmt := range stmt.List {
 		s.addStmt(stmt)
 	}
-	s.add(s.Theme.Rainbow.Pop(), stmt.Rbrace, 1)
 }

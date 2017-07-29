@@ -8,47 +8,47 @@ import (
 	"context"
 	"log"
 
-	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commands"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/syntax"
 )
 
-type TextEditor interface {
-	Text() string
-}
-
 type Highlight struct {
 	ctx    context.Context
-	layers gxui.CodeSyntaxLayers
+	layers []input.SyntaxLayer
 	syntax *syntax.Syntax
 }
 
 func New() *Highlight {
-	return &Highlight{syntax: syntax.New(syntax.DefaultTheme)}
+	return &Highlight{syntax: syntax.New()}
 }
 
-func (h Highlight) Name() string {
+func (h *Highlight) Name() string {
 	return "go-syntax-highlight"
 }
 
-func (h Highlight) CommandName() string {
+func (h *Highlight) CommandName() string {
 	return "input-handler"
 }
 
-func (h Highlight) TextChanged(ctx context.Context, editor commands.Editor, _ []commands.Edit) {
+func (h *Highlight) Init(e input.Editor, text []rune) {
+	h.TextChanged(context.Background(), e, nil)
+}
+
+func (h *Highlight) TextChanged(ctx context.Context, editor input.Editor, _ []input.Edit) {
 	// TODO: only update layers that changed.
-	err := h.syntax.Parse(editor.(TextEditor).Text())
+	err := h.syntax.Parse(editor.Text())
 	if err != nil {
 		// TODO: Report the error in the UI
 		log.Printf("Error parsing syntax: %s", err)
 	}
 	layers := h.syntax.Layers()
-	h.layers = make(gxui.CodeSyntaxLayers, 0, len(layers))
+	h.layers = make([]input.SyntaxLayer, 0, len(layers))
 	for _, layer := range layers {
-		h.layers = append(h.layers, layer)
+		h.layers = append(h.layers, *layer)
 	}
 }
 
-func (h Highlight) Apply(e commands.Editor) {
+func (h *Highlight) Apply(e input.Editor) error {
 	e.SetSyntaxLayers(h.layers)
+	return nil
 }

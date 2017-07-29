@@ -11,10 +11,6 @@ type BeforeExecutor interface {
 }
 
 // Elementer is a type which contains elements of its own.
-// Most of the time, parent types can rely on standard
-// gxui.Parent behavior; Elementer is provided for types
-// which contain elements even when they may not be part
-// of the Elementer's Children().
 type Elementer interface {
 	Elements() []interface{}
 }

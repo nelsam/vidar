@@ -15,6 +15,7 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/suggestions"
+	"github.com/nelsam/vidar/theme"
 )
 
 type TabbedEditor struct {
@@ -22,21 +23,23 @@ type TabbedEditor struct {
 
 	editors map[string]*CodeEditor
 
-	driver gxui.Driver
-	theme  *basic.Theme
-	font   gxui.Font
+	driver      gxui.Driver
+	theme       *basic.Theme
+	syntaxTheme theme.Theme
+	font        gxui.Font
 }
 
-func NewTabbedEditor(driver gxui.Driver, theme *basic.Theme, font gxui.Font) *TabbedEditor {
+func NewTabbedEditor(driver gxui.Driver, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *TabbedEditor {
 	editor := &TabbedEditor{}
-	editor.Init(editor, driver, theme, font)
+	editor.Init(editor, driver, theme, syntaxTheme, font)
 	return editor
 }
 
-func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, theme *basic.Theme, font gxui.Font) {
+func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) {
 	e.editors = make(map[string]*CodeEditor)
 	e.driver = driver
 	e.theme = theme
+	e.syntaxTheme = syntaxTheme
 	e.font = font
 	e.PanelHolder.Init(outer, theme)
 	e.SetMargin(math.Spacing{L: 0, T: 2, R: 0, B: 0})
@@ -68,7 +71,7 @@ func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []str
 			e.Focus()
 		})
 	})
-	editor.Init(e.driver, e.theme, e.font, path, headerText)
+	editor.Init(e.driver, e.theme, e.syntaxTheme, e.font, path, headerText)
 	editor.SetTabWidth(4)
 	suggester := suggestions.NewGoCodeProvider(editor, environ)
 	editor.SetSuggestionProvider(suggester)
@@ -166,6 +169,13 @@ func (e *TabbedEditor) CurrentFile() string {
 		return ""
 	}
 	return e.SelectedPanel().(*CodeEditor).Filepath()
+}
+
+func (e *TabbedEditor) Elements() []interface{} {
+	if e.SelectedPanel() == nil {
+		return nil
+	}
+	return []interface{}{e.SelectedPanel()}
 }
 
 func relPath(from, path string) string {

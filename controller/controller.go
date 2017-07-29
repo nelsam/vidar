@@ -54,6 +54,13 @@ func (c *Controller) Navigator() Navigator {
 	return c.navigator
 }
 
+func (c *Controller) Elements() []interface{} {
+	return []interface{}{
+		c.navigator,
+		c.editor,
+	}
+}
+
 // SetNavigator sets c's Navigator instance.
 func (c *Controller) SetNavigator(navigator Navigator) {
 	if c.navigator != nil {

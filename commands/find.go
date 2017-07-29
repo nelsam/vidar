@@ -93,16 +93,16 @@ func (f *Find) Next() gxui.Focusable {
 
 type findBox struct {
 	mixins.TextBox
-	editor gxui.CodeEditor
+	editor *editor.CodeEditor
 }
 
-func newFindBox(driver gxui.Driver, theme *basic.Theme, editor gxui.CodeEditor) *findBox {
+func newFindBox(driver gxui.Driver, theme *basic.Theme, editor *editor.CodeEditor) *findBox {
 	box := &findBox{}
 	box.Init(driver, theme, editor)
 	return box
 }
 
-func (b *findBox) Init(driver gxui.Driver, theme *basic.Theme, editor gxui.CodeEditor) {
+func (b *findBox) Init(driver gxui.Driver, theme *basic.Theme, editor *editor.CodeEditor) {
 	b.TextBox.Init(b, driver, theme, theme.DefaultMonospaceFont())
 	b.editor = editor
 

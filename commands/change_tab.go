@@ -4,6 +4,8 @@
 
 package commands
 
+import "github.com/nelsam/vidar/commander/bind"
+
 type TabShifter interface {
 	ShiftTab(int)
 }
@@ -29,11 +31,11 @@ func (t *ChangeTab) Menu() string {
 	return "View"
 }
 
-func (t *ChangeTab) Exec(target interface{}) (executed, consume bool) {
+func (t *ChangeTab) Exec(target interface{}) bind.Status {
 	shifter, ok := target.(TabShifter)
 	if !ok {
-		return false, false
+		return bind.Waiting
 	}
 	shifter.ShiftTab(t.shift)
-	return true, true
+	return bind.Done
 }

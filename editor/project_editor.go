@@ -6,11 +6,13 @@ package editor
 
 import (
 	"go/token"
+	"log"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/settings"
+	"github.com/nelsam/vidar/theme"
 )
 
 type ProjectEditor struct {
@@ -19,11 +21,12 @@ type ProjectEditor struct {
 	project settings.Project
 }
 
-func NewProjectEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme, font gxui.Font, project settings.Project) *ProjectEditor {
+func NewProjectEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font, project settings.Project) *ProjectEditor {
 	p := &ProjectEditor{}
 	p.driver = driver
 	p.window = window
 	p.theme = theme
+	p.syntaxTheme = syntaxTheme
 	p.font = font
 	p.SplitterLayout.Init(p, theme)
 	p.SetOrientation(gxui.Horizontal)
@@ -32,7 +35,7 @@ func NewProjectEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme
 	p.project = project
 	p.SetMouseEventTarget(true)
 
-	p.AddChild(NewTabbedEditor(driver, theme, font))
+	p.AddChild(NewTabbedEditor(driver, theme, syntaxTheme, font))
 	return p
 }
 
@@ -59,32 +62,35 @@ func (p *ProjectEditor) open(path string) (editor *CodeEditor, existed bool) {
 }
 
 func (p *ProjectEditor) Project() settings.Project {
+	log.Printf("Returning project %#v", p.project)
 	return p.project
 }
 
 type MultiProjectEditor struct {
 	mixins.LinearLayout
 
-	driver gxui.Driver
-	theme  *basic.Theme
-	font   gxui.Font
-	window gxui.Window
+	driver      gxui.Driver
+	theme       *basic.Theme
+	syntaxTheme theme.Theme
+	font        gxui.Font
+	window      gxui.Window
 
 	current  *ProjectEditor
 	projects map[string]*ProjectEditor
 }
 
-func New(driver gxui.Driver, window gxui.Window, theme *basic.Theme, font gxui.Font) *MultiProjectEditor {
-	defaultEditor := NewProjectEditor(driver, window, theme, font, settings.DefaultProject)
+func New(driver gxui.Driver, window gxui.Window, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *MultiProjectEditor {
+	defaultEditor := NewProjectEditor(driver, window, theme, syntaxTheme, font, settings.DefaultProject)
 
 	e := &MultiProjectEditor{
 		projects: map[string]*ProjectEditor{
 			"*default*": defaultEditor,
 		},
-		driver: driver,
-		window: window,
-		font:   font,
-		theme:  theme,
+		driver:      driver,
+		window:      window,
+		font:        font,
+		theme:       theme,
+		syntaxTheme: syntaxTheme,
 	}
 	e.LinearLayout.Init(e, theme)
 	e.AddChild(defaultEditor)
@@ -95,12 +101,18 @@ func New(driver gxui.Driver, window gxui.Window, theme *basic.Theme, font gxui.F
 func (e *MultiProjectEditor) SetProject(project settings.Project) {
 	editor, ok := e.projects[project.Name]
 	if !ok {
-		editor = NewProjectEditor(e.driver, e.window, e.theme, e.font, project)
+		editor = NewProjectEditor(e.driver, e.window, e.theme, e.syntaxTheme, e.font, project)
 		e.projects[project.Name] = editor
 	}
 	e.RemoveChild(e.current)
 	e.AddChild(editor)
 	e.current = editor
+}
+
+func (e *MultiProjectEditor) Elements() []interface{} {
+	return []interface{}{
+		e.current,
+	}
 }
 
 func (e *MultiProjectEditor) CurrentEditor() *CodeEditor {

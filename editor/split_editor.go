@@ -13,6 +13,7 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/mixins/outer"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/theme"
 )
 
 var (
@@ -63,20 +64,22 @@ const (
 type SplitEditor struct {
 	mixins.SplitterLayout
 
-	driver gxui.Driver
-	theme  *basic.Theme
-	font   gxui.Font
-	window gxui.Window
+	driver      gxui.Driver
+	theme       *basic.Theme
+	syntaxTheme theme.Theme
+	font        gxui.Font
+	window      gxui.Window
 
 	current MultiEditor
 }
 
-func NewSplitEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme, font gxui.Font) *SplitEditor {
+func NewSplitEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *SplitEditor {
 	editor := &SplitEditor{
-		driver: driver,
-		theme:  theme,
-		font:   font,
-		window: window,
+		driver:      driver,
+		theme:       theme,
+		syntaxTheme: syntaxTheme,
+		font:        font,
+		window:      window,
 	}
 	editor.SplitterLayout.Init(editor, theme)
 	return editor
@@ -95,7 +98,7 @@ func (e *SplitEditor) Split(orientation gxui.Orientation) {
 		return
 	}
 	name, editor := e.current.CloseCurrentEditor()
-	newSplit := NewTabbedEditor(e.driver, e.theme, e.font)
+	newSplit := NewTabbedEditor(e.driver, e.theme, e.syntaxTheme, e.font)
 	defer func() {
 		newSplit.Add(name, editor)
 		newSplit.Focus()
@@ -104,7 +107,7 @@ func (e *SplitEditor) Split(orientation gxui.Orientation) {
 		e.AddChild(newSplit)
 		return
 	}
-	newSplitter := NewSplitEditor(e.driver, e.window, e.theme, e.font)
+	newSplitter := NewSplitEditor(e.driver, e.window, e.theme, e.syntaxTheme, e.font)
 	newSplitter.SetOrientation(orientation)
 	var (
 		index       int

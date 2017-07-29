@@ -11,6 +11,7 @@ import (
 	"unicode"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/plugin/status"
 )
@@ -68,30 +69,30 @@ func (g *GotoLine) Next() gxui.Focusable {
 	return input
 }
 
-func (g *GotoLine) Exec(on interface{}) (executed, consume bool) {
+func (g *GotoLine) Exec(on interface{}) bind.Status {
 	lineStr := g.lineNumInput.Text()
 	if lineStr == "" {
 		g.Warn = "No line number provided"
-		return true, true
+		return bind.Done
 	}
 	line, err := strconv.Atoi(lineStr)
 	if err != nil {
 		// This shouldn't ever happen, but in the interests of avoiding data loss,
 		// we just log that it did.
 		log.Printf("ERR: goto-line: failed to parse %s as a line number", g.lineNumInput.Text())
-		return true, true
+		return bind.Failed
 	}
 	line-- // Convert to zero-based.
 
 	if line >= g.editor.Controller().LineCount() {
 		g.Err = fmt.Sprintf("Line %d is past the end of the file", line)
-		return true, true
+		return bind.Failed
 	}
 	if line == -1 {
-		g.Err = "0 line is not exist"
-		return true, true
+		g.Err = "Line 0 does not exist"
+		return bind.Failed
 	}
 	g.editor.Controller().SetCaret(g.editor.LineStart(line))
 	g.editor.ScrollToLine(line)
-	return true, true
+	return bind.Done
 }

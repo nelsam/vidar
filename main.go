@@ -25,6 +25,7 @@ import (
 	"github.com/nelsam/vidar/navigator"
 	"github.com/nelsam/vidar/plugin"
 	"github.com/nelsam/vidar/settings"
+	"github.com/nelsam/vidar/theme"
 	"github.com/spf13/cobra"
 	"github.com/tmc/fonts"
 )
@@ -92,40 +93,40 @@ func font(driver gxui.Driver) gxui.Font {
 }
 
 func uiMain(driver gxui.Driver) {
-	theme := dark.CreateTheme(driver).(*basic.Theme)
+	gTheme := dark.CreateTheme(driver).(*basic.Theme)
 	font := font(driver)
 	if font == nil {
-		font = theme.DefaultMonospaceFont()
+		font = gTheme.DefaultMonospaceFont()
 	}
-	theme.SetDefaultMonospaceFont(font)
-	theme.SetDefaultFont(font)
-	theme.WindowBackground = background
+	gTheme.SetDefaultMonospaceFont(font)
+	gTheme.SetDefaultFont(font)
+	gTheme.WindowBackground = background
 
 	// TODO: figure out a better way to get this resolution
-	window := theme.CreateWindow(1600, 800, "Vidar - GXUI Go Editor")
-	controller := controller.New(driver, theme)
+	window := gTheme.CreateWindow(1600, 800, "Vidar - GXUI Go Editor")
+	controller := controller.New(driver, gTheme)
 
 	// Bindings should be added immediately after creating the commander,
 	// since other types rely on the bindings having been bound.
-	cmdr := commander.New(driver, theme, controller)
+	cmdr := commander.New(driver, gTheme, controller)
 	bindings := []bind.Bindable{commands.NewInputHandler(driver)}
-	for _, c := range commands.Commands(driver, theme) {
+	for _, c := range commands.Commands(driver, gTheme) {
 		bindings = append(bindings, c)
 	}
-	for _, h := range commands.Hooks(driver, theme) {
+	for _, h := range commands.Hooks(driver, gTheme) {
 		bindings = append(bindings, h)
 	}
-	bindings = append(bindings, plugin.Bindables(cmdr, driver, theme)...)
+	bindings = append(bindings, plugin.Bindables(cmdr, driver, gTheme)...)
 	cmdr.Push(bindings...)
 
-	nav := navigator.New(driver, theme, cmdr)
+	nav := navigator.New(driver, gTheme, cmdr)
 	controller.SetNavigator(nav)
 
-	editor := editor.New(driver, window, theme, theme.DefaultMonospaceFont())
+	editor := editor.New(driver, window, gTheme, theme.Default, gTheme.DefaultMonospaceFont())
 	controller.SetEditor(editor)
 
-	projTree := navigator.NewProjectTree(cmdr, driver, window, theme)
-	projects := navigator.NewProjectsPane(cmdr, driver, theme, projTree.Frame())
+	projTree := navigator.NewProjectTree(cmdr, driver, window, gTheme)
+	projects := navigator.NewProjectsPane(cmdr, driver, gTheme, projTree.Frame())
 
 	nav.Add(projects)
 	nav.Add(projTree)

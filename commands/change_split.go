@@ -4,7 +4,10 @@
 
 package commands
 
-import "github.com/nelsam/vidar/editor"
+import (
+	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/editor"
+)
 
 type SplitShifter interface {
 	ShiftSplit(editor.Direction)
@@ -39,11 +42,11 @@ func (p *ChangeFocus) Menu() string {
 	return "View"
 }
 
-func (p *ChangeFocus) Exec(target interface{}) (executed, consume bool) {
+func (p *ChangeFocus) Exec(target interface{}) bind.Status {
 	shifter, ok := target.(SplitShifter)
 	if !ok {
-		return false, false
+		return bind.Waiting
 	}
 	shifter.ShiftSplit(p.direction)
-	return true, true
+	return bind.Done
 }

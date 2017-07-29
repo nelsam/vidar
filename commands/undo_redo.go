@@ -6,13 +6,22 @@ package commands
 
 import (
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/plugin/status"
 )
+
+type Undoer interface {
+	Undo() (gxui.TextBoxEdit, bool)
+}
 
 // An Undo is a command which undoes an action.
 type Undo struct {
 	status.General
+
+	applier Applier
+	undoer  Undoer
+	editor  input.Editor
 }
 
 func NewUndo(theme gxui.Theme) *Undo {
@@ -29,49 +38,58 @@ func (u *Undo) Menu() string {
 	return "Edit"
 }
 
-func (u *Undo) Exec(target interface{}) (executed, consume bool) {
-	finder, ok := target.(EditorFinder)
-	if !ok {
-		return false, false
+func (u *Undo) Reset() {
+	u.applier = nil
+	u.undoer = nil
+	u.editor = nil
+}
+
+func (u *Undo) Store(target interface{}) bind.Status {
+	switch src := target.(type) {
+	case Undoer:
+		u.undoer = src
+	case Applier:
+		u.applier = src
+	case input.Editor:
+		u.editor = src
 	}
-	editor := finder.CurrentEditor()
-	if editor == nil {
-		u.Err = "undo: no file open"
-		return true, true
+	if u.applier != nil && u.undoer != nil && u.editor != nil {
+		return bind.Done
 	}
-	history := editor.History()
-	edit, ok := history.Undo()
+	return bind.Waiting
+}
+
+func (u *Undo) Exec() error {
+	edit, ok := u.undoer.Undo()
 	if !ok {
 		u.Warn = "undo: nothing to undo"
-		return true, true
+		return nil
 	}
-	text, _ := editor.Controller().ReplaceAt(editor.Runes(), edit.At, edit.At+len(edit.New), edit.Old)
-	editor.Controller().SetTextRunes(text)
-	absDelta := edit.Delta
-	if absDelta < 0 {
-		absDelta = -absDelta
-	}
-	editor.Controller().SetSelection(gxui.CreateTextSelection(edit.At, edit.At+absDelta, true))
-	editor.ScrollToRune(edit.At)
-	return true, true
+	u.applier.Apply(u.editor, input.Edit{
+		At:  edit.At,
+		Old: edit.New,
+		New: edit.Old,
+	})
+	return nil
+}
+
+type Redoer interface {
+	RedoCurrent() (gxui.TextBoxEdit, bool)
 }
 
 // A Redo is a command which redoes an action.
 type Redo struct {
 	status.General
 
-	editor *editor.CodeEditor
+	editor  input.Editor
+	redoer  Redoer
+	applier Applier
 }
 
 func NewRedo(theme gxui.Theme) *Redo {
 	r := &Redo{}
 	r.Theme = theme
 	return r
-}
-
-func (r *Redo) Start(target gxui.Control) gxui.Control {
-	r.editor = findEditor(target)
-	return nil
 }
 
 func (r *Redo) Name() string {
@@ -82,28 +100,37 @@ func (r *Redo) Menu() string {
 	return "Edit"
 }
 
-func (r *Redo) Next() gxui.Focusable {
-	return nil
+func (r *Redo) Reset() {
+	r.editor = nil
+	r.redoer = nil
+	r.applier = nil
 }
 
-func (r *Redo) Exec(interface{}) (executed, consume bool) {
-	if r.editor == nil {
-		r.Err = "redo: no file open"
-		return true, true
+func (r *Redo) Store(target interface{}) bind.Status {
+	switch src := target.(type) {
+	case Redoer:
+		r.redoer = src
+	case Applier:
+		r.applier = src
+	case input.Editor:
+		r.editor = src
 	}
-	history := r.editor.History()
-	edit, ok := history.RedoCurrent()
+	if r.applier != nil && r.redoer != nil && r.editor != nil {
+		return bind.Done
+	}
+	return bind.Waiting
+}
+
+func (r *Redo) Exec() error {
+	edit, ok := r.redoer.RedoCurrent()
 	if !ok {
 		r.Warn = "redo: nothing to redo"
-		return true, true
+		return nil
 	}
-	text, _ := r.editor.Controller().ReplaceAt(r.editor.Runes(), edit.At, edit.At+len(edit.Old), edit.New)
-	r.editor.Controller().SetTextRunes(text)
-	absDelta := edit.Delta
-	if absDelta < 0 {
-		absDelta = -absDelta
-	}
-	r.editor.Controller().SetSelection(gxui.CreateTextSelection(edit.At, edit.At+absDelta, true))
-	r.editor.ScrollToRune(edit.At)
-	return true, true
+	r.applier.Apply(r.editor, input.Edit{
+		At:  edit.At,
+		Old: edit.Old,
+		New: edit.New,
+	})
+	return nil
 }

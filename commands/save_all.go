@@ -6,6 +6,7 @@ package commands
 
 import (
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander/bind"
 )
 
 type AllSaver interface {
@@ -26,11 +27,11 @@ func (s *SaveAll) Menu() string {
 	return "File"
 }
 
-func (s *SaveAll) Exec(target interface{}) (executed, consume bool) {
+func (s *SaveAll) Exec(target interface{}) bind.Status {
 	saver, ok := target.(AllSaver)
 	if !ok {
-		return false, false
+		return bind.Waiting
 	}
 	saver.SaveAll()
-	return true, true
+	return bind.Done
 }

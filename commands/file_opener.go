@@ -93,31 +93,31 @@ func (f *FileOpener) Next() gxui.Focusable {
 	return <-f.input
 }
 
-func (f *FileOpener) Exec(element interface{}) (executed, consume bool) {
+func (f *FileOpener) Exec(element interface{}) bind.Status {
 	switch src := element.(type) {
 	case EditorOpener:
 		if f.editor != nil {
-			return false, false
+			return bind.Waiting
 		}
 		f.editor, f.skipHooks = src.Open(f.file.Path(), f.cursor)
 		if f.binder != nil {
 			f.setupHooks()
-			return true, false
+			return bind.Executing
 		}
 	case Opener:
 		src.Open(f.file.Path(), f.cursor)
-		return false, false
+		return bind.Waiting
 	case Binder:
 		if f.binder != nil {
-			return false, false
+			return bind.Waiting
 		}
 		f.binder = src
 		if f.editor != nil {
 			f.setupHooks()
-			return true, false
+			return bind.Executing
 		}
 	}
-	return false, false
+	return bind.Waiting
 }
 
 func (f *FileOpener) setupHooks() {

@@ -18,7 +18,9 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/suggestions"
+	"github.com/nelsam/vidar/theme"
 )
 
 type CodeEditor struct {
@@ -27,9 +29,10 @@ type CodeEditor struct {
 	suggestions      gxui.List
 	suggestionsChild *gxui.Child
 
-	theme   *basic.Theme
-	driver  gxui.Driver
-	history *History
+	theme       *basic.Theme
+	syntaxTheme theme.Theme
+	driver      gxui.Driver
+	history     *History
 
 	lastModified time.Time
 	hasChanges   bool
@@ -44,11 +47,13 @@ type CodeEditor struct {
 	onRename func(newPath string)
 }
 
-func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font, file, headerText string) {
+func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font, file, headerText string) {
 	e.theme = theme
+	e.syntaxTheme = syntaxTheme
 	e.driver = driver
 	e.history = NewHistory()
 
+	// TODO: move to plugins
 	e.adapter = &suggestions.Adapter{}
 	e.suggestions = e.CreateSuggestionList()
 	e.suggestions.SetAdapter(e.adapter)
@@ -58,6 +63,7 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, font gxui.Font
 	e.SetDesiredWidth(math.MaxSize.W)
 	e.watcherSetup()
 
+	// TODO: move to plugins
 	e.OnTextChanged(func(changes []gxui.TextBoxEdit) {
 		e.hasChanges = true
 		e.history.Add(changes...)
@@ -201,16 +207,12 @@ func (e *CodeEditor) load(headerText string) {
 		log.Printf("%s: header text does not match requested header text", e.filepath)
 	}
 	e.driver.Call(func() {
-		if e.Text() == string(b) {
+		if e.Text() == newText {
 			return
 		}
 		e.SetText(newText)
 		e.restorePositions()
 	})
-}
-
-func (e *CodeEditor) History() *History {
-	return e.history
 }
 
 func (e *CodeEditor) HasChanges() bool {
@@ -228,6 +230,32 @@ func (e *CodeEditor) Filepath() string {
 func (e *CodeEditor) FlushedChanges() {
 	e.hasChanges = false
 	e.lastModified = time.Now()
+}
+
+func (e *CodeEditor) Elements() []interface{} {
+	return []interface{}{
+		e.history,
+		e.adapter,
+	}
+}
+
+func (e *CodeEditor) SetSyntaxLayers(layers []input.SyntaxLayer) {
+	e.syntaxTheme.Rainbow.Reset()
+	gLayers := make(gxui.CodeSyntaxLayers, 0, len(layers))
+	for _, l := range layers {
+		highlight, found := e.syntaxTheme.Constructs[l.Construct]
+		if !found {
+			highlight = e.syntaxTheme.Rainbow.New()
+		}
+		gLayer := gxui.CreateCodeSyntaxLayer()
+		gLayer.SetColor(gxui.Color(highlight.Foreground))
+		gLayer.SetBackgroundColor(gxui.Color(highlight.Background))
+		for _, s := range l.Spans {
+			gLayer.Add(s.Start, s.End-s.Start)
+		}
+		gLayers = append(gLayers, gLayer)
+	}
+	e.CodeEditor.SetSyntaxLayers(gLayers)
 }
 
 func (e *CodeEditor) Paint(c gxui.Canvas) {
@@ -421,7 +449,7 @@ func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 
 func (e *CodeEditor) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
 	if e.IsSuggestionListShowing() {
-		e.SortSuggestionList()
+		e.driver.Call(e.SortSuggestionList)
 	}
 	return false
 }

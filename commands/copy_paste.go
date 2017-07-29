@@ -7,8 +7,12 @@ package commands
 import (
 	"bytes"
 	"fmt"
+	"log"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/plugin/status"
 )
 
@@ -30,14 +34,14 @@ func (c *Copy) Menu() string {
 	return "Edit"
 }
 
-func (c *Copy) Exec(target interface{}) (executed, consume bool) {
+func (c *Copy) Exec(target interface{}) bind.Status {
 	finder, ok := target.(EditorFinder)
 	if !ok {
-		return false, false
+		return bind.Waiting
 	}
 	editor := finder.CurrentEditor()
 	if editor == nil {
-		return true, true
+		return bind.Done
 	}
 
 	selections := editor.Controller().Selections()
@@ -47,11 +51,18 @@ func (c *Copy) Exec(target interface{}) (executed, consume bool) {
 	}
 
 	c.driver.SetClipboard(buffer.String())
-	return true, true
+	return bind.Done
+}
+
+type InputController interface {
+	InputHandler() input.Handler
 }
 
 type Cut struct {
 	Copy
+
+	editor       *editor.CodeEditor
+	inputHandler input.Handler
 }
 
 func NewCut(driver gxui.Driver) *Cut {
@@ -63,26 +74,53 @@ func (c *Cut) Name() string {
 	return "cut-selection"
 }
 
-func (c *Cut) Exec(target interface{}) (executed, consume bool) {
-	executed, consume = c.Copy.Exec(target)
-	if !executed {
-		return executed, consume
+func (c *Cut) Start(gxui.Control) gxui.Control {
+	c.inputHandler = nil
+	c.editor = nil
+	return nil
+}
+
+func (c *Cut) Exec(target interface{}) bind.Status {
+	switch src := target.(type) {
+	case EditorFinder:
+		status := c.Copy.Exec(src)
+		if status&bind.Executed == 0 {
+			log.Printf("Error: copy command failed to exec on EditorFinder")
+		}
+		c.editor = src.CurrentEditor()
+		if c.inputHandler != nil {
+			c.removeSelections()
+			return bind.Done
+		}
+	case InputController:
+		c.inputHandler = src.InputHandler()
+		if c.editor != nil {
+			c.removeSelections()
+			return bind.Done
+		}
 	}
-	editor := target.(EditorFinder).CurrentEditor()
-	if editor == nil {
-		return true, consume
+	return bind.Waiting
+}
+
+func (c *Cut) removeSelections() {
+	text := c.editor.Controller().TextRunes()
+	var edits []input.Edit
+	for _, s := range c.editor.Controller().Selections() {
+		old := text[s.Start():s.End()]
+		edits = append(edits, input.Edit{
+			At:  s.Start(),
+			Old: old,
+		})
 	}
-	selection := editor.Controller().FirstSelection()
-	newRunes, edit := editor.Controller().ReplaceAt(editor.Runes(), selection.Start(), selection.End(), []rune(""))
-	editor.Controller().SetTextEdits(newRunes, []gxui.TextBoxEdit{edit})
-	editor.Controller().ClearSelections()
-	return true, consume
+	c.inputHandler.Apply(c.editor, edits...)
 }
 
 type Paste struct {
 	status.General
 
-	driver gxui.Driver
+	driver       gxui.Driver
+	editor       *editor.CodeEditor
+	inputHandler input.Handler
 }
 
 func NewPaste(driver gxui.Driver, theme gxui.Theme) *Paste {
@@ -100,22 +138,46 @@ func (p *Paste) Menu() string {
 	return "Edit"
 }
 
-func (p *Paste) Exec(target interface{}) (executed, consume bool) {
-	finder, ok := target.(EditorFinder)
-	if !ok {
-		return false, false
+func (p *Paste) Start(gxui.Control) gxui.Control {
+	p.editor = nil
+	p.inputHandler = nil
+	return nil
+}
+
+func (p *Paste) Exec(target interface{}) bind.Status {
+	switch src := target.(type) {
+	case EditorFinder:
+		p.editor = src.CurrentEditor()
+		if p.inputHandler != nil {
+			p.replaceSelections()
+			return bind.Done
+		}
+	case InputController:
+		p.inputHandler = src.InputHandler()
+		if p.editor != nil {
+			p.replaceSelections()
+			return bind.Done
+		}
 	}
-	editor := finder.CurrentEditor()
-	if editor == nil {
-		return true, true
-	}
+	return bind.Waiting
+}
+
+func (p *Paste) replaceSelections() {
+	text := p.editor.Controller().TextRunes()
+	var edits []input.Edit
 	contents, err := p.driver.GetClipboard()
 	if err != nil {
 		p.Err = fmt.Sprintf("Error reading clipboard: %s", err)
-		return true, false
+		return
 	}
-	editor.Controller().Replace(func(sel gxui.TextSelection) string {
-		return contents
-	})
-	return true, true
+	replacement := []rune(contents)
+	for _, s := range p.editor.Controller().Selections() {
+		old := text[s.Start():s.End()]
+		edits = append(edits, input.Edit{
+			At:  s.Start(),
+			Old: old,
+			New: replacement,
+		})
+	}
+	p.inputHandler.Apply(p.editor, edits...)
 }
