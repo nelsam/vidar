@@ -29,7 +29,6 @@ func (s *Syntax) addBadDecl(decl *ast.BadDecl) {
 }
 
 func (s *Syntax) addFuncDecl(decl *ast.FuncDecl) {
-	s.addFuncType(decl.Type)
 	if decl.Recv != nil {
 		s.addFieldList(decl.Recv)
 	}
