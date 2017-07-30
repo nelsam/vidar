@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -236,16 +237,20 @@ func (e *CodeEditor) Elements() []interface{} {
 	return []interface{}{
 		e.history,
 		e.adapter,
+		e.Controller(),
 	}
 }
 
 func (e *CodeEditor) SetSyntaxLayers(layers []input.SyntaxLayer) {
-	e.syntaxTheme.Rainbow.Reset()
+	defer e.syntaxTheme.Rainbow.Reset()
+	sort.Slice(layers, func(i, j int) bool {
+		return layers[i].Construct < layers[j].Construct
+	})
 	gLayers := make(gxui.CodeSyntaxLayers, 0, len(layers))
 	for _, l := range layers {
 		highlight, found := e.syntaxTheme.Constructs[l.Construct]
 		if !found {
-			highlight = e.syntaxTheme.Rainbow.New()
+			highlight = e.syntaxTheme.Rainbow.Next()
 		}
 		gLayer := gxui.CreateCodeSyntaxLayer()
 		gLayer.SetColor(gxui.Color(highlight.Foreground))

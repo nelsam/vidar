@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	DefaultRainbow = &Rainbow{
+	DefaultRainbow = Rainbow{
 		Range: HighlightRange{
 			Min: Highlight{
 				Foreground: Color{
@@ -114,21 +114,18 @@ func (r *Rainbow) Reset() {
 	r.inUse = r.inUse[:0]
 }
 
-func (r *Rainbow) New() Highlight {
-	next := r.Range.New()
-	if len(r.Available) > 0 {
-		lastIdx := len(r.Available) - 1
-		next = r.Available[lastIdx]
-		r.Available = r.Available[:lastIdx]
+func (r *Rainbow) next() Highlight {
+	lastIdx := len(r.Available) - 1
+	if lastIdx < 0 {
+		return r.Range.New()
 	}
-	r.inUse = append(r.inUse, next)
-	return next
+	highlight := r.Available[lastIdx]
+	r.Available = r.Available[:lastIdx]
+	return highlight
 }
 
-func (r *Rainbow) Pop() Highlight {
-	lastIdx := len(r.inUse) - 1
-	color := r.inUse[lastIdx]
-	r.inUse = r.inUse[:lastIdx]
-	r.Available = append(r.Available, color)
-	return color
+func (r *Rainbow) Next() Highlight {
+	next := r.next()
+	r.inUse = append(r.inUse, next)
+	return next
 }

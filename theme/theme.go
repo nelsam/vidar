@@ -24,5 +24,5 @@ type Theme struct {
 	// value and increment for nested scopes.
 	//
 	// See the gosyntax plugin for an example.
-	Rainbow *Rainbow
+	Rainbow Rainbow
 }

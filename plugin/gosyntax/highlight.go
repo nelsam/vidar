@@ -6,7 +6,6 @@ package gosyntax
 
 import (
 	"context"
-	"log"
 
 	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/syntax"
@@ -39,7 +38,7 @@ func (h *Highlight) TextChanged(ctx context.Context, editor input.Editor, _ []in
 	err := h.syntax.Parse(editor.Text())
 	if err != nil {
 		// TODO: Report the error in the UI
-		log.Printf("Error parsing syntax: %s", err)
+		_ = err
 	}
 	layers := h.syntax.Layers()
 	h.layers = make([]input.SyntaxLayer, 0, len(layers))
