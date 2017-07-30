@@ -18,33 +18,40 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/settings"
 )
 
-type OpenProject interface {
+type Projecter interface {
 	Project() settings.Project
-	CurrentEditor() *editor.CodeEditor
 }
 
 type Commander interface {
-	Command(name string) bind.Command
+	Execute(bind.Command)
 }
 
 type Opener interface {
+	bind.Command
 	SetLocation(filepath string, position token.Position)
-	Exec(interface{}) (executed, consume bool)
+}
+
+type Editor interface {
+	Filepath() string
+	Text() string
+}
+
+type CursorController interface {
+	LastCaret() int
 }
 
 type Godef struct {
 	status.General
 
-	proj   OpenProject
+	proj   Projecter
 	cmdr   Commander
 	opener Opener
-
-	callables []interface{}
+	editor Editor
+	ctrl   CursorController
 }
 
 func New(theme gxui.Theme) *Godef {
@@ -61,59 +68,38 @@ func (g *Godef) Menu() string {
 	return "Edit"
 }
 
-func (g *Godef) Start(gxui.Control) gxui.Control {
+func (g *Godef) Reset() {
 	g.proj = nil
 	g.cmdr = nil
-	g.callables = nil
 	g.opener = nil
-	return nil
+	g.ctrl = nil
+	g.editor = nil
 }
 
-func (g *Godef) Exec(on interface{}) (executed, consume bool) {
-	// TODO: Refactor this!  Seriously, vidar's design is forcing
-	// this to be more complicated than it needs to be.
-	backtrack := false
-	switch src := on.(type) {
-	case OpenProject:
+func (g *Godef) Store(target interface{}) bind.Status {
+	switch src := target.(type) {
+	case Projecter:
 		g.proj = src
-		if g.cmdr != nil {
-			backtrack = true
-			g.opener = g.setup()
-		}
 	case Commander:
 		g.cmdr = src
-		if g.proj != nil {
-			backtrack = true
-			g.opener = g.setup()
-		}
+	case Editor:
+		g.editor = src
+	case CursorController:
+		g.ctrl = src
+	case Opener:
+		g.opener = src
 	}
-	if g.opener == nil {
-		g.callables = append(g.callables, on)
-		return false, false
+	if g.proj != nil && g.cmdr != nil && g.opener != nil && g.ctrl != nil && g.editor != nil {
+		return bind.Done
 	}
-
-	if backtrack {
-		for _, c := range g.callables {
-			subExecuted, subConsume := g.opener.Exec(c)
-			executed = executed || subExecuted
-			if subConsume {
-				return executed, subConsume
-			}
-		}
-	}
-
-	return g.opener.Exec(on)
+	return bind.Waiting
 }
 
-func (g *Godef) setup() Opener {
-	editor := g.proj.CurrentEditor()
-	if editor == nil {
-		return nil
-	}
+func (g *Godef) Exec() error {
 	proj := g.proj.Project()
-	lastCaret := editor.Controller().LastCaret()
-	cmd := exec.Command("godef", "-f", editor.Filepath(), "-o", strconv.Itoa(lastCaret), "-i")
-	cmd.Stdin = bytes.NewBufferString(editor.Text())
+	lastCaret := g.ctrl.LastCaret()
+	cmd := exec.Command("godef", "-f", g.editor.Filepath(), "-o", strconv.Itoa(lastCaret), "-i")
+	cmd.Stdin = bytes.NewBufferString(g.editor.Text())
 	errBuffer := &bytes.Buffer{}
 	cmd.Stderr = errBuffer
 	cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
@@ -124,23 +110,19 @@ func (g *Godef) setup() Opener {
 	output, err := cmd.Output()
 	if err != nil {
 		g.Err = fmt.Sprintf("godef error: %s", string(output))
-		return nil
+		return err
 	}
 	path, line, column, err := parseGodef(output)
 	if err != nil {
 		g.Err = err.Error()
-		return nil
+		return err
 	}
-	open, ok := g.cmdr.Command("open-file").(Opener)
-	if !ok {
-		g.Err = "no open-file command found"
-		return nil
-	}
-	open.SetLocation(path, token.Position{
+	g.opener.SetLocation(path, token.Position{
 		Line:   line,
 		Column: column,
 	})
-	return open
+	g.cmdr.Execute(g.opener)
+	return nil
 }
 
 func parseGodef(output []byte) (path string, line, column int, err error) {

@@ -13,16 +13,25 @@ import (
 	"strings"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/settings"
 )
 
 const stdinPathPattern = "<standard input>:"
 
-type OpenProject interface {
-	CurrentEditor() *editor.CodeEditor
+type Projecter interface {
 	Project() settings.Project
+}
+
+type Editor interface {
+	input.Editor
+	Filepath() string
+}
+
+type Applier interface {
+	Apply(input.Editor, ...input.Edit)
 }
 
 type OnSave struct {
@@ -42,6 +51,10 @@ func (o OnSave) BeforeSave(proj settings.Project, path, text string) (newText st
 
 type GoImports struct {
 	status.General
+
+	editor    Editor
+	projecter Projecter
+	applier   Applier
 }
 
 func New(theme gxui.Theme) *GoImports {
@@ -58,32 +71,41 @@ func (gi *GoImports) Menu() string {
 	return "Edit"
 }
 
-func (gi *GoImports) Exec(on interface{}) (executed, consume bool) {
-	current, ok := on.(OpenProject)
-	if !ok {
-		return false, false
+func (gi *GoImports) Reset() {
+	gi.editor = nil
+	gi.projecter = nil
+	gi.applier = nil
+}
+
+func (gi *GoImports) Store(target interface{}) bind.Status {
+	switch src := target.(type) {
+	case Editor:
+		gi.editor = src
+	case Projecter:
+		gi.projecter = src
+	case Applier:
+		gi.applier = src
 	}
-	editor := current.CurrentEditor()
-	if editor == nil {
-		return true, true
+	if gi.editor != nil && gi.projecter != nil && gi.applier != nil {
+		return bind.Done
 	}
-	proj := current.Project()
-	text := editor.Text()
-	formatted, err := goimports(proj.Gopath, editor.Filepath(), text)
+	return bind.Waiting
+}
+
+func (gi *GoImports) Exec() error {
+	proj := gi.projecter.Project()
+	text := gi.editor.Text()
+	formatted, err := goimports(proj.Gopath, gi.editor.Filepath(), text)
 	if err != nil {
 		gi.Err = err.Error()
-		return true, true
+		return err
 	}
-	edits := []gxui.TextBoxEdit{
-		{
-			At:    0,
-			Delta: len(formatted) - len(text),
-			Old:   []rune(text),
-			New:   []rune(formatted),
-		},
-	}
-	editor.Controller().SetTextEdits([]rune(formatted), edits)
-	return true, true
+	gi.applier.Apply(gi.editor, input.Edit{
+		At:  0,
+		Old: []rune(text),
+		New: []rune(formatted),
+	})
+	return nil
 }
 
 func goimports(gopath, path, text string) (newText string, err error) {

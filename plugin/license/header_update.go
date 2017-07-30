@@ -8,18 +8,33 @@ import (
 	"strings"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/settings"
 )
 
-type OpenProject interface {
-	CurrentEditor() *editor.CodeEditor
+type Projecter interface {
 	Project() settings.Project
+}
+
+type Applier interface {
+	Apply(input.Editor, ...input.Edit)
+}
+
+type Controller interface {
+	LineCount() int
+	LineStart(int) int
+	Line(int) string
 }
 
 type HeaderUpdate struct {
 	status.General
+
+	editor    input.Editor
+	applier   Applier
+	projecter Projecter
+	ctrl      Controller
 }
 
 func NewHeaderUpdate(theme gxui.Theme) *HeaderUpdate {
@@ -36,31 +51,34 @@ func (u *HeaderUpdate) Menu() string {
 	return "Edit"
 }
 
-func (u *HeaderUpdate) Exec(on interface{}) (executed, consume bool) {
-	proj, ok := on.(OpenProject)
-	if !ok {
-		return false, false
+func (u *HeaderUpdate) Store(target interface{}) bind.Status {
+	switch src := target.(type) {
+	case Projecter:
+		u.projecter = src
+	case Applier:
+		u.applier = src
+	case input.Editor:
+		u.editor = src
+	case Controller:
+		u.ctrl = src
 	}
-	edit := u.LicenseEdit(proj)
-	if edit == nil {
-		return true, true
+	if u.projecter != nil && u.applier != nil && u.editor != nil && u.ctrl != nil {
+		return bind.Done
 	}
-	editor := proj.CurrentEditor()
-	oldRunes := editor.Controller().TextRunes()
-	runes := make([]rune, 0, len(oldRunes)+edit.Delta)
-	runes = append(runes, edit.New...)
-	runes = append(runes, oldRunes[len(edit.Old):]...)
-
-	editor.Controller().SetTextEdits(runes, []gxui.TextBoxEdit{*edit})
-	return true, true
+	return bind.Waiting
 }
 
-func (u *HeaderUpdate) LicenseEdit(proj OpenProject) *gxui.TextBoxEdit {
-	editor := proj.CurrentEditor()
-	if editor == nil {
+func (u *HeaderUpdate) Exec() error {
+	edit := u.LicenseEdit()
+	if edit == nil {
 		return nil
 	}
-	licenseHeader := strings.TrimSpace(proj.Project().LicenseHeader())
+	u.applier.Apply(u.editor, *edit)
+	return nil
+}
+
+func (u *HeaderUpdate) LicenseEdit() *input.Edit {
+	licenseHeader := strings.TrimSpace(u.projecter.Project().LicenseHeader())
 	if licenseHeader != "" {
 		licenseHeader += "\n\n"
 	}
@@ -69,17 +87,17 @@ func (u *HeaderUpdate) LicenseEdit(proj OpenProject) *gxui.TextBoxEdit {
 	// should have an empty line following them, and should not
 	// contain build tag comments
 	firstCommentBlockEnd := 0
-	numberOfLines := editor.Controller().LineCount()
+	numberOfLines := u.ctrl.LineCount()
 	for i := 0; i < numberOfLines; i++ {
-		line := editor.Controller().LineRunes(i)
+		line := u.ctrl.Line(i)
 		if !strings.HasPrefix(string(line), "//") && i+1 != numberOfLines {
 			if len(line) == 0 {
-				firstCommentBlockEnd = editor.Controller().LineStart(i + 1)
+				firstCommentBlockEnd = u.ctrl.LineStart(i + 1)
 			}
 			break
 		}
 	}
-	commentText := editor.Text()[:firstCommentBlockEnd]
+	commentText := u.editor.Text()[:firstCommentBlockEnd]
 	if strings.Contains(commentText, "// +build ") {
 		commentText = ""
 	}
@@ -87,10 +105,9 @@ func (u *HeaderUpdate) LicenseEdit(proj OpenProject) *gxui.TextBoxEdit {
 		u.Info = "license is already set correctly"
 		return nil
 	}
-	return &gxui.TextBoxEdit{
-		At:    0,
-		Delta: len(licenseHeader) - len(commentText),
-		Old:   []rune(commentText),
-		New:   []rune(licenseHeader),
+	return &input.Edit{
+		At:  0,
+		Old: []rune(commentText),
+		New: []rune(licenseHeader),
 	}
 }

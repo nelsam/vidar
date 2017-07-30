@@ -8,14 +8,26 @@ import (
 	"regexp"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/commander/input"
 )
 
-type EditorContainer interface {
-	CurrentEditor() *editor.CodeEditor
+type Applier interface {
+	Apply(input.Editor, ...input.Edit)
+}
+
+type Editor interface {
+	input.Editor
+}
+
+type Selecter interface {
+	Selections() gxui.TextSelectionList
 }
 
 type Toggle struct {
+	editor   input.Editor
+	applier  Applier
+	selecter Selecter
 }
 
 func NewToggle() *Toggle {
@@ -30,31 +42,45 @@ func (c *Toggle) Menu() string {
 	return "Edit"
 }
 
-func (c *Toggle) Exec(target interface{}) (executed, consume bool) {
-	container, ok := target.(EditorContainer)
-	if !ok {
-		return false, false
-	}
-	editor := container.CurrentEditor()
-	if editor == nil {
-		return true, true
-	}
+func (t *Toggle) Reset() {
+	t.editor = nil
+	t.applier = nil
+	t.selecter = nil
+}
 
-	selections := editor.Controller().Selections()
+func (t *Toggle) Store(target interface{}) bind.Status {
+	switch src := target.(type) {
+	case Applier:
+		t.applier = src
+	case input.Editor:
+		t.editor = src
+	case Selecter:
+		t.selecter = src
+	}
+	if t.editor != nil && t.applier != nil && t.selecter != nil {
+		return bind.Done
+	}
+	return bind.Waiting
+}
 
+func (t *Toggle) Exec() error {
+	selections := t.selecter.Selections()
+
+	var edits []input.Edit
 	for i := selections.Len(); i != 0; i-- {
 		begin, end := selections.Interval(i - 1)
-		str := string(editor.Runes()[begin:end])
+		str := t.editor.Text()[begin:end]
 		re, replace := regexpReplace(str)
 		newstr := re.ReplaceAllString(str, replace)
-		newRunes, edit := editor.Controller().ReplaceAt(
-			editor.Runes(), int(begin), int(end), []rune(newstr))
 
-		editor.Controller().SetTextEdits(newRunes, []gxui.TextBoxEdit{edit})
-
+		edits = append(edits, input.Edit{
+			At:  int(begin),
+			Old: []rune(str),
+			New: []rune(newstr),
+		})
 	}
-	return true, true
-
+	t.applier.Apply(t.editor, edits...)
+	return nil
 }
 
 func regexpReplace(str string) (*regexp.Regexp, string) {
