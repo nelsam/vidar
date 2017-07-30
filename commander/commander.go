@@ -154,7 +154,6 @@ func (c *Commander) Push(bindables ...bind.Bindable) {
 		case bind.CommandHook:
 			hooks = append(hooks, src)
 		case bind.Command:
-			log.Printf("Binding command %s", src.Name())
 			c.bind(src, settings.Bindings(src.Name())...)
 		case input.Handler:
 			newInputHandler = src
@@ -337,7 +336,6 @@ func (c *Commander) Execute(e bind.Command) {
 	var status bind.Status
 	switch src := e.(type) {
 	case bind.Executor:
-		log.Printf("Executing with type %T", src)
 		status = execute(src.Exec, c)
 	case bind.MultiExecutor:
 		src.Reset()
