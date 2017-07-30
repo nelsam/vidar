@@ -356,8 +356,8 @@ func (c *Commander) Execute(e bind.Command) {
 
 func (c *Commander) Elements() []interface{} {
 	all := make([]interface{}, 0, len(c.commands))
-	for _, command := range c.commands {
-		all = append(all, command)
+	for _, binding := range c.commands {
+		all = append(all, binding.command)
 	}
 	all = append(all, c.controller, c.inputHandler)
 	return all
