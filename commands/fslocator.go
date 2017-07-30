@@ -440,12 +440,10 @@ func findCurrentFile(control gxui.Control) string {
 }
 
 func findProject(e interface{}) (settings.Project, bool) {
-	log.Printf("Looking for Projecter in %T", e)
 	switch src := e.(type) {
 	case Projecter:
 		return src.Project(), true
 	case Elementer:
-		log.Printf("%T is an Elementer, descending...", e)
 		for _, elem := range src.Elements() {
 			if proj, ok := findProject(elem); ok {
 				return proj, true

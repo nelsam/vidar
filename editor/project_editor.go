@@ -6,7 +6,6 @@ package editor
 
 import (
 	"go/token"
-	"log"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
@@ -62,7 +61,6 @@ func (p *ProjectEditor) open(path string) (editor *CodeEditor, existed bool) {
 }
 
 func (p *ProjectEditor) Project() settings.Project {
-	log.Printf("Returning project %#v", p.project)
 	return p.project
 }
 

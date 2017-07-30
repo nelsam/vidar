@@ -6,7 +6,6 @@ package commands
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -97,14 +96,11 @@ func (s *SaveCurrent) Reset() {
 func (s *SaveCurrent) Store(target interface{}) bind.Status {
 	switch src := target.(type) {
 	case Projecter:
-		log.Printf("storing project")
 		proj := src.Project()
 		s.proj = &proj
 	case Applier:
-		log.Printf("storing applier")
 		s.applier = src
 	case Editor:
-		log.Printf("storing editor")
 		s.editor = src
 	}
 	if s.editor != nil && s.proj != nil && s.applier != nil && s.editor != nil {
