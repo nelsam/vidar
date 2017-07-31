@@ -102,6 +102,10 @@ func (b *commandBox) Run(command bind.Command) (needsInput bool) {
 	return b.nextInput()
 }
 
+func (b *commandBox) Finished(event gxui.KeyboardEvent) bool {
+	return event.Modifier == 0 && event.Key == gxui.KeyEnter
+}
+
 func (b *commandBox) startCurrent() {
 	starter, ok := b.current.(Starter)
 	if !ok {

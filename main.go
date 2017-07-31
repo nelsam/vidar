@@ -20,6 +20,7 @@ import (
 	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commands"
+	"github.com/nelsam/vidar/commands/input"
 	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/navigator"
@@ -109,7 +110,7 @@ func uiMain(driver gxui.Driver) {
 	// Bindings should be added immediately after creating the commander,
 	// since other types rely on the bindings having been bound.
 	cmdr := commander.New(driver, gTheme, controller)
-	bindings := []bind.Bindable{commands.NewInputHandler(driver)}
+	bindings := []bind.Bindable{input.New(driver)}
 	for _, c := range commands.Commands(driver, gTheme) {
 		bindings = append(bindings, c)
 	}

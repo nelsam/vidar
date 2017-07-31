@@ -296,24 +296,32 @@ func (c *Commander) command(name string) bind.Command {
 
 // KeyPress handles key bindings for c.
 func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
+	editor := c.controller.Editor()
 	if event.Modifier == 0 && event.Key == gxui.KeyEscape {
 		c.box.Clear()
-		c.controller.Editor().Focus()
+		editor.Focus()
 		return true
 	}
-	cmdDone := c.box.HasFocus() && event.Modifier == 0 && event.Key == gxui.KeyEnter
+	codeEditor := editor.CurrentEditor()
+	if codeEditor != nil && codeEditor.HasFocus() {
+		c.inputHandler.HandleEvent(codeEditor, event)
+	}
 	if command := c.Binding(event); command != nil {
 		c.box.Clear()
 		if c.box.Run(command) {
 			return true
 		}
-		cmdDone = true
+		c.Execute(c.box.Current())
+		c.box.Finish()
+		return true
 	}
-	if !cmdDone {
+	if !c.box.HasFocus() {
 		return false
 	}
-	c.Execute(c.box.Current())
-	c.box.Finish()
+	if c.box.Finished(event) {
+		c.Execute(c.box.Current())
+		c.box.Finish()
+	}
 	return true
 }
 

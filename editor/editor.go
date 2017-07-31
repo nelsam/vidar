@@ -395,13 +395,7 @@ func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 	case gxui.KeyPeriod:
 		e.ShowSuggestionList()
 		return true
-	case gxui.KeyBackspace:
-		result := e.TextBox.KeyPress(event)
-		if e.IsSuggestionListShowing() {
-			e.SortSuggestionList()
-		}
-		return result
-	case gxui.KeyPageUp, gxui.KeyPageDown, gxui.KeyDelete:
+	case gxui.KeyPageUp, gxui.KeyPageDown:
 		// These are all bindings that the TextBox handles fine.
 		return e.TextBox.KeyPress(event)
 	case gxui.KeyTab:
