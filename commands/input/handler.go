@@ -100,7 +100,7 @@ func (h *Handler) Apply(e input.Editor, edits ...input.Edit) {
 		delta += newE - oldE
 	}
 	c.Deselect(false)
-	h.driver.Call(func() {
+	h.driver.CallSync(func() {
 		c.SetTextRunes(text)
 		h.textEdited(e, edits)
 		if editor.IsSuggestionListShowing() {
