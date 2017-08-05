@@ -33,7 +33,6 @@ type CodeEditor struct {
 	theme       *basic.Theme
 	syntaxTheme theme.Theme
 	driver      gxui.Driver
-	history     *History
 
 	lastModified time.Time
 	hasChanges   bool
@@ -52,7 +51,6 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, syntaxTheme th
 	e.theme = theme
 	e.syntaxTheme = syntaxTheme
 	e.driver = driver
-	e.history = NewHistory()
 
 	// TODO: move to plugins
 	e.adapter = &suggestions.Adapter{}
@@ -67,7 +65,6 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, syntaxTheme th
 	// TODO: move to plugins
 	e.OnTextChanged(func(changes []gxui.TextBoxEdit) {
 		e.hasChanges = true
-		e.history.Add(changes...)
 	})
 	e.filepath = file
 	e.open(headerText)
@@ -235,7 +232,6 @@ func (e *CodeEditor) FlushedChanges() {
 
 func (e *CodeEditor) Elements() []interface{} {
 	return []interface{}{
-		e.history,
 		e.adapter,
 		e.Controller(),
 	}
@@ -420,6 +416,8 @@ func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 	case gxui.KeyEnter:
 		controller := e.Controller()
 		if e.IsSuggestionListShowing() {
+			// TODO: Use the InputHandler.  This will probably be easiest
+			// if we implement the event in the InputHandler's hooks, somehow.
 			text := e.adapter.Suggestion(e.suggestions.Selected()).Code()
 			start, end := controller.WordAt(controller.LastCaret())
 			controller.SetSelection(gxui.CreateTextSelection(start, end, false))

@@ -13,6 +13,7 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/editor"
 )
 
@@ -114,13 +115,13 @@ func (b *findBox) Init(driver gxui.Driver, theme *basic.Theme, editor *editor.Co
 	b.SetMultiline(false)
 }
 
-func findEditor(control gxui.Control) *editor.CodeEditor {
-	switch src := control.(type) {
-	case EditorFinder:
-		return src.CurrentEditor()
-	case gxui.Parent:
-		for _, child := range src.Children() {
-			if editor := findEditor(child.Control); editor != nil {
+func findEditor(elem interface{}) *editor.CodeEditor {
+	switch src := elem.(type) {
+	case *editor.CodeEditor:
+		return src
+	case commander.Elementer:
+		for _, child := range src.Elements() {
+			if editor := findEditor(child); editor != nil {
 				return editor
 			}
 		}

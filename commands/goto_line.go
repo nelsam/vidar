@@ -5,6 +5,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -12,16 +13,27 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/plugin/status"
 )
+
+type Editor interface {
+	LineStart(int) int
+	ScrollToLine(int)
+}
+
+type LineControl interface {
+	LineCount() int
+	SetCaret(int)
+}
 
 type GotoLine struct {
 	status.General
 
-	editor       *editor.CodeEditor
 	lineNumInput gxui.TextBox
 	input        gxui.Focusable
+
+	editor Editor
+	ctrl   LineControl
 }
 
 func NewGotoLine(theme gxui.Theme) *GotoLine {
@@ -46,10 +58,6 @@ func NewGotoLine(theme gxui.Theme) *GotoLine {
 }
 
 func (g *GotoLine) Start(on gxui.Control) gxui.Control {
-	g.editor = findEditor(on)
-	if g.editor == nil {
-		return nil
-	}
 	g.lineNumInput.SetText("")
 	g.input = g.lineNumInput
 	return nil
@@ -69,30 +77,50 @@ func (g *GotoLine) Next() gxui.Focusable {
 	return input
 }
 
-func (g *GotoLine) Exec(on interface{}) bind.Status {
+func (g *GotoLine) Reset() {
+	g.editor = nil
+	g.ctrl = nil
+}
+
+func (g *GotoLine) Store(elem interface{}) bind.Status {
+	switch src := elem.(type) {
+	case LineControl:
+		g.ctrl = src
+	case Editor:
+		g.editor = src
+	}
+	if g.editor != nil && g.ctrl != nil {
+		return bind.Done
+	}
+	return bind.Waiting
+}
+
+func (g *GotoLine) Exec() error {
 	lineStr := g.lineNumInput.Text()
 	if lineStr == "" {
 		g.Warn = "No line number provided"
-		return bind.Done
+		return nil
 	}
 	line, err := strconv.Atoi(lineStr)
 	if err != nil {
 		// This shouldn't ever happen, but in the interests of avoiding data loss,
 		// we just log that it did.
 		log.Printf("ERR: goto-line: failed to parse %s as a line number", g.lineNumInput.Text())
-		return bind.Failed
+		return err
 	}
 	line-- // Convert to zero-based.
 
-	if line >= g.editor.Controller().LineCount() {
+	if line >= g.ctrl.LineCount() {
+		// TODO: Should we just choose the last line?
 		g.Err = fmt.Sprintf("Line %d is past the end of the file", line)
-		return bind.Failed
+		return fmt.Errorf("%d is too large", line)
 	}
 	if line == -1 {
+		// TODO: Should we just choose the first line?
 		g.Err = "Line 0 does not exist"
-		return bind.Failed
+		return errors.New("Invalid line")
 	}
-	g.editor.Controller().SetCaret(g.editor.LineStart(line))
+	g.ctrl.SetCaret(g.editor.LineStart(line))
 	g.editor.ScrollToLine(line)
-	return bind.Done
+	return nil
 }

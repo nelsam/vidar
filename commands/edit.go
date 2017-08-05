@@ -8,6 +8,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/commands/history"
 )
 
 type EditHook struct {
@@ -24,9 +25,9 @@ func (h EditHook) CommandName() string {
 }
 
 func (h EditHook) FileBindables(string) []bind.Bindable {
+	history, undo, redo := history.New(h.Theme)
 	return []bind.Bindable{
-		NewUndo(h.Theme),
-		NewRedo(h.Theme),
+		history, undo, redo,
 		NewSelectAll(),
 		NewFind(h.Driver, h.Theme),
 		NewRegexFind(h.Driver, h.Theme),

@@ -69,7 +69,9 @@ func (r *hookReader) start() {
 	if r.cond != nil {
 		return
 	}
-	r.cond = sync.NewCond(&sync.Mutex{})
+	mu := &sync.Mutex{}
+	mu.Lock()
+	r.cond = sync.NewCond(mu)
 	go r.run()
 	r.cond.Signal()
 }

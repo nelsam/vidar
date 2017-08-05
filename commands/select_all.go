@@ -6,6 +6,10 @@ package commands
 
 import "github.com/nelsam/vidar/commander/bind"
 
+type Selecter interface {
+	SelectAll()
+}
+
 type SelectAll struct{}
 
 func NewSelectAll() *SelectAll {
@@ -21,14 +25,10 @@ func (s *SelectAll) Menu() string {
 }
 
 func (s *SelectAll) Exec(target interface{}) bind.Status {
-	finder, ok := target.(EditorFinder)
+	selecter, ok := target.(Selecter)
 	if !ok {
 		return bind.Waiting
 	}
-	editor := finder.CurrentEditor()
-	if editor == nil {
-		return bind.Done
-	}
-	editor.SelectAll()
+	selecter.SelectAll()
 	return bind.Done
 }

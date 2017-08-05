@@ -77,7 +77,14 @@ func (h *Handler) Apply(e input.Editor, edits ...input.Edit) {
 	sort.Slice(edits, func(i, j int) bool {
 		return edits[i].At < edits[j].At
 	})
-	for _, edit := range edits {
+	for i, edit := range edits {
+		// It's a pretty common problem that the edit.Old and/or edit.New is
+		// a slice of the actual data being edited, so copy it to preserve the
+		// edit.
+		edit.Old = clone(edit.Old)
+		edit.New = clone(edit.New)
+		edits[i] = edit
+
 		oldE := edit.At + delta + len(edit.Old)
 		newE := edit.At + delta + len(edit.New)
 		if oldE != newE {
@@ -92,6 +99,7 @@ func (h *Handler) Apply(e input.Editor, edits ...input.Edit) {
 		copy(text[edit.At+delta:newE], edit.New)
 		delta += newE - oldE
 	}
+	c.Deselect(false)
 	h.driver.Call(func() {
 		c.SetTextRunes(text)
 		h.textEdited(e, edits)
@@ -164,6 +172,12 @@ func (e *Handler) textEdited(focused input.Editor, edits []input.Edit) {
 		})
 	}
 	focused.(*editor.CodeEditor).Controller().TextEdited(gEdits)
+}
+
+func clone(t []rune) []rune {
+	newT := make([]rune, len(t))
+	copy(newT, t)
+	return newT
 }
 
 func contextDone(ctx context.Context) bool {

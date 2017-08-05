@@ -20,13 +20,9 @@ type EditorExecutor struct {
 }
 
 func (e EditorExecutor) Exec(target interface{}) bind.Status {
-	finder, ok := target.(EditorFinder)
+	editor, ok := target.(*editor.CodeEditor)
 	if !ok {
 		return bind.Waiting
-	}
-	editor := finder.CurrentEditor()
-	if editor == nil {
-		return bind.Done
 	}
 	e.EditorCommand.Exec(editor)
 	return bind.Done

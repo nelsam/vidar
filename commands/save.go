@@ -26,7 +26,7 @@ type Applier interface {
 	Apply(input.Editor, ...input.Edit)
 }
 
-type Editor interface {
+type SaveEditor interface {
 	input.Editor
 	Filepath() string
 	FlushedChanges()
@@ -48,7 +48,7 @@ type SaveCurrent struct {
 
 	proj    *settings.Project
 	applier Applier
-	editor  Editor
+	editor  SaveEditor
 
 	before []BeforeSaver
 	after  []AfterSaver
@@ -100,7 +100,7 @@ func (s *SaveCurrent) Store(target interface{}) bind.Status {
 		s.proj = &proj
 	case Applier:
 		s.applier = src
-	case Editor:
+	case SaveEditor:
 		s.editor = src
 	}
 	if s.editor != nil && s.proj != nil && s.applier != nil && s.editor != nil {
