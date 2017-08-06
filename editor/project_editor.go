@@ -39,6 +39,9 @@ func NewProjectEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme
 }
 
 func (p *ProjectEditor) Open(path string, cursor token.Position) (editor *CodeEditor, existed bool) {
+	if cursor.Offset == 0 && (cursor.Line != 0 || cursor.Column != 0) {
+		return p.openLine(path, cursor.Line, cursor.Column)
+	}
 	editor, existed = p.open(path)
 	p.driver.Call(func() {
 		editor.Controller().SetCaret(cursor.Offset)
@@ -47,13 +50,14 @@ func (p *ProjectEditor) Open(path string, cursor token.Position) (editor *CodeEd
 	return editor, existed
 }
 
-func (p *ProjectEditor) OpenLine(path string, line, col int) {
-	editor, _ := p.open(path)
+func (p *ProjectEditor) openLine(path string, line, col int) (editor *CodeEditor, existed bool) {
+	editor, existed = p.open(path)
 	p.driver.Call(func() {
 		lineOffset := editor.LineStart(line)
 		editor.Controller().SetCaret(lineOffset + col)
 		editor.ScrollToLine(line)
 	})
+	return editor, existed
 }
 
 func (p *ProjectEditor) open(path string) (editor *CodeEditor, existed bool) {
