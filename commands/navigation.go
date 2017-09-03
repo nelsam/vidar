@@ -67,7 +67,7 @@ func (n NavHook) Name() string {
 	return "navigation-hook"
 }
 
-func (n NavHook) CommandName() string {
+func (n NavHook) OpName() string {
 	return "open-file"
 }
 

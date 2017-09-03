@@ -71,11 +71,9 @@ type Commander interface {
 }
 
 type Opener interface {
-	Name() string
-	Menu() string
+	bind.Command
+
 	SetLocation(path string, pos token.Position)
-	Start(gxui.Control) gxui.Control
-	Exec(on interface{}) bind.Status
 }
 
 type genericNode struct {
@@ -239,10 +237,9 @@ func newName(cmdr Commander, driver gxui.Driver, theme gxui.Theme, name string, 
 	return node
 }
 
-func (n *Name) OnSelected(exec func(bind.Executor)) {
+func (n *Name) OnSelected(exec func(bind.Command)) {
 	cmd := n.cmdr.Command("open-file").(Opener)
 	n.button.OnClick(func(gxui.MouseEvent) {
-		cmd.Start(nil)
 		cmd.SetLocation(n.File(), n.Position())
 		exec(cmd)
 	})

@@ -12,7 +12,7 @@ func (h ViewHook) Name() string {
 	return "view-hook"
 }
 
-func (h ViewHook) CommandName() string {
+func (h ViewHook) OpName() string {
 	return "open-file"
 }
 

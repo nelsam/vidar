@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/plugin/status"
@@ -68,23 +67,19 @@ func (s *SaveCurrent) Menu() string {
 	return "File"
 }
 
-func (s *SaveCurrent) Clone() commander.CloneableCommand {
+func (s *SaveCurrent) Bind(h bind.Bindable) (bind.HookedMultiOp, error) {
 	newS := NewSave(s.Theme)
 	newS.before = append(newS.before, s.before...)
 	newS.after = append(newS.after, s.after...)
-	return newS
-}
-
-func (s *SaveCurrent) Bind(h bind.CommandHook) error {
 	switch src := h.(type) {
 	case BeforeSaver:
-		s.before = append(s.before, src)
+		newS.before = append(newS.before, src)
 	case AfterSaver:
-		s.after = append(s.after, src)
+		newS.after = append(newS.after, src)
 	default:
-		return fmt.Errorf("expected BeforeSaver or AfterSaver; got %T", h)
+		return nil, fmt.Errorf("expected BeforeSaver or AfterSaver; got %T", h)
 	}
-	return nil
+	return newS, nil
 }
 
 func (s *SaveCurrent) Reset() {

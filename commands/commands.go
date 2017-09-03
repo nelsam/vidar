@@ -10,6 +10,9 @@ import (
 	"github.com/nelsam/vidar/commander/bind"
 )
 
+// TODO: command/hook ordering is handled in commander, so we probably
+// don't need to split these up any more.
+
 // Commands returns all known commands, in the order they should be
 // added to the menu.
 func Commands(driver gxui.Driver, theme *basic.Theme) []bind.Command {
@@ -22,8 +25,8 @@ func Commands(driver gxui.Driver, theme *basic.Theme) []bind.Command {
 
 // Hooks returns all known hooks that trigger off of events rather
 // than key bindings.
-func Hooks(driver gxui.Driver, theme *basic.Theme) []bind.CommandHook {
-	return []bind.CommandHook{
+func Hooks(driver gxui.Driver, theme *basic.Theme) []bind.Bindable {
+	return []bind.Bindable{
 		FileHook{Theme: theme},
 		EditHook{Theme: theme, Driver: driver},
 		ViewHook{},

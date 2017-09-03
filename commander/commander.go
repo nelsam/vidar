@@ -26,13 +26,6 @@ type Controller interface {
 	Editor() controller.Editor
 }
 
-// A commandMapping is a mapping between keyboard shortcuts (if any),
-// a menu name, and a command.  The menu name is required.
-type commandMapping struct {
-	binding gxui.KeyboardEvent
-	command bind.Command
-}
-
 // Commander is a gxui.LinearLayout that takes care of displaying the
 // command utilities around a controller.
 type Commander struct {
@@ -46,12 +39,11 @@ type Commander struct {
 	box        *commandBox
 
 	inputHandler input.Handler
-	inputStack   []input.Handler
 
 	lock sync.RWMutex
 
-	cmdStack [][]commandMapping
-	commands []commandMapping
+	stack    []map[string]bind.Bindable
+	commands map[gxui.KeyboardEvent]bind.Command
 	menuBar  *menuBar
 }
 
@@ -111,22 +103,18 @@ func (c *Commander) Paint(canvas gxui.Canvas) {
 	c.BackgroundBorderPainter.PaintBorder(canvas, rect)
 }
 
-func (c *Commander) archiveMap() []bind.Command {
-	old := c.commands
-	c.commands = nil
-	c.cmdStack = append(c.cmdStack, old)
-
-	used := make(map[bind.Command]struct{})
-	var cmds []bind.Command
-	for _, o := range old {
-		if _, ok := used[o.command]; ok {
-			continue
-		}
-		used[o.command] = struct{}{}
-		cmds = append(cmds, o.command)
-
+func (c *Commander) cloneTop() map[string]bind.Bindable {
+	m := make(map[string]bind.Bindable)
+	if len(c.stack) == 0 {
+		return m
 	}
-	return cmds
+	for n, b := range c.stack[len(c.stack)-1] {
+		if h, ok := b.(input.Handler); ok {
+			b = h.New()
+		}
+		m[n] = b
+	}
+	return m
 }
 
 // Push binds all bindables to c, pushing the previous
@@ -135,42 +123,22 @@ func (c *Commander) Push(bindables ...bind.Bindable) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	var newInputHandler input.Handler
-
 	c.menuBar.Clear()
 	defer c.mapMenu()
 
-	old := c.archiveMap()
-	for _, cmd := range old {
-		if cloneable, ok := cmd.(CloneableCommand); ok {
-			cmd = cloneable.Clone()
+	next := c.cloneTop()
+	c.stack = append(c.stack, next)
+	c.commands = make(map[gxui.KeyboardEvent]bind.Command)
+	defer c.mapBindings()
+
+	var hooks []bind.OpHook
+	for _, b := range bindables {
+		next[b.Name()] = b
+		if h, ok := b.(bind.OpHook); ok {
+			hooks = append(hooks, h)
 		}
-		c.bind(cmd, settings.Bindings(cmd.Name())...)
 	}
 
-	var hooks []bind.CommandHook
-	for _, b := range bindables {
-		switch src := b.(type) {
-		case bind.CommandHook:
-			hooks = append(hooks, src)
-		case bind.Command:
-			c.bind(src, settings.Bindings(src.Name())...)
-		case input.Handler:
-			newInputHandler = src
-		default:
-			log.Printf("Error loading bindable %s: unknown bindable type", b.Name())
-		}
-	}
-	if newInputHandler == nil {
-		if c.inputHandler == nil {
-			panic("No input.Handler is assigned")
-		}
-		newInputHandler = c.inputHandler.New()
-	}
-	if c.inputHandler != nil {
-		c.inputStack = append(c.inputStack, c.inputHandler)
-	}
-	c.inputHandler = newInputHandler
 	multiEditor := c.controller.Editor()
 	if multiEditor != nil {
 		e := multiEditor.CurrentEditor()
@@ -182,36 +150,58 @@ func (c *Commander) Push(bindables ...bind.Bindable) {
 	}
 
 	for _, h := range hooks {
-		if h.CommandName() == c.inputHandler.Name() {
-			if err := c.inputHandler.Bind(h); err != nil {
-				log.Printf("Warning: failed to bind hook %s to input.Handler: %s", h.Name(), err)
-			}
+		b := next[h.OpName()]
+		if b == nil {
+			log.Printf("Warning: binding %s (requested by hook %s) is not found", h.OpName(), h.Name())
 			continue
 		}
-		cmd := c.command(h.CommandName())
-		if cmd == nil {
-			log.Printf("Warning: could not find command %s to bind %s to", h.CommandName(), h.Name())
+		var (
+			newOp bind.Bindable
+			err   error
+		)
+		switch op := b.(type) {
+		case bind.HookedOp:
+			newOp, err = op.Bind(h)
+		case bind.HookedMultiOp:
+			newOp, err = op.Bind(h)
+		case input.Handler:
+			newOp, err = op.Bind(h)
+		default:
+			log.Printf("Warning: binding %s (requested by hook %s) is not a HookedOp and cannot bind hooks to itself. Skipping.", b.Name(), h.Name())
 			continue
 		}
-		hooked, ok := cmd.(HookedCommand)
-		if !ok {
-			log.Printf("Warning: %s cannot bind to command %s (not a HookedCommand)", h.Name(), cmd.Name())
+		if err != nil {
+			log.Printf("Warning: failed to bind hook %s to op %s: %s", h.Name(), b.Name(), err)
 			continue
 		}
-		if err := hooked.Bind(h); err != nil {
-			log.Printf("Warning: failed to bind hook %s to HookedCommand %s: %s", h.Name(), hooked.Name(), err)
+		next[newOp.Name()] = newOp
+	}
+}
+
+func (c *Commander) mapBindings() {
+	var handler input.Handler
+	for _, b := range c.stack[len(c.stack)-1] {
+		switch src := b.(type) {
+		case bind.Command:
+			c.bind(src, settings.Bindings(src.Name())...)
+		case input.Handler:
+			handler = src
 		}
 	}
+	if handler == nil {
+		log.Fatal("There is no input handler available!  This should never happen.  Please create an issue in github stating that you saw this message.")
+	}
+	c.inputHandler = handler
 }
 
 func (c *Commander) mapMenu() {
 	keys := make(map[bind.Command][]gxui.KeyboardEvent)
 	var cmds []bind.Command
-	for _, bound := range c.commands {
-		if _, ok := keys[bound.command]; !ok {
-			cmds = append(cmds, bound.command)
+	for key, bound := range c.commands {
+		if _, ok := keys[bound]; !ok {
+			cmds = append(cmds, bound)
 		}
-		keys[bound.command] = append(keys[bound.command], bound.binding)
+		keys[bound] = append(keys[bound], key)
 	}
 	for _, cmd := range cmds {
 		c.menuBar.Add(cmd, keys[cmd]...)
@@ -224,57 +214,29 @@ func (c *Commander) Pop() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	last := len(c.inputStack) - 1
-	c.inputHandler = c.inputStack[last]
-	c.inputStack = c.inputStack[:last]
-
 	c.menuBar.Clear()
 	defer c.mapMenu()
 
-	newLen := len(c.cmdStack) - 1
-	c.commands = c.cmdStack[newLen]
-	c.cmdStack = c.cmdStack[:newLen]
+	c.commands = make(map[gxui.KeyboardEvent]bind.Command)
+	defer c.mapBindings()
+
+	c.stack = c.stack[:len(c.stack)-1]
 }
 
-func (c *Commander) bind(command bind.Command, binding ...gxui.KeyboardEvent) {
-	for _, binding := range binding {
-		if i := c.bindIdx(binding); i >= 0 {
-			log.Printf("Warning: command %s is overriding command %s at binding %v", command.Name(), c.commands[i].command.Name(), binding)
-			c.commands = append(c.commands[:i], c.commands[i+1:]...)
+func (c *Commander) bind(command bind.Command, bindings ...gxui.KeyboardEvent) {
+	for _, binding := range bindings {
+		if old, ok := c.commands[binding]; ok {
+			log.Printf("Warning: command %s is overriding command %s at binding %v", command.Name(), old.Name(), binding)
 		}
-		c.mapBinding(command, binding)
+		c.commands[binding] = command
 	}
-}
-
-func (c *Commander) bindIdx(binding gxui.KeyboardEvent) int {
-	if binding.Key == gxui.KeyUnknown {
-		return -1
-	}
-	for i, mapping := range c.commands {
-		if mapping.binding == binding {
-			return i
-		}
-	}
-	return -1
-}
-
-func (c *Commander) mapBinding(command bind.Command, binding gxui.KeyboardEvent) {
-	c.commands = append(c.commands, commandMapping{
-		binding: binding,
-		command: command,
-	})
 }
 
 // Binding finds and returns the Command associated with bind.
 func (c *Commander) Binding(binding gxui.KeyboardEvent) bind.Command {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-
-	i := c.bindIdx(binding)
-	if i < 0 {
-		return nil
-	}
-	return c.commands[i].command
+	return c.commands[binding]
 }
 
 // Command looks up a bind.Command by name.
@@ -286,10 +248,8 @@ func (c *Commander) Command(name string) bind.Command {
 }
 
 func (c *Commander) command(name string) bind.Command {
-	for _, m := range c.commands {
-		if m.command.Name() == name {
-			return m.command
-		}
+	if cmd, ok := c.stack[len(c.stack)-1][name].(bind.Command); ok {
+		return cmd
 	}
 	return nil
 }
@@ -343,9 +303,9 @@ func (c *Commander) Execute(e bind.Command) {
 	}
 	var status bind.Status
 	switch src := e.(type) {
-	case bind.Executor:
+	case bind.Op:
 		status = execute(src.Exec, c)
-	case bind.MultiExecutor:
+	case bind.MultiOp:
 		src.Reset()
 		status = execute(src.Store, c)
 		if status&bind.Executed == 0 {
@@ -365,7 +325,7 @@ func (c *Commander) Execute(e bind.Command) {
 func (c *Commander) Elements() []interface{} {
 	all := make([]interface{}, 0, len(c.commands))
 	for _, binding := range c.commands {
-		all = append(all, binding.command)
+		all = append(all, binding)
 	}
 	all = append(all, c.controller, c.inputHandler)
 	return all

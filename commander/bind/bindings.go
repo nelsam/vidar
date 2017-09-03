@@ -2,10 +2,13 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-// Package bind contains types that the commander uses to
-// identify as types of bindings.  It is kept separate from the
-// commander package so that plugins can import it without risking
-// rapid changes requiring rebuilds.
+// Package bind contains some of the types that the commander
+// package uses to identify types to bind to user input or other
+// events.  It is kept in a separate package so that functions
+// and methods can use these types in their signature without
+// importing the commander package.  The intent is to allow
+// plugins to continue to work without the need to rebuild them
+// every time the commander package changes.
 //
 // For more information, see vidar's plugin package documentation.
 package bind
@@ -17,18 +20,72 @@ type Bindable interface {
 	Name() string
 }
 
-// A CommandHook is a binding that is bound to a Command.  It is
-// up to the Command that the hook is being bound to to define the
-// types that may be bound.
-//
-// The Command that is found by looking up the CommandName() value
-// must be a HookedCommand.
-type CommandHook interface {
+// Op is a type that can execute an operation.
+type Op interface {
 	Bindable
 
-	// CommandName returns the name of the command that this hook
+	// Exec executes the op.  It will be called once for each
+	// element in the editor, including all other Bindables, and
+	// should return a status indicating its state after executing
+	// against elem.
+	//
+	// A status that contains the Stop bit will mean that Exec
+	// will not be called again.
+	Exec(elem interface{}) Status
+}
+
+// HookedOp is an Op that allows Bindables to bind to events that
+// are created by it.
+type HookedOp interface {
+	Op
+
+	// Bind will be called for each Bindable that wants to bind to
+	// events on the HookedOp.  A new HookedOp should be returned
+	// with the Bindable bound to it, so that the original HookedOp
+	// may continue to execute without the Bindable.
+	Bind(Bindable) (HookedOp, error)
+}
+
+// A MultiOp is a type that makes it easier to execute using
+// multiple types in the editor hierarchy.  The MultiOp can
+// gather types that it needs before Exec is called.
+type MultiOp interface {
+	Bindable
+
+	// Reset must be implemented to reset the MultiExecutor's state
+	Reset()
+
+	// Store is called in the same way that Op.Exec is called;
+	// once for each type in vidar's state.  Values may be
+	// stored by the MultiOp to prepare for the final Exec
+	// call.
+	Store(interface{}) Status
+
+	// Exec is called after Store has finished.  The return value
+	// is a simple error because there are only two states it can
+	// be in after running - success or failure.  There is no
+	// "waiting" state for a MultiOp's Exec method.
+	Exec() error
+}
+
+// HookedMultiOp is to MultiOp as HookedOp is to Op.
+type HookedMultiOp interface {
+	MultiOp
+
+	// Bind is equivalent to HookedOp.Bind, but with different
+	// return values.
+	Bind(Bindable) (HookedMultiOp, error)
+}
+
+// An OpHook is a binding that is bound to an Op.  It is up to the
+// OpHook to ensure that it implements the interface required by the
+// Op it is being bound to..
+type OpHook interface {
+	Bindable
+
+	// OpName returns the name of the binding that this hook
 	// wants to bind to.
-	CommandName() string
+	OpName() string
 }
 
 // A Command is a binding that happens due to the user explicitly
@@ -37,7 +94,8 @@ type Command interface {
 	Bindable
 
 	// Menu returns the name of the menu that the command should be
-	// displayed under.
+	// displayed under.  All user-executed Bindings *must* have an
+	// entry in the menu to make them more discoverable.
 	Menu() string
 }
 
@@ -75,45 +133,3 @@ const (
 	// any additional tasks.
 	Failed = Errored | Stop
 )
-
-// An Executor is a Command that needs to execute some
-// operation on one or more elements after it is complete.  It will
-// continue to be called for every element currently in the UI until
-// it returns a true consume value.
-//
-// If a true value is never returned for executed, it is assumed that
-// the command could not run and is therefor in an errored state.
-type Executor interface {
-	Command
-
-	Exec(interface{}) Status
-}
-
-// A MultiExecutor is a type that makes it easier to execute using
-// multiple types in the editor hierarchy.  The MultiExecutor can
-// gather types that it needs before Exec is called.
-type MultiExecutor interface {
-	Command
-
-	// Reset must be implemented to reset the MultiExecutor's state
-	Reset()
-
-	// Store is called in the same way that Executor.Exec is called;
-	// once for each type in the editor's hierarchy.  Values may be
-	// stored by the MultiExecutor to prepare for the final Exec
-	// call.
-	//
-	// When the MultiExecutor has stored enough information to
-	// execute, its return value should contain the Executed bit.
-	// If every type in the editor's hierarchy is passed to Store
-	// without such a return value, it is assumed that the
-	// MultiExecutor could not find everything it needs to execute,
-	// and Exec will *not* be called.
-	Store(interface{}) Status
-
-	// Exec is called after Store has finished.  The return value
-	// is a simple error because there are only two states it can
-	// be in after running - success or failure.  There is no
-	// "waiting" state for a MultiExecutor's Exec method.
-	Exec() error
-}

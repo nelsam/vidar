@@ -49,18 +49,20 @@ func (e *Handler) New() input.Handler {
 	return New(e.driver)
 }
 
-func (e *Handler) Bind(h bind.CommandHook) error {
-	switch src := h.(type) {
+func (e *Handler) Bind(b bind.Bindable) (input.Handler, error) {
+	newH := New(e.driver)
+	newH.hooks = append(newH.hooks, e.hooks...)
+	switch src := b.(type) {
 	case ChangeHook:
-		h := &hookReader{hook: src, driver: e.driver}
-		h.start()
-		e.hooks = append(e.hooks, h)
+		r := &hookReader{hook: src, driver: e.driver}
+		r.start()
+		newH.hooks = append(newH.hooks, r)
 	case ContextChangeHook:
-		e.hooks = append(e.hooks, &ctxHookReader{hook: src, driver: e.driver})
+		newH.hooks = append(newH.hooks, &ctxHookReader{hook: src, driver: newH.driver})
 	default:
-		return fmt.Errorf("expected ChangeHook or ContextChangeHook; got %T", h)
+		return nil, fmt.Errorf("expected ChangeHook or ContextChangeHook; got %T", b)
 	}
-	return nil
+	return newH, nil
 }
 
 func (e *Handler) Init(newEditor input.Editor, contents []rune) {

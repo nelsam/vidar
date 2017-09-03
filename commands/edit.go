@@ -20,7 +20,7 @@ func (h EditHook) Name() string {
 	return "edit-hook"
 }
 
-func (h EditHook) CommandName() string {
+func (h EditHook) OpName() string {
 	return "open-file"
 }
 

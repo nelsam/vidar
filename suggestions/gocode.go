@@ -7,6 +7,7 @@ package suggestions
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os/exec"
 	"strconv"
@@ -34,32 +35,36 @@ func NewGoCodeProvider(fileContainer FileContainer, environ []string) *GoCodePro
 }
 
 func (p *GoCodeProvider) SuggestionsAt(runeIndex int) []gxui.CodeSuggestion {
-	cmd := exec.Command("gocode", "-f", "json", "autocomplete", p.fileContainer.Filepath(), strconv.Itoa(runeIndex))
-	cmd.Env = p.environ
-	cmd.Stdin = bytes.NewBufferString(p.fileContainer.Text())
+	suggestions, err := For(p.environ, p.fileContainer.Filepath(), p.fileContainer.Text(), runeIndex)
+	log.Printf("Failed to get suggestions: %s", err)
+	return suggestions
+}
+
+func For(environ []string, filepath, contents string, runeIndex int) ([]gxui.CodeSuggestion, error) {
+	cmd := exec.Command("gocode", "-f", "json", "autocomplete", filepath, strconv.Itoa(runeIndex))
+	cmd.Env = environ
+	cmd.Stdin = bytes.NewBufferString(contents)
 	outputJSON, err := cmd.Output()
 	if err != nil {
-		log.Printf("Error: gocode failed: %s", err)
-		return nil
+		return nil, err
 	}
 
 	var output []interface{}
 	if err := json.Unmarshal(outputJSON, &output); err != nil {
-		log.Printf("Error: Could not unmarshal command output as json: %s", err)
-		return nil
+		return nil, err
 	}
 	if len(output) < 2 {
-		return nil
+		return nil, nil
 	}
 	completions := output[1].([]interface{})
 	if completions[0].(map[string]interface{})["name"].(string) == "PANIC" {
 		log.Println("gocode working incorrectly")
-		return nil
+		return nil, fmt.Errorf("gocode: invalid output: %+v", output)
 	}
 	suggestions := make([]gxui.CodeSuggestion, 0, len(completions))
 	for _, completionItem := range completions {
 		completion := completionItem.(map[string]interface{})
 		suggestions = append(suggestions, suggestion{Value: completion["name"].(string), Type: completion["type"].(string)})
 	}
-	return suggestions
+	return suggestions, nil
 }

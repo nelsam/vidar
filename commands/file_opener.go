@@ -10,7 +10,6 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/editor"
 )
@@ -45,10 +44,11 @@ type FileOpener struct {
 	cursor token.Position
 	input  <-chan gxui.Focusable
 
-	binder    Binder
-	editor    *editor.CodeEditor
-	skipHooks bool
-	hooks     []FileBinder
+	binder  Binder
+	opener  EditorOpener
+	openers []Opener
+
+	hooks []FileBinder
 }
 
 func NewFileOpener(driver gxui.Driver, theme *basic.Theme) *FileOpener {
@@ -77,10 +77,6 @@ func (f *FileOpener) Menu() string {
 }
 
 func (f *FileOpener) Start(control gxui.Control) gxui.Control {
-	f.binder = nil
-	f.editor = nil
-	f.skipHooks = false
-
 	f.file.loadEditorDir(control)
 	input := make(chan gxui.Focusable, 1)
 	f.input = input
@@ -93,65 +89,62 @@ func (f *FileOpener) Next() gxui.Focusable {
 	return <-f.input
 }
 
-func (f *FileOpener) Exec(element interface{}) bind.Status {
-	switch src := element.(type) {
+func (f *FileOpener) Reset() {
+	f.binder = nil
+	f.opener = nil
+	f.openers = nil
+}
+
+func (f *FileOpener) Store(elem interface{}) bind.Status {
+	switch src := elem.(type) {
 	case EditorOpener:
-		if f.editor != nil {
-			return bind.Waiting
-		}
-		f.editor, f.skipHooks = src.Open(f.file.Path(), f.cursor)
-		if f.binder != nil {
-			f.setupHooks()
-			return bind.Executing
-		}
+		f.opener = src
 	case Opener:
-		src.Open(f.file.Path(), f.cursor)
-		return bind.Waiting
+		f.openers = append(f.openers, src)
 	case Binder:
-		if f.binder != nil {
-			return bind.Waiting
-		}
 		f.binder = src
-		if f.editor != nil {
-			f.setupHooks()
-			return bind.Executing
-		}
+	}
+	if f.opener != nil && f.binder != nil {
+		return bind.Executing
 	}
 	return bind.Waiting
 }
 
-func (f *FileOpener) setupHooks() {
-	if f.skipHooks {
-		return
-	}
+func (f *FileOpener) Exec() error {
 	path := f.file.Path()
+	editor, skipHooks := f.opener.Open(path, f.cursor)
+	for _, o := range f.openers {
+		o.Open(path, f.cursor)
+	}
+	if skipHooks {
+		return nil
+	}
+
 	var b []bind.Bindable
 	for _, h := range f.hooks {
 		b = append(b, h.FileBindables(path)...)
 	}
 	binder := f.binder
-	f.editor.OnGainedFocus(func() {
+
+	editor.OnGainedFocus(func() {
 		binder.Push(b...)
 	})
-	f.editor.OnLostFocus(func() {
+	editor.OnLostFocus(func() {
 		binder.Pop()
 	})
-	if f.editor.HasFocus() {
+	if editor.HasFocus() {
 		binder.Push(b...)
 	}
+	return nil
 }
 
-func (f *FileOpener) Clone() commander.CloneableCommand {
-	newF := NewFileOpener(f.driver, f.theme)
-	newF.hooks = append(newF.hooks, f.hooks...)
-	return newF
-}
-
-func (f *FileOpener) Bind(h bind.CommandHook) error {
+func (f *FileOpener) Bind(h bind.Bindable) (bind.HookedMultiOp, error) {
 	bndr, ok := h.(FileBinder)
 	if !ok {
-		return fmt.Errorf("expected hook to be FileBinder, was %T", h)
+		return nil, fmt.Errorf("expected hook to be FileBinder, was %T", h)
 	}
-	f.hooks = append(f.hooks, bndr)
-	return nil
+	newF := NewFileOpener(f.driver, f.theme)
+	newF.hooks = append(newF.hooks, f.hooks...)
+	newF.hooks = append(newF.hooks, bndr)
+	return newF, nil
 }

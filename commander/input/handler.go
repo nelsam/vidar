@@ -35,7 +35,7 @@ type Handler interface {
 	bind.Bindable
 	New() Handler
 	Init(Editor, []rune)
-	Bind(bind.CommandHook) error
+	Bind(bind.Bindable) (Handler, error)
 	Apply(focused Editor, edits ...Edit)
 	HandleEvent(focused Editor, ev gxui.KeyboardEvent)
 	HandleInput(focused Editor, stroke gxui.KeyStrokeEvent)

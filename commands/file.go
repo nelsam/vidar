@@ -17,7 +17,7 @@ func (h FileHook) Name() string {
 	return "edit-hook"
 }
 
-func (h FileHook) CommandName() string {
+func (h FileHook) OpName() string {
 	return "open-file"
 }
 

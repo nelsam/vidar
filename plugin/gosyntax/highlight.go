@@ -25,7 +25,7 @@ func (h *Highlight) Name() string {
 	return "go-syntax-highlight"
 }
 
-func (h *Highlight) CommandName() string {
+func (h *Highlight) OpName() string {
 	return "input-handler"
 }
 

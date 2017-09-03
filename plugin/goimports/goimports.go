@@ -41,7 +41,7 @@ func (o OnSave) Name() string {
 	return "goimports-on-save"
 }
 
-func (o OnSave) CommandName() string {
+func (o OnSave) OpName() string {
 	return "save-current-file"
 }
 

@@ -39,7 +39,7 @@ func (h *History) Name() string {
 	return "history"
 }
 
-func (h *History) CommandName() string {
+func (h *History) OpName() string {
 	return "input-handler"
 }
 

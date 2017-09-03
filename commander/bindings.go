@@ -9,33 +9,6 @@ import (
 	"github.com/nelsam/vidar/commander/bind"
 )
 
-// A ClonableCommand is a Command that can clone its internal state,
-// returning a clone referencing new memory.
-type CloneableCommand interface {
-	bind.Command
-
-	// Clone creates a clone of the CloneableCommand, returning an
-	// exact clone referencing new memory.
-	//
-	// Clone will be called whenever the state of the CloneableCommand
-	// needs to be stored prior to altering its state - especially
-	// when the CloneableCommand will be modified by a hook.
-	Clone() CloneableCommand
-}
-
-// A HookedCommand is a Command that has hooks, which CommandHook
-// types may bind to.  It is required to implement CloneableCommand
-// because the state of the HookedCommand must be stored before a
-// hook causes new hooks to be bound to it.
-type HookedCommand interface {
-	CloneableCommand
-
-	// Bind takes a CommandHook to bind to the command.  An error
-	// should be returned if the CommandHook does not implement
-	// any types bindable by the HookedCommand.
-	Bind(bind.CommandHook) error
-}
-
 // A Starter is a type of Command which needs to initialize itself
 // whenever the user wants to run it.
 type Starter interface {

@@ -26,7 +26,7 @@ func (h GolangHook) Name() string {
 	return "golang-hook"
 }
 
-func (h GolangHook) CommandName() string {
+func (h GolangHook) OpName() string {
 	return "open-file"
 }
 
