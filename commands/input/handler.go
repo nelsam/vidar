@@ -83,10 +83,11 @@ func (h *Handler) Apply(e input.Editor, edits ...input.Edit) {
 		// edit.
 		edit.Old = clone(edit.Old)
 		edit.New = clone(edit.New)
+		edit.At += delta
 		edits[i] = edit
 
-		oldE := edit.At + delta + len(edit.Old)
-		newE := edit.At + delta + len(edit.New)
+		oldE := edit.At + len(edit.Old)
+		newE := edit.At + len(edit.New)
 		if oldE != newE {
 			if newE > oldE {
 				text = append(text, make([]rune, newE-oldE)...)
@@ -96,7 +97,7 @@ func (h *Handler) Apply(e input.Editor, edits ...input.Edit) {
 				text = text[:len(text)-(oldE-newE)]
 			}
 		}
-		copy(text[edit.At+delta:newE], edit.New)
+		copy(text[edit.At:newE], edit.New)
 		delta += newE - oldE
 	}
 	c.Deselect(false)
