@@ -12,39 +12,50 @@ import (
 	"github.com/nelsam/vidar/scoring"
 )
 
+type suggestion struct {
+	name  string
+	score float64
+}
+
 // Adapter is an adapter that is based on gxui's
 // FilteredListAdapter and CodeSuggestionAdapter.  There are some
 // differences mostly revolving around displaying the suggestions.
 type Adapter struct {
 	gxui.DefaultAdapter
-	suggestions []gxui.CodeSuggestion
+	pos         int
+	suggestions []Suggestion
 	scores      []float64
 	end         int
 }
 
-func (a *Adapter) SetSuggestions(suggestions []gxui.CodeSuggestion) {
-	a.suggestions = suggestions
-	a.DefaultAdapter.SetItems(suggestions)
-	a.end = len(suggestions)
-}
-
-func (a *Adapter) Suggestion(item gxui.AdapterItem) gxui.CodeSuggestion {
-	return item.(gxui.CodeSuggestion)
-}
-
-func (a *Adapter) Sort(partial string) {
-	a.scores = make([]float64, len(a.suggestions))
-	match := []rune(partial)
-	for i, suggestion := range a.suggestions {
-		a.scores[i] = scoring.Score([]rune(suggestion.Name()), match)
+func (a *Adapter) Set(pos int, suggestions ...Suggestion) {
+	if a.pos == pos {
+		return
 	}
-	sort.Sort(a)
+	a.pos = pos
+	a.suggestions = suggestions
+}
+
+func (a *Adapter) Pos() int {
+	return a.pos
+}
+
+func (a *Adapter) Sort(partial []rune) (longest int) {
+	a.scores = make([]float64, len(a.suggestions))
+	for i, suggestion := range a.suggestions {
+		a.scores[i] = scoring.Score([]rune(suggestion.Name), partial)
+		if a.scores[i] != math.MaxFloat64 {
+			longest = len([]rune(suggestion.String()))
+		}
+	}
 
 	a.end = len(a.suggestions)
+	sort.Sort(a)
 	for a.end > 0 && a.scores[a.end-1] == math.MaxFloat64 {
 		a.end--
 	}
-	a.DefaultAdapter.SetItems(a.suggestions[:a.end])
+	a.SetItems(a.suggestions[:a.end])
+	return longest
 }
 
 func (a *Adapter) Len() int {

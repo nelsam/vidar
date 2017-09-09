@@ -33,8 +33,10 @@ type textChangeHook interface {
 // expanding input.Editor some, but we shouldn't need editor.Controller for so
 // much of what we're doing.  Basic editing should be handleable by the editor.
 type Handler struct {
-	driver gxui.Driver
-	hooks  []textChangeHook
+	driver     gxui.Driver
+	hooks      []textChangeHook
+	cancellers []Canceler
+	confirmers []Confirmer
 }
 
 func New(d gxui.Driver) *Handler {
@@ -52,16 +54,35 @@ func (e *Handler) New() input.Handler {
 func (e *Handler) Bind(b bind.Bindable) (input.Handler, error) {
 	newH := New(e.driver)
 	newH.hooks = append(newH.hooks, e.hooks...)
+	newH.cancellers = append(newH.cancellers, e.cancellers...)
+	newH.confirmers = append(newH.confirmers, e.confirmers...)
+
+	didBind := false
+	if c, isCanceler := b.(Canceler); isCanceler {
+		newH.cancellers = append(newH.cancellers, c)
+		didBind = true
+	}
+
+	if c, isConfirmer := b.(Confirmer); isConfirmer {
+		newH.confirmers = append(newH.confirmers, c)
+		didBind = true
+	}
+
 	switch src := b.(type) {
 	case ChangeHook:
+		didBind = true
 		r := &hookReader{hook: src, driver: e.driver}
 		r.start()
 		newH.hooks = append(newH.hooks, r)
 	case ContextChangeHook:
+		didBind = true
 		newH.hooks = append(newH.hooks, &ctxHookReader{hook: src, driver: newH.driver})
-	default:
-		return nil, fmt.Errorf("expected ChangeHook or ContextChangeHook; got %T", b)
 	}
+
+	if !didBind {
+		return nil, fmt.Errorf("input.Handler: type %T did not implement any known hook type", b)
+	}
+
 	return newH, nil
 }
 
@@ -120,6 +141,37 @@ func (e *Handler) HandleEvent(focused input.Editor, ev gxui.KeyboardEvent) {
 	editor := focused.(*editor.CodeEditor)
 	ctrl := editor.Controller()
 	switch ev.Key {
+	case gxui.KeyEnter:
+		for _, c := range e.confirmers {
+			if c.Confirm(focused) {
+				return
+			}
+		}
+		var edits []input.Edit
+		for _, s := range editor.Controller().Selections() {
+			if s.Start() < 0 {
+				continue
+			}
+			edits = append(edits, input.Edit{
+				At:  s.Start(),
+				Old: ctrl.TextRunes()[s.Start():s.End()],
+				New: []rune{'\n'},
+			})
+		}
+		e.Apply(focused, edits...)
+	case gxui.KeyEscape:
+		for _, c := range e.cancellers {
+			if c.Cancel(focused) {
+				return
+			}
+		}
+		for _, h := range e.hooks {
+			// if esc is pressed without any cancellers waiting, cancel *all*
+			// working text change hooks that can be cancelled.
+			if canceler, ok := h.(Canceler); ok {
+				_ = canceler.Cancel(focused)
+			}
+		}
 	case gxui.KeyBackspace, gxui.KeyDelete:
 		var edits []input.Edit
 		for _, s := range editor.Controller().Selections() {

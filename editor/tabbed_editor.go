@@ -14,7 +14,6 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/suggestions"
 	"github.com/nelsam/vidar/theme"
 )
 
@@ -73,8 +72,6 @@ func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []str
 	})
 	editor.Init(e.driver, e.theme, e.syntaxTheme, e.font, path, headerText)
 	editor.SetTabWidth(4)
-	suggester := suggestions.NewGoCodeProvider(editor, environ)
-	editor.SetSuggestionProvider(suggester)
 	e.Add(name, editor)
 	return editor, false
 }

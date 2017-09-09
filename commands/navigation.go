@@ -6,58 +6,86 @@ package commands
 
 import (
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/commands/cursor"
 )
 
-type EditorCommand interface {
-	Name() string
-	Menu() string
-	Exec(*editor.CodeEditor)
+type Mover interface {
+	For(cursor.Direction, cursor.Mod) *cursor.Mover
 }
 
-type EditorExecutor struct {
-	EditorCommand
+type Executor interface {
+	Execute(bind.Bindable)
 }
 
-func (e EditorExecutor) Exec(target interface{}) bind.Status {
-	editor, ok := target.(*editor.CodeEditor)
-	if !ok {
-		return bind.Waiting
+type Scroller interface {
+	ScrollToRune(int)
+}
+
+type Careter interface {
+	FirstCaret() int
+	Deselect(bool) bool
+}
+
+type Scroll struct {
+	name      string
+	direction cursor.Direction
+	mod       cursor.Mod
+
+	mover    Mover
+	exec     Executor
+	scroller Scroller
+	careter  Careter
+}
+
+func (s *Scroll) Name() string {
+	return s.name
+}
+
+func (s *Scroll) Menu() string {
+	return "Navigation"
+}
+
+func (s *Scroll) Reset() {
+	s.mover = nil
+	s.exec = nil
+	s.scroller = nil
+	s.careter = nil
+}
+
+func (s *Scroll) Store(elem interface{}) bind.Status {
+	switch src := elem.(type) {
+	case Mover:
+		s.mover = src
+	case Executor:
+		s.exec = src
+	case Scroller:
+		s.scroller = src
+	case Careter:
+		s.careter = src
 	}
-	e.EditorCommand.Exec(editor)
-	return bind.Done
-}
-
-type Scroller struct {
-	EditorCommand
-}
-
-func NewScroller(cmd EditorCommand) EditorExecutor {
-	return EditorExecutor{
-		EditorCommand: Scroller{
-			EditorCommand: cmd,
-		},
+	if s.mover != nil && s.exec != nil && s.scroller != nil && s.careter != nil {
+		return bind.Done
 	}
+	return bind.Waiting
 }
 
-func (s Scroller) Exec(editor *editor.CodeEditor) {
-	s.EditorCommand.Exec(editor)
-	editor.ScrollToRune(editor.Controller().FirstCaret())
+func (s *Scroll) Exec() error {
+	m := s.mover.For(s.direction, s.mod)
+	s.exec.Execute(m)
+	s.scroller.ScrollToRune(s.careter.FirstCaret())
+	return nil
 }
 
-type Mover struct {
-	EditorCommand
+type ScrollDeselect struct {
+	Scroll
 }
 
-func NewMover(cmd EditorCommand) EditorExecutor {
-	return NewScroller(Mover{EditorCommand: cmd})
-}
-
-func (m Mover) Exec(editor *editor.CodeEditor) {
-	if editor.Controller().Deselect(true) {
-		return
+func (s *ScrollDeselect) Exec() error {
+	if err := s.Scroll.Exec(); err != nil {
+		return err
 	}
-	m.EditorCommand.Exec(editor)
+	s.careter.Deselect(false)
+	return nil
 }
 
 type NavHook struct {
@@ -73,6 +101,7 @@ func (n NavHook) OpName() string {
 
 func (n NavHook) FileBindables(string) []bind.Bindable {
 	return []bind.Bindable{
+		&cursor.Mover{},
 		NewPrevLine(),
 		NewSelectPrevLine(),
 		NewNextLine(),
@@ -92,305 +121,142 @@ func (n NavHook) FileBindables(string) []bind.Bindable {
 	}
 }
 
-type PrevLine struct {
-}
-
-func NewPrevLine() EditorExecutor {
-	return NewMover(PrevLine{})
-}
-
-func (PrevLine) Name() string {
-	return "prev-line"
-}
-
-func (PrevLine) Menu() string {
-	return "Navigation"
-}
-
-func (PrevLine) Exec(editor *editor.CodeEditor) {
-	editor.Controller().MoveUp()
-}
-
-type SelectPrevLine struct {
-}
-
-func NewSelectPrevLine() EditorExecutor {
-	return NewScroller(SelectPrevLine{})
-}
-
-func (SelectPrevLine) Name() string {
-	return "select-prev-line"
-}
-
-func (SelectPrevLine) Menu() string {
-	return "Navigation"
-}
-
-func (SelectPrevLine) Exec(editor *editor.CodeEditor) {
-	editor.Controller().SelectUp()
-}
-
-type NextLine struct {
-}
-
-func NewNextLine() EditorExecutor {
-	return NewMover(NextLine{})
-}
-
-func (NextLine) Name() string {
-	return "next-line"
-}
-
-func (NextLine) Menu() string {
-	return "Navigation"
-}
-
-func (NextLine) Exec(editor *editor.CodeEditor) {
-	editor.Controller().MoveDown()
-}
-
-type SelectNextLine struct {
-}
-
-func NewSelectNextLine() EditorExecutor {
-	return NewScroller(SelectNextLine{})
-}
-
-func (SelectNextLine) Name() string {
-	return "select-next-line"
-}
-
-func (SelectNextLine) Menu() string {
-	return "Navigation"
-}
-
-func (SelectNextLine) Exec(editor *editor.CodeEditor) {
-	editor.Controller().SelectDown()
-}
-
-type PrevChar struct {
-}
-
-func NewPrevChar() EditorExecutor {
-	return NewMover(PrevChar{})
-}
-
-func (PrevChar) Name() string {
-	return "prev-char"
-}
-
-func (PrevChar) Menu() string {
-	return "Navigation"
-}
-
-func (PrevChar) Exec(editor *editor.CodeEditor) {
-	editor.Controller().MoveLeft()
-}
-
-type PrevWord struct{}
-
-func NewPrevWord() EditorExecutor {
-	return NewMover(PrevWord{})
-}
-
-func (PrevWord) Name() string {
-	return "prev-word"
-}
-
-func (PrevWord) Menu() string {
-	return "Navigation"
-}
-
-func (PrevWord) Exec(editor *editor.CodeEditor) {
-	editor.Controller().MoveLeftByWord()
-}
-
-type SelectPrevChar struct {
-}
-
-func NewSelectPrevChar() EditorExecutor {
-	return NewScroller(SelectPrevChar{})
-}
-
-func (SelectPrevChar) Name() string {
-	return "select-prev-char"
-}
-
-func (SelectPrevChar) Menu() string {
-	return "Navigation"
-}
-
-func (SelectPrevChar) Exec(editor *editor.CodeEditor) {
-	editor.Controller().SelectLeft()
-}
-
-type SelectPrevWord struct {
-}
-
-func NewSelectPrevWord() EditorExecutor {
-	return NewScroller(SelectPrevWord{})
-}
-
-func (SelectPrevWord) Name() string {
-	return "select-prev-word"
-}
-
-func (SelectPrevWord) Menu() string {
-	return "Navigation"
-}
-
-func (SelectPrevWord) Exec(editor *editor.CodeEditor) {
-	editor.Controller().SelectLeftByWord()
-}
-
-type NextChar struct {
-}
-
-func NewNextChar() EditorExecutor {
-	return NewMover(NextChar{})
-}
-
-func (NextChar) Name() string {
-	return "next-char"
-}
-
-func (NextChar) Menu() string {
-	return "Navigation"
-}
-
-func (NextChar) Exec(editor *editor.CodeEditor) {
-	editor.Controller().MoveRight()
-}
-
-type NextWord struct {
-}
-
-func NewNextWord() EditorExecutor {
-	return NewMover(NextWord{})
-}
-
-func (NextWord) Name() string {
-	return "next-word"
-}
-
-func (NextWord) Menu() string {
-	return "Navigation"
-}
-
-func (NextWord) Exec(editor *editor.CodeEditor) {
-	editor.Controller().MoveRightByWord()
-}
-
-type SelectNextChar struct {
-}
-
-func NewSelectNextChar() EditorExecutor {
-	return NewScroller(SelectNextChar{})
-}
-
-func (SelectNextChar) Name() string {
-	return "select-next-char"
-}
-
-func (SelectNextChar) Menu() string {
-	return "Navigation"
-}
-
-func (SelectNextChar) Exec(editor *editor.CodeEditor) {
-	editor.Controller().SelectRight()
-}
-
-type SelectNextWord struct {
-}
-
-func NewSelectNextWord() EditorExecutor {
-	return NewScroller(SelectNextWord{})
-}
-
-func (SelectNextWord) Name() string {
-	return "select-next-word"
-}
-
-func (SelectNextWord) Menu() string {
-	return "Navigation"
-}
-
-func (SelectNextWord) Exec(editor *editor.CodeEditor) {
-	editor.Controller().SelectRightByWord()
-}
-
-type LineEnd struct {
-}
-
-func NewLineEnd() EditorExecutor {
-	return NewMover(LineEnd{})
-}
-
-func (LineEnd) Name() string {
-	return "line-end"
-}
-
-func (LineEnd) Menu() string {
-	return "Navigation"
-}
-
-func (LineEnd) Exec(editor *editor.CodeEditor) {
-	editor.Controller().MoveEnd()
-}
-
-type SelectLineEnd struct {
-}
-
-func NewSelectLineEnd() EditorExecutor {
-	return NewScroller(SelectLineEnd{})
-}
-
-func (SelectLineEnd) Name() string {
-	return "select-to-line-end"
-}
-
-func (SelectLineEnd) Menu() string {
-	return "Navigation"
-}
-
-func (SelectLineEnd) Exec(editor *editor.CodeEditor) {
-	editor.Controller().SelectEnd()
-}
-
-type LineStart struct {
-}
-
-func NewLineStart() EditorExecutor {
-	return NewMover(LineStart{})
-}
-
-func (LineStart) Name() string {
-	return "line-start"
-}
-
-func (LineStart) Menu() string {
-	return "Navigation"
-}
-
-func (LineStart) Exec(editor *editor.CodeEditor) {
-	editor.Controller().MoveHome()
-}
-
-type SelectLineStart struct {
-}
-
-func NewSelectLineStart() EditorExecutor {
-	return NewScroller(SelectLineStart{})
-}
-
-func (SelectLineStart) Name() string {
-	return "select-to-line-start"
-}
-
-func (SelectLineStart) Menu() string {
-	return "Navigation"
-}
-
-func (SelectLineStart) Exec(editor *editor.CodeEditor) {
-	editor.Controller().SelectHome()
+func NewPrevLine() bind.Command {
+	return &ScrollDeselect{
+		Scroll: Scroll{
+			name:      "prev-line",
+			direction: cursor.Up,
+		},
+	}
+}
+
+func NewSelectPrevLine() bind.Command {
+	return &Scroll{
+		name:      "select-prev-line",
+		direction: cursor.Up,
+		mod:       cursor.Select,
+	}
+}
+
+func NewNextLine() bind.Command {
+	return &ScrollDeselect{
+		Scroll: Scroll{
+			name:      "next-line",
+			direction: cursor.Down,
+		},
+	}
+}
+
+func NewSelectNextLine() bind.Command {
+	return &Scroll{
+		name:      "select-next-line",
+		direction: cursor.Down,
+		mod:       cursor.Select,
+	}
+}
+
+func NewPrevChar() bind.Command {
+	return &ScrollDeselect{
+		Scroll: Scroll{
+			name:      "prev-char",
+			direction: cursor.Left,
+		},
+	}
+}
+
+func NewPrevWord() bind.Command {
+	return &ScrollDeselect{
+		Scroll: Scroll{
+			name:      "prev-word",
+			direction: cursor.Left,
+			mod:       cursor.Word,
+		},
+	}
+}
+
+func NewSelectPrevChar() bind.Command {
+	return &Scroll{
+		name:      "select-prev-char",
+		direction: cursor.Left,
+		mod:       cursor.Select,
+	}
+}
+
+func NewSelectPrevWord() bind.Command {
+	return &Scroll{
+		name:      "select-prev-word",
+		direction: cursor.Left,
+		mod:       cursor.Select | cursor.Word,
+	}
+}
+
+func NewNextChar() bind.Command {
+	return &ScrollDeselect{
+		Scroll: Scroll{
+			name:      "next-char",
+			direction: cursor.Right,
+		},
+	}
+}
+
+func NewNextWord() bind.Command {
+	return &ScrollDeselect{
+		Scroll: Scroll{
+			name:      "next-word",
+			direction: cursor.Right,
+			mod:       cursor.Word,
+		},
+	}
+}
+
+func NewSelectNextChar() bind.Command {
+	return &Scroll{
+		name:      "select-next-char",
+		direction: cursor.Right,
+		mod:       cursor.Select,
+	}
+}
+
+func NewSelectNextWord() bind.Command {
+	return &Scroll{
+		name:      "select-next-word",
+		direction: cursor.Right,
+		mod:       cursor.Select | cursor.Word,
+	}
+}
+
+func NewLineEnd() bind.Command {
+	return &ScrollDeselect{
+		Scroll: Scroll{
+			name:      "line-end",
+			direction: cursor.Right,
+			mod:       cursor.Line,
+		},
+	}
+}
+
+func NewSelectLineEnd() bind.Command {
+	return &Scroll{
+		name:      "select-to-line-end",
+		direction: cursor.Right,
+		mod:       cursor.SelectLine,
+	}
+}
+
+func NewLineStart() bind.Command {
+	return &ScrollDeselect{
+		Scroll: Scroll{
+			name:      "line-start",
+			direction: cursor.Left,
+			mod:       cursor.Line,
+		},
+	}
+}
+
+func NewSelectLineStart() bind.Command {
+	return &Scroll{
+		name:      "select-to-line-start",
+		direction: cursor.Left,
+		mod:       cursor.SelectLine,
+	}
 }

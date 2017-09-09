@@ -15,6 +15,6 @@ import (
 
 func Bindables(cmdr *commander.Commander, driver gxui.Driver, theme *basic.Theme) []bind.Bindable {
 	return []bind.Bindable{
-		GolangHook{Theme: theme},
+		GolangHook{Theme: theme, Driver: driver},
 	}
 }

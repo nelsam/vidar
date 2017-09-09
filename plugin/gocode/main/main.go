@@ -2,9 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-// +build !linux !go1.8
-
-package plugin
+package main
 
 import (
 	"strings"
@@ -12,12 +10,8 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/plugin/comments"
+	"github.com/nelsam/vidar/plugin/command"
 	"github.com/nelsam/vidar/plugin/gocode"
-	"github.com/nelsam/vidar/plugin/godef"
-	"github.com/nelsam/vidar/plugin/goimports"
-	"github.com/nelsam/vidar/plugin/gosyntax"
-	"github.com/nelsam/vidar/plugin/license"
 )
 
 type GolangHook struct {
@@ -39,13 +33,17 @@ func (h GolangHook) FileBindables(path string) []bind.Bindable {
 	}
 	completions, gocode := gocode.New(h.Theme, h.Driver)
 	return []bind.Bindable{
-		comments.NewToggle(),
-		godef.New(h.Theme),
-		goimports.New(h.Theme),
-		goimports.OnSave{},
-		gosyntax.New(),
-		license.NewHeaderUpdate(h.Theme),
 		completions,
 		gocode,
+	}
+}
+
+// Bindables is the main entry point to the command.
+func Bindables(cmdr command.Commander, driver gxui.Driver, theme gxui.Theme) []bind.Bindable {
+	return []bind.Bindable{
+		GolangHook{
+			Theme:  theme.(*basic.Theme),
+			Driver: driver,
+		},
 	}
 }

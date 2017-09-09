@@ -23,12 +23,16 @@ build/comments.so: | build
 build/godef.so: | build
 	go build -buildmode plugin -o ./build/godef.so github.com/nelsam/vidar/plugin/godef/main
 
+# Build the gocode plugin.
+build/gocode.so: | build
+	go build -buildmode plugin -o ./build/gocode.so github.com/nelsam/vidar/plugin/gocode/main
+
 # Build the license plugin.
 build/license.so: | build
 	go build -buildmode plugin -o ./build/license.so github.com/nelsam/vidar/plugin/license/main
 
 # Build all plugins included with vidar.
-plugins: build/gosyntax.so build/goimports.so build/comments.so build/godef.so build/license.so
+plugins: build/gosyntax.so build/goimports.so build/comments.so build/godef.so build/license.so build/gocode.so
 .PHONY: plugins
 
 # Install all plugins included with vidar to

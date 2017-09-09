@@ -88,6 +88,16 @@ type OpHook interface {
 	OpName() string
 }
 
+// A MultiOpHook is a binding that is bound to multiple Ops.  It is
+// effectively the same as an OpHook, otherwise.
+type MultiOpHook interface {
+	Bindable
+
+	// OpNames returns the names of all bindings that this hook
+	// wants to bind to.
+	OpNames() []string
+}
+
 // A Command is a binding that happens due to the user explicitly
 // requesting an event, usually via a key binding.
 type Command interface {

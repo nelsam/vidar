@@ -27,7 +27,7 @@ type Projecter interface {
 }
 
 type Commander interface {
-	Execute(bind.Command)
+	Execute(bind.Bindable)
 }
 
 type Opener interface {

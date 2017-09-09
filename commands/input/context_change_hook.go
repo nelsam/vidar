@@ -95,3 +95,11 @@ func (r *ctxHookReader) textChanged(e input.Editor, changes []input.Edit) error 
 	}()
 	return nil
 }
+
+func (r *ctxHookReader) Cancel() bool {
+	if r.cancel != nil {
+		r.cancel()
+		return true
+	}
+	return false
+}

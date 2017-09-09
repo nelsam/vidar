@@ -22,12 +22,12 @@ type Pane interface {
 
 	// OnComplete takes a function which takes a command, and runs
 	// that function when the Pane's action is complete.
-	OnComplete(func(bind.Command))
+	OnComplete(func(bind.Bindable))
 }
 
-// CommandExecutor is a type that can execute a commands.Command
-type CommandExecutor interface {
-	Execute(bind.Command)
+// Executor is a type that can execute a bind.Bindable
+type Executor interface {
+	Execute(bind.Bindable)
 }
 
 // Caller is any type that can call a function on the UI goroutine
@@ -51,11 +51,11 @@ type Navigator struct {
 
 	panes []Pane
 
-	executor CommandExecutor
+	executor Executor
 }
 
 // New creates and returns a new *Navigator.
-func New(driver gxui.Driver, theme gxui.Theme, executor CommandExecutor) *Navigator {
+func New(driver gxui.Driver, theme gxui.Theme, executor Executor) *Navigator {
 	nav := &Navigator{}
 	nav.Init(nav, theme)
 

@@ -11,8 +11,6 @@ import (
 	"log"
 	"os/exec"
 	"strconv"
-
-	"github.com/nelsam/gxui"
 )
 
 // FileContainer is any type that contains information about a file.
@@ -34,13 +32,15 @@ func NewGoCodeProvider(fileContainer FileContainer, environ []string) *GoCodePro
 	}
 }
 
-func (p *GoCodeProvider) SuggestionsAt(runeIndex int) []gxui.CodeSuggestion {
+func (p *GoCodeProvider) SuggestionsAt(runeIndex int) []Suggestion {
 	suggestions, err := For(p.environ, p.fileContainer.Filepath(), p.fileContainer.Text(), runeIndex)
-	log.Printf("Failed to get suggestions: %s", err)
+	if err != nil {
+		log.Printf("Failed to get suggestions: %s", err)
+	}
 	return suggestions
 }
 
-func For(environ []string, filepath, contents string, runeIndex int) ([]gxui.CodeSuggestion, error) {
+func For(environ []string, filepath, contents string, runeIndex int) ([]Suggestion, error) {
 	cmd := exec.Command("gocode", "-f", "json", "autocomplete", filepath, strconv.Itoa(runeIndex))
 	cmd.Env = environ
 	cmd.Stdin = bytes.NewBufferString(contents)
@@ -61,10 +61,10 @@ func For(environ []string, filepath, contents string, runeIndex int) ([]gxui.Cod
 		log.Println("gocode working incorrectly")
 		return nil, fmt.Errorf("gocode: invalid output: %+v", output)
 	}
-	suggestions := make([]gxui.CodeSuggestion, 0, len(completions))
+	suggestions := make([]Suggestion, 0, len(completions))
 	for _, completionItem := range completions {
 		completion := completionItem.(map[string]interface{})
-		suggestions = append(suggestions, suggestion{Value: completion["name"].(string), Type: completion["type"].(string)})
+		suggestions = append(suggestions, Suggestion{Name: completion["name"].(string), Signature: completion["type"].(string)})
 	}
 	return suggestions, nil
 }

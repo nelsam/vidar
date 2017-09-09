@@ -20,15 +20,11 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/input"
-	"github.com/nelsam/vidar/suggestions"
 	"github.com/nelsam/vidar/theme"
 )
 
 type CodeEditor struct {
 	mixins.CodeEditor
-	adapter          *suggestions.Adapter
-	suggestions      gxui.List
-	suggestionsChild *gxui.Child
 
 	theme       *basic.Theme
 	syntaxTheme theme.Theme
@@ -51,11 +47,6 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, syntaxTheme th
 	e.theme = theme
 	e.syntaxTheme = syntaxTheme
 	e.driver = driver
-
-	// TODO: move to plugins
-	e.adapter = &suggestions.Adapter{}
-	e.suggestions = e.CreateSuggestionList()
-	e.suggestions.SetAdapter(e.adapter)
 
 	e.CodeEditor.Init(e, driver, theme, font)
 	e.CodeEditor.SetScrollBarEnabled(true)
@@ -232,7 +223,6 @@ func (e *CodeEditor) FlushedChanges() {
 
 func (e *CodeEditor) Elements() []interface{} {
 	return []interface{}{
-		e.adapter,
 		e.Controller(),
 	}
 }
@@ -268,104 +258,6 @@ func (e *CodeEditor) Paint(c gxui.Canvas) {
 	}
 }
 
-func (e *CodeEditor) CreateSuggestionList() gxui.List {
-	l := e.theme.CreateList()
-	l.SetBackgroundBrush(e.theme.CodeSuggestionListStyle.Brush)
-	l.SetBorderPen(e.theme.CodeSuggestionListStyle.Pen)
-	return l
-}
-
-func (e *CodeEditor) SetSuggestionProvider(provider gxui.CodeSuggestionProvider) {
-	if e.SuggestionProvider() != provider {
-		e.CodeEditor.SetSuggestionProvider(provider)
-		if e.IsSuggestionListShowing() {
-			e.updateSuggestionList()
-		}
-	}
-}
-
-func (e *CodeEditor) IsSuggestionListShowing() bool {
-	return e.suggestionsChild != nil
-}
-
-func (e *CodeEditor) SortSuggestionList() {
-	e.updateSuggestionList()
-}
-
-func (e *CodeEditor) ShowSuggestionList() {
-	if e.SuggestionProvider() == nil || e.IsSuggestionListShowing() {
-		return
-	}
-	e.showSuggestionList()
-	e.updateSuggestionList()
-}
-
-func (e *CodeEditor) showSuggestionList() {
-	e.suggestionsChild = e.AddChild(e.suggestions)
-}
-
-func (e *CodeEditor) updateSuggestionList() {
-	caret := e.Controller().LastCaret()
-	lineIdx := e.LineIndex(caret)
-	text := e.Controller().Line(lineIdx)
-
-	// TODO: This only skips suggestions on line comments, not block comments
-	// (/* ... */).  Since block comments seem to be pretty uncommon in Go,
-	// I'm not going to worry about it just yet.  Ideally, this would be solved
-	// by having the syntax highlighting logic provide some context details to
-	// the editor, so it knows some information about the context surrounding
-	// the caret.
-	if comment := strings.Index(text, "//"); comment != -1 && comment <= caret {
-		e.HideSuggestionList()
-		return
-	}
-
-	start, _ := e.Controller().WordAt(caret)
-	suggestions := e.SuggestionProvider().SuggestionsAt(start)
-
-	// TODO: if len(suggestions) == 1, show the completion in-line
-	// instead of in a completion box.
-	longest := 0
-	for _, suggestion := range suggestions {
-		suggestionText := suggestion.(fmt.Stringer).String()
-		if len(suggestionText) > longest {
-			longest = len(suggestionText)
-		}
-	}
-	size := e.Font().GlyphMaxSize()
-	size.W *= longest
-	e.adapter.SetSize(size)
-
-	partial := e.Controller().TextRange(start, caret)
-	e.adapter.SetSuggestions(suggestions)
-	e.adapter.Sort(partial)
-	if e.adapter.Len() == 0 {
-		e.HideSuggestionList()
-		return
-	}
-	e.suggestions.Select(e.suggestions.Adapter().ItemAt(0))
-
-	// Position the suggestion list below the last caret
-	bounds := e.Size().Rect().Contract(e.Padding())
-	line := e.Line(lineIdx)
-	lineOffset := gxui.ChildToParent(math.ZeroPoint, line, e)
-	target := line.PositionAt(caret).Add(lineOffset)
-	cs := e.suggestions.DesiredSize(math.ZeroSize, bounds.Size())
-	e.suggestions.SetSize(cs)
-	e.suggestionsChild.Layout(cs.Rect().Offset(target).Intersect(bounds))
-
-	e.suggestions.Redraw()
-	e.Redraw()
-}
-
-func (e *CodeEditor) HideSuggestionList() {
-	if e.IsSuggestionListShowing() {
-		e.RemoveChild(e.suggestions)
-		e.Redraw()
-		e.suggestionsChild = nil
-	}
-}
-
 func (e *CodeEditor) storePositions() {
 	e.selections = e.Controller().Selections()
 	e.scrollPositions = math.Point{
@@ -388,9 +280,6 @@ func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 		return false
 	}
 	switch event.Key {
-	case gxui.KeyPeriod:
-		e.ShowSuggestionList()
-		return true
 	case gxui.KeyPageUp, gxui.KeyPageDown:
 		// These are all bindings that the TextBox handles fine.
 		return e.TextBox.KeyPress(event)
@@ -403,40 +292,7 @@ func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 			e.Controller().IndentSelection()
 		}
 		return true
-	case gxui.KeyUp, gxui.KeyDown:
-		if e.IsSuggestionListShowing() {
-			return e.suggestions.KeyPress(event)
-		}
-		return false
-	case gxui.KeyLeft, gxui.KeyRight:
-		if e.IsSuggestionListShowing() {
-			e.HideSuggestionList()
-		}
-		return false
-	case gxui.KeyEnter:
-		controller := e.Controller()
-		if e.IsSuggestionListShowing() {
-			// TODO: Use the InputHandler.  This will probably be easiest
-			// if we implement the event in the InputHandler's hooks, somehow.
-			text := e.adapter.Suggestion(e.suggestions.Selected()).Code()
-			start, end := controller.WordAt(controller.LastCaret())
-			controller.SetSelection(gxui.CreateTextSelection(start, end, false))
-			controller.ReplaceAll(text)
-			controller.Deselect(false)
-			e.HideSuggestionList()
-			return true
-		}
-		// TODO: implement electric braces.  See
-		// http://www.emacswiki.org/emacs/AutoPairs under
-		// "Electric-RET".
-		e.Controller().ReplaceWithNewlineKeepIndent()
-		e.ScrollToRune(e.Controller().FirstCaret())
-		return true
 	case gxui.KeyEscape:
-		if e.IsSuggestionListShowing() {
-			e.HideSuggestionList()
-			return true
-		}
 		// TODO: Keep track of some sort of concept of a "focused" caret and
 		// focus that.
 		e.Controller().SetCaret(e.Controller().FirstCaret())
@@ -445,9 +301,6 @@ func (e *CodeEditor) KeyPress(event gxui.KeyboardEvent) bool {
 }
 
 func (e *CodeEditor) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
-	if e.IsSuggestionListShowing() {
-		e.driver.Call(e.SortSuggestionList)
-	}
 	return false
 }
 

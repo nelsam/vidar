@@ -5,6 +5,7 @@
 package commander
 
 import (
+	"fmt"
 	"log"
 	"sync"
 
@@ -132,10 +133,14 @@ func (c *Commander) Push(bindables ...bind.Bindable) {
 	defer c.mapBindings()
 
 	var hooks []bind.OpHook
+	var multiHooks []bind.MultiOpHook
 	for _, b := range bindables {
 		next[b.Name()] = b
-		if h, ok := b.(bind.OpHook); ok {
+		switch h := b.(type) {
+		case bind.OpHook:
 			hooks = append(hooks, h)
+		case bind.MultiOpHook:
+			multiHooks = append(multiHooks, h)
 		}
 	}
 
@@ -150,31 +155,10 @@ func (c *Commander) Push(bindables ...bind.Bindable) {
 	}
 
 	for _, h := range hooks {
-		b := next[h.OpName()]
-		if b == nil {
-			log.Printf("Warning: binding %s (requested by hook %s) is not found", h.OpName(), h.Name())
-			continue
-		}
-		var (
-			newOp bind.Bindable
-			err   error
-		)
-		switch op := b.(type) {
-		case bind.HookedOp:
-			newOp, err = op.Bind(h)
-		case bind.HookedMultiOp:
-			newOp, err = op.Bind(h)
-		case input.Handler:
-			newOp, err = op.Bind(h)
-		default:
-			log.Printf("Warning: binding %s (requested by hook %s) is not a HookedOp and cannot bind hooks to itself. Skipping.", b.Name(), h.Name())
-			continue
-		}
-		if err != nil {
-			log.Printf("Warning: failed to bind hook %s to op %s: %s", h.Name(), b.Name(), err)
-			continue
-		}
-		next[newOp.Name()] = newOp
+		bindNames(next, h, h.OpName())
+	}
+	for _, h := range multiHooks {
+		bindNames(next, h, h.OpNames()...)
 	}
 }
 
@@ -260,7 +244,6 @@ func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 	if event.Modifier == 0 && event.Key == gxui.KeyEscape {
 		c.box.Clear()
 		editor.Focus()
-		return true
 	}
 	codeEditor := editor.CurrentEditor()
 	if codeEditor != nil && codeEditor.HasFocus() {
@@ -297,7 +280,7 @@ func (c *Commander) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
 	return true
 }
 
-func (c *Commander) Execute(e bind.Command) {
+func (c *Commander) Execute(e bind.Bindable) {
 	if before, ok := e.(BeforeExecutor); ok {
 		before.BeforeExec(c)
 	}
@@ -323,12 +306,42 @@ func (c *Commander) Execute(e bind.Command) {
 }
 
 func (c *Commander) Elements() []interface{} {
-	all := make([]interface{}, 0, len(c.commands))
-	for _, binding := range c.commands {
+	bindings := c.stack[len(c.stack)-1]
+	all := make([]interface{}, 0, len(bindings))
+	for _, binding := range bindings {
 		all = append(all, binding)
 	}
 	all = append(all, c.controller, c.inputHandler)
 	return all
+}
+
+func bindNames(m map[string]bind.Bindable, h bind.Bindable, opNames ...string) {
+	for _, name := range opNames {
+		b := m[name]
+		if b == nil {
+			log.Printf("Warning: binding %s (requested by hook %s) is not found", name, h.Name())
+			continue
+		}
+		newOp, err := bindName(b, h)
+		if err != nil {
+			log.Printf("Warning: failed to bind hook %s to op %s: %s", h.Name(), b.Name(), err)
+			continue
+		}
+		m[newOp.Name()] = newOp
+	}
+}
+
+func bindName(b, h bind.Bindable) (bind.Bindable, error) {
+	switch op := b.(type) {
+	case bind.HookedOp:
+		return op.Bind(h)
+	case bind.HookedMultiOp:
+		return op.Bind(h)
+	case input.Handler:
+		return op.Bind(h)
+	default:
+		return nil, fmt.Errorf("binding %s (requested by hook %s) is not a HookedOp and cannot bind hooks to itself. Skipping.", b.Name(), h.Name())
+	}
 }
 
 func execute(executor func(interface{}) bind.Status, elem interface{}) bind.Status {

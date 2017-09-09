@@ -7,22 +7,15 @@ package suggestions
 import "fmt"
 
 // A suggestion is a simple implementation of gxui.CodeSuggestion.
-type suggestion struct {
-	Value, Type string
+type Suggestion struct {
+	Name      string
+	Signature string
 }
 
 // String handles displaying the suggestion.
 //
 // TODO: Implement gxui.Viewer instead of gxui.Stringer, so that
 //       we can syntax-highlight types in the completion list.
-func (c suggestion) String() string {
-	return fmt.Sprintf("%s: %s", c.Value, c.Type)
-}
-
-func (c suggestion) Name() string {
-	return c.Value
-}
-
-func (c suggestion) Code() string {
-	return c.Value
+func (s Suggestion) String() string {
+	return fmt.Sprintf("%s: %s", s.Name, s.Signature)
 }
