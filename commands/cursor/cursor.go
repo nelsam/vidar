@@ -101,9 +101,14 @@ func (m *Mover) moveCarets(carets []int, e input.Edit) []int {
 		return carets
 	}
 	for i, c := range carets {
-		if c >= e.At {
-			carets[i] = c + delta
+		if c < e.At {
+			continue
 		}
+		c += delta
+		if c < e.At {
+			c = e.At
+		}
+		carets[i] = c
 	}
 	return carets
 }
