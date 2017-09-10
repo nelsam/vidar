@@ -77,6 +77,10 @@ func (f *FileOpener) Menu() string {
 }
 
 func (f *FileOpener) Start(control gxui.Control) gxui.Control {
+	// f.cursor is set here, rather than in Reset, so that other commands
+	// can call SetLocation and the execute the FileOpener.
+	f.cursor = token.Position{}
+
 	f.file.loadEditorDir(control)
 	input := make(chan gxui.Focusable, 1)
 	f.input = input
@@ -93,7 +97,6 @@ func (f *FileOpener) Reset() {
 	f.binder = nil
 	f.opener = nil
 	f.openers = nil
-	f.cursor = token.Position{}
 }
 
 func (f *FileOpener) Store(elem interface{}) bind.Status {
