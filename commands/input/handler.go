@@ -137,7 +137,7 @@ func (h *Handler) Apply(e input.Editor, edits ...input.Edit) {
 	}
 	c.Deselect(false)
 	h.driver.CallSync(func() {
-		c.SetTextRunes(text)
+		c.SetTextRunesNoEvent(text)
 		h.textEdited(e, edits)
 		if editor.IsSuggestionListShowing() {
 			editor.SortSuggestionList()
