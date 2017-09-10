@@ -31,6 +31,11 @@ type Controller interface {
 	SelectHome()
 }
 
+type CaretHandler interface {
+	Carets() []int
+	SetCarets([]int)
+}
+
 type MovingHook interface {
 	Moving(input.Editor, Direction, []int) Direction
 }
@@ -75,6 +80,32 @@ type Mover struct {
 
 func (*Mover) Name() string {
 	return "cursor-movement"
+}
+
+func (*Mover) OpName() string {
+	return "input-handler"
+}
+
+func (m *Mover) Applied(e input.Editor, edits []input.Edit) {
+	h := e.(CaretHandler)
+	carets := h.Carets()
+	for _, e := range edits {
+		carets = m.moveCarets(carets, e)
+	}
+	h.SetCarets(carets)
+}
+
+func (m *Mover) moveCarets(carets []int, e input.Edit) []int {
+	delta := len(e.New) - len(e.Old)
+	if delta == 0 {
+		return carets
+	}
+	for i, c := range carets {
+		if c >= e.At {
+			carets[i] = c + delta
+		}
+	}
+	return carets
 }
 
 func (m *Mover) For(dir Direction, mod Mod) *Mover {

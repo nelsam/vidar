@@ -12,7 +12,7 @@ package command
 
 import "github.com/nelsam/vidar/commander/bind"
 
-// A Commander is a type that can look up bind.Commands by name.
+// A Commander is a type that can look up bind.Bindables by name.
 type Commander interface {
-	Command(name string) bind.Command
+	Bindable(name string) bind.Bindable
 }

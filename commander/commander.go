@@ -223,17 +223,13 @@ func (c *Commander) Binding(binding gxui.KeyboardEvent) bind.Command {
 	return c.commands[binding]
 }
 
-// Command looks up a bind.Command by name.
-func (c *Commander) Command(name string) bind.Command {
+// Bindable looks up a bind.Bindable by name
+func (c *Commander) Bindable(name string) bind.Bindable {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	return c.command(name)
-}
-
-func (c *Commander) command(name string) bind.Command {
-	if cmd, ok := c.stack[len(c.stack)-1][name].(bind.Command); ok {
-		return cmd
+	if b, ok := c.stack[len(c.stack)-1][name]; ok {
+		return b
 	}
 	return nil
 }

@@ -67,7 +67,7 @@ var (
 )
 
 type Commander interface {
-	Command(name string) bind.Command
+	Bindable(name string) bind.Bindable
 }
 
 type Opener interface {
@@ -238,7 +238,7 @@ func newName(cmdr Commander, driver gxui.Driver, theme gxui.Theme, name string, 
 }
 
 func (n *Name) OnSelected(exec func(bind.Command)) {
-	cmd := n.cmdr.Command("open-file").(Opener)
+	cmd := n.cmdr.Bindable("open-file").(Opener)
 	n.button.OnClick(func(gxui.MouseEvent) {
 		cmd.SetLocation(n.File(), n.Position())
 		exec(cmd)

@@ -66,6 +66,21 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, syntaxTheme th
 	e.SetBorderPen(gxui.TransparentPen)
 }
 
+func (e *CodeEditor) Carets() []int {
+	return e.Controller().Carets()
+}
+
+func (e *CodeEditor) SetCarets(carets []int) {
+	if len(carets) == 0 {
+		e.Controller().ClearSelections()
+		return
+	}
+	e.Controller().SetCaret(carets[0])
+	for _, c := range carets[1:] {
+		e.Controller().AddCaret(c)
+	}
+}
+
 func (e *CodeEditor) OnRename(callback func(newPath string)) {
 	e.onRename = callback
 }

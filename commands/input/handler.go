@@ -16,6 +16,11 @@ import (
 	"github.com/nelsam/vidar/editor"
 )
 
+type Binder interface {
+	Bindable(name string) bind.Bindable
+	Execute(bind.Bindable)
+}
+
 type textChangeHook interface {
 	init(input.Editor, []rune)
 	textChanged(input.Editor, []input.Edit) error
@@ -33,14 +38,17 @@ type textChangeHook interface {
 // expanding input.Editor some, but we shouldn't need editor.Controller for so
 // much of what we're doing.  Basic editing should be handleable by the editor.
 type Handler struct {
-	driver     gxui.Driver
+	driver gxui.Driver
+	binder Binder
+
 	hooks      []textChangeHook
+	applied    []AppliedChangeHook
 	cancellers []Canceler
 	confirmers []Confirmer
 }
 
-func New(d gxui.Driver) *Handler {
-	return &Handler{driver: d}
+func New(d gxui.Driver, b Binder) *Handler {
+	return &Handler{driver: d, binder: b}
 }
 
 func (e *Handler) Name() string {
@@ -48,12 +56,13 @@ func (e *Handler) Name() string {
 }
 
 func (e *Handler) New() input.Handler {
-	return New(e.driver)
+	return New(e.driver, e.binder)
 }
 
 func (e *Handler) Bind(b bind.Bindable) (input.Handler, error) {
-	newH := New(e.driver)
+	newH := New(e.driver, e.binder)
 	newH.hooks = append(newH.hooks, e.hooks...)
+	newH.applied = append(newH.applied, e.applied...)
 	newH.cancellers = append(newH.cancellers, e.cancellers...)
 	newH.confirmers = append(newH.confirmers, e.confirmers...)
 
@@ -69,6 +78,9 @@ func (e *Handler) Bind(b bind.Bindable) (input.Handler, error) {
 	}
 
 	switch src := b.(type) {
+	case AppliedChangeHook:
+		didBind = true
+		newH.applied = append(newH.applied, src)
 	case ChangeHook:
 		didBind = true
 		r := &hookReader{hook: src, driver: e.driver}
@@ -212,21 +224,14 @@ func (e *Handler) HandleInput(focused input.Editor, ev gxui.KeyStrokeEvent) {
 }
 
 func (e *Handler) textEdited(focused input.Editor, edits []input.Edit) {
+	for _, a := range e.applied {
+		a.Applied(focused, edits)
+	}
 	for _, h := range e.hooks {
 		if err := h.textChanged(focused, edits); err != nil {
 			log.Printf("Hook %v failed: %s", h, err)
 		}
 	}
-	var gEdits []gxui.TextBoxEdit
-	for _, e := range edits {
-		gEdits = append(gEdits, gxui.TextBoxEdit{
-			At:    e.At,
-			Delta: len(e.New) - len(e.Old),
-			Old:   e.Old,
-			New:   e.New,
-		})
-	}
-	focused.(*editor.CodeEditor).Controller().TextEdited(gEdits)
 }
 
 func clone(t []rune) []rune {

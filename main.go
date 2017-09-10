@@ -110,7 +110,7 @@ func uiMain(driver gxui.Driver) {
 	// Bindings should be added immediately after creating the commander,
 	// since other types rely on the bindings having been bound.
 	cmdr := commander.New(driver, gTheme, controller)
-	bindings := []bind.Bindable{input.New(driver)}
+	bindings := []bind.Bindable{input.New(driver, cmdr)}
 	for _, c := range commands.Commands(driver, gTheme) {
 		bindings = append(bindings, c)
 	}
@@ -159,7 +159,7 @@ func uiMain(driver gxui.Driver) {
 		}
 	})
 
-	opener := cmdr.Command("open-file").(*commands.FileOpener)
+	opener := cmdr.Bindable("open-file").(*commands.FileOpener)
 	for _, file := range files {
 		filepath, err := filepath.Abs(file)
 		if err != nil {
