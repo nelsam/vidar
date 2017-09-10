@@ -93,6 +93,7 @@ func (f *FileOpener) Reset() {
 	f.binder = nil
 	f.opener = nil
 	f.openers = nil
+	f.cursor = token.Position{}
 }
 
 func (f *FileOpener) Store(elem interface{}) bind.Status {
