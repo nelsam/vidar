@@ -77,10 +77,11 @@ func (e *Handler) Bind(b bind.Bindable) (input.Handler, error) {
 		didBind = true
 	}
 
-	switch src := b.(type) {
-	case AppliedChangeHook:
+	if a, ok := b.(AppliedChangeHook); ok {
 		didBind = true
-		newH.applied = append(newH.applied, src)
+		newH.applied = append(newH.applied, a)
+	}
+	switch src := b.(type) {
 	case ChangeHook:
 		didBind = true
 		r := &hookReader{hook: src, driver: e.driver}
