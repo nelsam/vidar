@@ -38,6 +38,7 @@ type CodeEditor struct {
 
 	selections      gxui.TextSelectionList
 	scrollPositions math.Point
+	layers          []input.SyntaxLayer
 
 	renamed  bool
 	onRename func(newPath string)
@@ -247,6 +248,7 @@ func (e *CodeEditor) SetSyntaxLayers(layers []input.SyntaxLayer) {
 	sort.Slice(layers, func(i, j int) bool {
 		return layers[i].Construct < layers[j].Construct
 	})
+	e.layers = layers
 	gLayers := make(gxui.CodeSyntaxLayers, 0, len(layers))
 	for _, l := range layers {
 		highlight, found := e.syntaxTheme.Constructs[l.Construct]
@@ -262,6 +264,10 @@ func (e *CodeEditor) SetSyntaxLayers(layers []input.SyntaxLayer) {
 		gLayers = append(gLayers, gLayer)
 	}
 	e.CodeEditor.SetSyntaxLayers(gLayers)
+}
+
+func (e *CodeEditor) SyntaxLayers() []input.SyntaxLayer {
+	return e.layers
 }
 
 func (e *CodeEditor) Paint(c gxui.Canvas) {

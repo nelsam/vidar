@@ -17,5 +17,6 @@ package input
 type Editor interface {
 	Text() string
 	SetText(string)
+	SyntaxLayers() []SyntaxLayer
 	SetSyntaxLayers([]SyntaxLayer)
 }
