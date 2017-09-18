@@ -34,7 +34,6 @@ func (h EditHook) FileBindables(string) []bind.Bindable {
 		NewCopy(h.Driver),
 		NewCut(h.Driver),
 		NewPaste(h.Driver, h.Theme),
-		NewShowSuggestions(),
 		NewGotoLine(h.Theme),
 	}
 }

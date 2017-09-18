@@ -14,7 +14,7 @@ type FileHook struct {
 }
 
 func (h FileHook) Name() string {
-	return "edit-hook"
+	return "file-hook"
 }
 
 func (h FileHook) OpName() string {
@@ -26,5 +26,6 @@ func (h FileHook) FileBindables(string) []bind.Bindable {
 		NewSave(h.Theme),
 		NewSaveAll(h.Theme),
 		NewCloseTab(),
+		&EditorRedraw{},
 	}
 }
