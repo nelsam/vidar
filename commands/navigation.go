@@ -7,6 +7,7 @@ package commands
 import (
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commands/cursor"
+	"github.com/nelsam/vidar/plugin/command"
 )
 
 type Mover interface {
@@ -89,6 +90,7 @@ func (s *ScrollDeselect) Exec() error {
 }
 
 type NavHook struct {
+	Commander command.Commander
 }
 
 func (n NavHook) Name() string {
@@ -102,6 +104,7 @@ func (n NavHook) OpName() string {
 func (n NavHook) FileBindables(string) []bind.Bindable {
 	return []bind.Bindable{
 		&cursor.Mover{},
+		&cursor.OnEdit{Commander: n.Commander},
 		NewPrevLine(),
 		NewSelectPrevLine(),
 		NewNextLine(),
