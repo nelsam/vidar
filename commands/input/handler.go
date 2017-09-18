@@ -194,6 +194,9 @@ func (e *Handler) HandleEvent(focused input.Editor, ev gxui.KeyboardEvent) {
 			}
 			if s.Start() == s.End() {
 				if ev.Key == gxui.KeyBackspace {
+					if edit.At == 0 {
+						continue
+					}
 					edit.At--
 				}
 				edit.Old = ctrl.TextRunes()[edit.At : edit.At+1]
