@@ -39,7 +39,7 @@ func (c *Toggle) Name() string {
 }
 
 func (c *Toggle) Menu() string {
-	return "Edit"
+	return "Golang"
 }
 
 func (t *Toggle) Reset() {

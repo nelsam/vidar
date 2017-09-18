@@ -111,10 +111,10 @@ func uiMain(driver gxui.Driver) {
 	// since other types rely on the bindings having been bound.
 	cmdr := commander.New(driver, gTheme, controller)
 	bindings := []bind.Bindable{input.New(driver, cmdr)}
-	for _, c := range commands.Commands(driver, gTheme) {
+	for _, c := range commands.Commands(cmdr, driver, gTheme) {
 		bindings = append(bindings, c)
 	}
-	for _, h := range commands.Hooks(driver, gTheme) {
+	for _, h := range commands.Hooks(cmdr, driver, gTheme) {
 		bindings = append(bindings, h)
 	}
 	bindings = append(bindings, plugin.Bindables(cmdr, driver, gTheme)...)

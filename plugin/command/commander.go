@@ -15,4 +15,5 @@ import "github.com/nelsam/vidar/commander/bind"
 // A Commander is a type that can look up bind.Bindables by name.
 type Commander interface {
 	Bindable(name string) bind.Bindable
+	Execute(bind.Bindable)
 }

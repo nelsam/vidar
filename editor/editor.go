@@ -54,7 +54,7 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, syntaxTheme th
 	e.SetDesiredWidth(math.MaxSize.W)
 	e.watcherSetup()
 
-	// TODO: move to plugins
+	// TODO: move to hooks on the input.Handler
 	e.OnTextChanged(func(changes []gxui.TextBoxEdit) {
 		e.hasChanges = true
 	})
@@ -65,6 +65,10 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, syntaxTheme th
 	e.SetMargin(math.Spacing{L: 3, T: 3, R: 3, B: 3})
 	e.SetPadding(math.Spacing{L: 3, T: 3, R: 3, B: 3})
 	e.SetBorderPen(gxui.TransparentPen)
+}
+
+func (e *CodeEditor) DataChanged(recreate bool) {
+	e.List.DataChanged(recreate)
 }
 
 func (e *CodeEditor) Carets() []int {

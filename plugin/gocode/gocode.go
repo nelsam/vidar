@@ -150,16 +150,14 @@ func (g *GoCode) Moved(ie input.Editor, d cursor.Direction, cursors []int) {
 		return
 	}
 	pos := cursors[0]
-	switch d {
-	case cursor.Left, cursor.Right:
-		if cancel, ok := g.cancels[e]; ok {
-			cancel()
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		g.cancels[e] = cancel
-		e.RemoveChild(l)
-		go g.show(ctx, l, pos)
+
+	if cancel, ok := g.cancels[e]; ok {
+		cancel()
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	g.cancels[e] = cancel
+	e.RemoveChild(l)
+	go g.show(ctx, l, pos)
 }
 
 func (g *GoCode) Cancel(ie input.Editor) bool {

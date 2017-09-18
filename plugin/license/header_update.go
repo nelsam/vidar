@@ -48,7 +48,7 @@ func (u *HeaderUpdate) Name() string {
 }
 
 func (u *HeaderUpdate) Menu() string {
-	return "Edit"
+	return "Golang"
 }
 
 func (u *HeaderUpdate) Store(target interface{}) bind.Status {

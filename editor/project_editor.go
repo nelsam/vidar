@@ -43,10 +43,12 @@ func (p *ProjectEditor) Open(path string, cursor token.Position) (editor *CodeEd
 		return p.openLine(path, cursor.Line, cursor.Column)
 	}
 	editor, existed = p.open(path)
-	p.driver.Call(func() {
-		editor.Controller().SetCaret(cursor.Offset)
-		editor.ScrollToRune(cursor.Offset)
-	})
+	if cursor.Offset >= 0 {
+		p.driver.Call(func() {
+			editor.Controller().SetCaret(cursor.Offset)
+			editor.ScrollToRune(cursor.Offset)
+		})
+	}
 	return editor, existed
 }
 

@@ -32,7 +32,7 @@ func (c *Completions) Name() string {
 }
 
 func (c *Completions) Menu() string {
-	return "golang"
+	return "Golang"
 }
 
 func (c *Completions) Reset() {

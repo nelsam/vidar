@@ -65,7 +65,7 @@ func (g *Godef) Name() string {
 }
 
 func (g *Godef) Menu() string {
-	return "Edit"
+	return "Golang"
 }
 
 func (g *Godef) Reset() {

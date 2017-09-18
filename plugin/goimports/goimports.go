@@ -68,7 +68,7 @@ func (gi *GoImports) Name() string {
 }
 
 func (gi *GoImports) Menu() string {
-	return "Edit"
+	return "Golang"
 }
 
 func (gi *GoImports) Reset() {

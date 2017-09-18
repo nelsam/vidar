@@ -44,6 +44,11 @@ func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, t
 	e.SetMargin(math.Spacing{L: 0, T: 2, R: 0, B: 0})
 }
 
+func (e *TabbedEditor) Has(hiddenPrefix, path string) bool {
+	_, ok := e.editors[relPath(hiddenPrefix, path)]
+	return ok
+}
+
 func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []string) (editor *CodeEditor, existed bool) {
 	name := relPath(hiddenPrefix, path)
 	if editor, ok := e.editors[name]; ok {
@@ -109,21 +114,25 @@ func (e *TabbedEditor) CreatePanelTab() mixins.PanelTab {
 	return tab
 }
 
-func (e *TabbedEditor) ShiftTab(delta int) {
+func (e *TabbedEditor) EditorAt(d Direction) *CodeEditor {
 	panels := e.PanelCount()
 	if panels < 2 {
-		return
+		return e.CurrentEditor()
 	}
-	current := e.PanelIndex(e.SelectedPanel())
-	next := current + delta
-	for next < 0 {
-		next = panels + next
+	idx := e.PanelIndex(e.SelectedPanel())
+	switch d {
+	case Right:
+		idx++
+		if idx == panels {
+			idx = 0
+		}
+	case Left:
+		idx--
+		if idx < 0 {
+			idx = panels - 1
+		}
 	}
-	next = next % panels
-	e.Select(next)
-	e.driver.Call(func() {
-		e.Focus()
-	})
+	return e.Panel(idx).(*CodeEditor)
 }
 
 func (e *TabbedEditor) CloseCurrentEditor() (name string, editor *CodeEditor) {
