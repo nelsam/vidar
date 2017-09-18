@@ -47,6 +47,7 @@ func (s *Split) Menu() string {
 }
 
 func (s *Split) Exec(target interface{}) bind.Status {
+	// TODO: refocus the currently focused editor after we split.
 	splitter, ok := target.(Splitter)
 	if !ok {
 		return bind.Waiting
