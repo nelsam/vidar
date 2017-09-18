@@ -5,17 +5,33 @@
 package commands
 
 import (
+	"errors"
+	"go/token"
+
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/editor"
 )
 
-type SplitShifter interface {
-	ShiftSplit(editor.Direction)
+type BindManager interface {
+	Bindable(string) bind.Bindable
+	Execute(bind.Bindable)
+}
+
+type EditorChooser interface {
+	NextEditor(editor.Direction) *editor.CodeEditor
+}
+
+type Locationer interface {
+	bind.Bindable
+	SetLocation(string, token.Position)
 }
 
 type ChangeFocus struct {
 	direction editor.Direction
 	name      string
+
+	binder  BindManager
+	chooser EditorChooser
 }
 
 func NewFocusRight() *ChangeFocus {
@@ -42,11 +58,34 @@ func (p *ChangeFocus) Menu() string {
 	return "View"
 }
 
-func (p *ChangeFocus) Exec(target interface{}) bind.Status {
-	shifter, ok := target.(SplitShifter)
-	if !ok {
-		return bind.Waiting
+func (p *ChangeFocus) Reset() {
+	p.binder = nil
+	p.chooser = nil
+}
+
+func (p *ChangeFocus) Store(target interface{}) bind.Status {
+	switch src := target.(type) {
+	case BindManager:
+		p.binder = src
+	case EditorChooser:
+		p.chooser = src
 	}
-	shifter.ShiftSplit(p.direction)
-	return bind.Done
+	if p.chooser != nil && p.binder != nil {
+		return bind.Done
+	}
+	return bind.Waiting
+}
+
+func (p *ChangeFocus) Exec() error {
+	opener, ok := p.binder.Bindable("open-file").(Locationer)
+	if !ok {
+		return errors.New("no open-file command found of type Opener")
+	}
+	editor := p.chooser.NextEditor(p.direction)
+	if editor == nil {
+		return errors.New("no editor to switch to")
+	}
+	opener.SetLocation(editor.Filepath(), token.Position{Offset: -1})
+	p.binder.Execute(opener)
+	return nil
 }

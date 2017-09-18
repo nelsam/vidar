@@ -11,9 +11,17 @@ import (
 
 type CurrentEditorCloser interface {
 	CloseCurrentEditor() (string, *editor.CodeEditor)
+	CurrentEditor() *editor.CodeEditor
 }
 
-type CloseTab struct{}
+type BindPopper interface {
+	Pop() []bind.Bindable
+}
+
+type CloseTab struct {
+	closer CurrentEditorCloser
+	binder BindPopper
+}
 
 func NewCloseTab() *CloseTab {
 	return &CloseTab{}
@@ -27,11 +35,28 @@ func (s *CloseTab) Menu() string {
 	return "File"
 }
 
-func (s *CloseTab) Exec(target interface{}) bind.Status {
-	closer, ok := target.(CurrentEditorCloser)
-	if !ok {
-		return bind.Waiting
+func (s *CloseTab) Reset() {
+	s.closer = nil
+	s.binder = nil
+}
+
+func (s *CloseTab) Store(target interface{}) bind.Status {
+	switch src := target.(type) {
+	case CurrentEditorCloser:
+		s.closer = src
+	case BindPopper:
+		s.binder = src
 	}
-	closer.CloseCurrentEditor()
-	return bind.Done
+	if s.closer != nil && s.binder != nil {
+		return bind.Done
+	}
+	return bind.Waiting
+}
+
+func (s *CloseTab) Exec() error {
+	s.closer.CloseCurrentEditor()
+	if s.closer.CurrentEditor() == nil {
+		s.binder.Pop()
+	}
+	return nil
 }

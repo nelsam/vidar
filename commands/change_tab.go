@@ -4,23 +4,32 @@
 
 package commands
 
-import "github.com/nelsam/vidar/commander/bind"
+import (
+	"errors"
+	"go/token"
 
-type TabShifter interface {
-	ShiftTab(int)
+	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/editor"
+)
+
+type TabChooser interface {
+	EditorAt(editor.Direction) *editor.CodeEditor
 }
 
 type ChangeTab struct {
-	shift int
+	shift editor.Direction
 	name  string
+
+	binder  BindManager
+	chooser TabChooser
 }
 
 func NewNextTab() *ChangeTab {
-	return &ChangeTab{shift: 1, name: "next-tab"}
+	return &ChangeTab{shift: editor.Right, name: "next-tab"}
 }
 
 func NewPrevTab() *ChangeTab {
-	return &ChangeTab{shift: -1, name: "prev-tab"}
+	return &ChangeTab{shift: editor.Left, name: "prev-tab"}
 }
 
 func (t *ChangeTab) Name() string {
@@ -31,11 +40,34 @@ func (t *ChangeTab) Menu() string {
 	return "View"
 }
 
-func (t *ChangeTab) Exec(target interface{}) bind.Status {
-	shifter, ok := target.(TabShifter)
-	if !ok {
-		return bind.Waiting
+func (t *ChangeTab) Reset() {
+	t.binder = nil
+	t.chooser = nil
+}
+
+func (t *ChangeTab) Store(target interface{}) bind.Status {
+	switch src := target.(type) {
+	case BindManager:
+		t.binder = src
+	case TabChooser:
+		t.chooser = src
 	}
-	shifter.ShiftTab(t.shift)
-	return bind.Done
+	if t.chooser != nil && t.binder != nil {
+		return bind.Done
+	}
+	return bind.Waiting
+}
+
+func (t *ChangeTab) Exec() error {
+	opener, ok := t.binder.Bindable("open-file").(Locationer)
+	if !ok {
+		return errors.New("no open-file command found of type Opener")
+	}
+	editor := t.chooser.EditorAt(t.shift)
+	if editor == nil {
+		return errors.New("no editor to switch to")
+	}
+	opener.SetLocation(editor.Filepath(), token.Position{Offset: -1})
+	t.binder.Execute(opener)
+	return nil
 }
