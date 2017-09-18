@@ -43,7 +43,8 @@ type Commander struct {
 
 	lock sync.RWMutex
 
-	stack    []map[string]bind.Bindable
+	stack    [][]bind.Bindable
+	bound    map[string]bind.Bindable
 	commands map[gxui.KeyboardEvent]bind.Command
 	menuBar  *menuBar
 }
@@ -104,18 +105,20 @@ func (c *Commander) Paint(canvas gxui.Canvas) {
 	c.BackgroundBorderPainter.PaintBorder(canvas, rect)
 }
 
-func (c *Commander) cloneTop() map[string]bind.Bindable {
-	m := make(map[string]bind.Bindable)
+func (c *Commander) cloneTop() []bind.Bindable {
 	if len(c.stack) == 0 {
-		return m
+		return nil
 	}
-	for n, b := range c.stack[len(c.stack)-1] {
+	next := make([]bind.Bindable, 0, len(c.stack[len(c.stack)-1]))
+	for _, b := range c.stack[len(c.stack)-1] {
 		if h, ok := b.(input.Handler); ok {
+			// TODO: decide if this is helpful.  Bind now returns a new
+			// input.Handler each time, so this is probably useless.
 			b = h.New()
 		}
-		m[n] = b
+		next = append(next, b)
 	}
-	return m
+	return next
 }
 
 // Push binds all bindables to c, pushing the previous
@@ -127,15 +130,21 @@ func (c *Commander) Push(bindables ...bind.Bindable) {
 	c.menuBar.Clear()
 	defer c.mapMenu()
 
-	next := c.cloneTop()
-	c.stack = append(c.stack, next)
+	c.stack = append(c.stack, append(c.cloneTop(), bindables...))
 	c.commands = make(map[gxui.KeyboardEvent]bind.Command)
 	defer c.mapBindings()
 
-	var hooks []bind.OpHook
-	var multiHooks []bind.MultiOpHook
-	for _, b := range bindables {
-		next[b.Name()] = b
+	c.bindStack()
+}
+
+func (c *Commander) bindStack() {
+	c.bound = make(map[string]bind.Bindable, len(c.stack[len(c.stack)-1]))
+	var (
+		hooks      []bind.OpHook
+		multiHooks []bind.MultiOpHook
+	)
+	for _, b := range c.stack[len(c.stack)-1] {
+		c.bound[b.Name()] = b
 		switch h := b.(type) {
 		case bind.OpHook:
 			hooks = append(hooks, h)
@@ -155,16 +164,19 @@ func (c *Commander) Push(bindables ...bind.Bindable) {
 	}
 
 	for _, h := range hooks {
-		bindNames(next, h, h.OpName())
+		bindNames(c.bound, h, h.OpName())
 	}
 	for _, h := range multiHooks {
-		bindNames(next, h, h.OpNames()...)
+		bindNames(c.bound, h, h.OpNames()...)
 	}
 }
 
 func (c *Commander) mapBindings() {
 	var handler input.Handler
+	// Loop through the slice to preserve order.
 	for _, b := range c.stack[len(c.stack)-1] {
+		// Load from the map to ensure hooks are bound.
+		b = c.bound[b.Name()]
 		switch src := b.(type) {
 		case bind.Command:
 			c.bind(src, settings.Bindings(src.Name())...)
@@ -180,21 +192,22 @@ func (c *Commander) mapBindings() {
 
 func (c *Commander) mapMenu() {
 	keys := make(map[bind.Command][]gxui.KeyboardEvent)
-	var cmds []bind.Command
 	for key, bound := range c.commands {
-		if _, ok := keys[bound]; !ok {
-			cmds = append(cmds, bound)
-		}
 		keys[bound] = append(keys[bound], key)
 	}
-	for _, cmd := range cmds {
+	// As usual, use the stack slice to preserve order
+	for _, b := range c.stack[len(c.stack)-1] {
+		cmd, ok := b.(bind.Command)
+		if !ok {
+			continue
+		}
 		c.menuBar.Add(cmd, keys[cmd]...)
 	}
 }
 
 // Pop pops the most recent call to Bind, restoring the
 // previous bind.
-func (c *Commander) Pop() {
+func (c *Commander) Pop() []bind.Bindable {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -204,7 +217,12 @@ func (c *Commander) Pop() {
 	c.commands = make(map[gxui.KeyboardEvent]bind.Command)
 	defer c.mapBindings()
 
-	c.stack = c.stack[:len(c.stack)-1]
+	end := len(c.stack) - 1
+	top := c.stack[end]
+	c.stack = c.stack[:end]
+
+	c.bindStack()
+	return top
 }
 
 func (c *Commander) bind(command bind.Command, bindings ...gxui.KeyboardEvent) {
@@ -228,7 +246,7 @@ func (c *Commander) Bindable(name string) bind.Bindable {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	if b, ok := c.stack[len(c.stack)-1][name]; ok {
+	if b, ok := c.bound[name]; ok {
 		return b
 	}
 	return nil
@@ -302,9 +320,8 @@ func (c *Commander) Execute(e bind.Bindable) {
 }
 
 func (c *Commander) Elements() []interface{} {
-	bindings := c.stack[len(c.stack)-1]
-	all := make([]interface{}, 0, len(bindings))
-	for _, binding := range bindings {
+	all := make([]interface{}, 0, len(c.bound))
+	for _, binding := range c.bound {
 		all = append(all, binding)
 	}
 	all = append(all, c.controller, c.inputHandler)
