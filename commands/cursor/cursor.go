@@ -71,6 +71,7 @@ const (
 type Mover struct {
 	direction Direction
 	mod       Mod
+	carets    []int
 	moving    []MovingHook
 	moved     []MovedHook
 
@@ -82,37 +83,6 @@ func (*Mover) Name() string {
 	return "cursor-movement"
 }
 
-func (*Mover) OpName() string {
-	return "input-handler"
-}
-
-func (m *Mover) Applied(e input.Editor, edits []input.Edit) {
-	h := e.(CaretHandler)
-	carets := h.Carets()
-	for _, e := range edits {
-		carets = m.moveCarets(carets, e)
-	}
-	h.SetCarets(carets)
-}
-
-func (m *Mover) moveCarets(carets []int, e input.Edit) []int {
-	delta := len(e.New) - len(e.Old)
-	if delta == 0 {
-		return carets
-	}
-	for i, c := range carets {
-		if c < e.At {
-			continue
-		}
-		c += delta
-		if c < e.At {
-			c = e.At
-		}
-		carets[i] = c
-	}
-	return carets
-}
-
 func (m *Mover) For(dir Direction, mod Mod) *Mover {
 	return &Mover{
 		direction: dir,
@@ -121,6 +91,16 @@ func (m *Mover) For(dir Direction, mod Mod) *Mover {
 		moved:     m.moved,
 		editor:    m.editor,
 		ctrl:      m.ctrl,
+	}
+}
+
+func (m *Mover) To(carets []int) *Mover {
+	return &Mover{
+		carets: carets,
+		moving: m.moving,
+		moved:  m.moved,
+		editor: m.editor,
+		ctrl:   m.ctrl,
 	}
 }
 
@@ -166,10 +146,19 @@ func (m *Mover) Store(elem interface{}) bind.Status {
 }
 
 func (m *Mover) Exec() error {
-	for _, h := range m.moving {
-		m = m.For(h.Moving(m.editor, m.direction, m.ctrl.Carets()), m.mod)
+	if m.direction != NoDirection {
+		for _, h := range m.moving {
+			m = m.For(h.Moving(m.editor, m.direction, m.ctrl.Carets()), m.mod)
+		}
 	}
+	// TODO: a lot of this is workaround BS.  This should be cleaned up soon.
 	switch m.direction {
+	case NoDirection:
+		if m.carets == nil {
+			return nil
+		}
+		h := m.editor.(CaretHandler)
+		h.SetCarets(m.carets)
 	case Up:
 		switch m.mod {
 		case NoMod:

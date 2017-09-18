@@ -16,6 +16,7 @@ import (
 
 type EditorOpener interface {
 	Open(string, token.Position) (editor *editor.CodeEditor, existed bool)
+	CurrentEditor() *editor.CodeEditor
 }
 
 type Opener interface {
@@ -33,7 +34,7 @@ type FileBinder interface {
 // A Binder is a type which can bind bindables
 type Binder interface {
 	Push(...bind.Bindable)
-	Pop()
+	Pop() []bind.Bindable
 }
 
 type FileOpener struct {
@@ -115,30 +116,19 @@ func (f *FileOpener) Store(elem interface{}) bind.Status {
 }
 
 func (f *FileOpener) Exec() error {
+	if f.opener.CurrentEditor() != nil {
+		f.binder.Pop()
+	}
 	path := f.file.Path()
-	editor, skipHooks := f.opener.Open(path, f.cursor)
+	f.opener.Open(path, f.cursor)
 	for _, o := range f.openers {
 		o.Open(path, f.cursor)
 	}
-	if skipHooks {
-		return nil
-	}
-
 	var b []bind.Bindable
 	for _, h := range f.hooks {
 		b = append(b, h.FileBindables(path)...)
 	}
-	binder := f.binder
-
-	editor.OnGainedFocus(func() {
-		binder.Push(b...)
-	})
-	editor.OnLostFocus(func() {
-		binder.Pop()
-	})
-	if editor.HasFocus() {
-		binder.Push(b...)
-	}
+	f.binder.Push(b...)
 	return nil
 }
 
