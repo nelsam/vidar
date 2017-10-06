@@ -211,8 +211,7 @@ func (e *SplitEditor) Has(hiddenPrefix, path string) bool {
 
 func (e *SplitEditor) Open(hiddenPrefix, path, headerText string, environ []string) (editor *CodeEditor, existed bool) {
 	for _, child := range e.Children() {
-		me := child.Control.(MultiEditor)
-		if me.Has(hiddenPrefix, path) {
+		if me, ok := child.Control.(MultiEditor); ok && me.Has(hiddenPrefix, path) {
 			e.current = me
 			return me.Open(hiddenPrefix, path, headerText, environ)
 		}
