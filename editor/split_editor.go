@@ -202,7 +202,7 @@ func (e *SplitEditor) MouseUp(event gxui.MouseEvent) {
 
 func (e *SplitEditor) Has(hiddenPrefix, path string) bool {
 	for _, child := range e.Children() {
-		if child.Control.(MultiEditor).Has(hiddenPrefix, path) {
+		if me, ok := child.Control.(MultiEditor); ok && me.Has(hiddenPrefix, path) {
 			return true
 		}
 	}
@@ -277,21 +277,39 @@ func (e *SplitEditor) nextEditor(direction Direction) (editor *CodeEditor, wrapp
 		log.Printf("Error: Current editor is not part of the splitter's layout")
 		return nil, false
 	}
+	var next func(i int) int
 	switch direction {
 	case Up, Left:
-		i--
-		if i < 0 {
-			wrapped = true
-			i = len(children) - 1
+		next = func(i int) int {
+			i--
+			if i < 0 {
+				wrapped = true
+				i = len(children) - 1
+			}
+			return i
 		}
 	case Down, Right:
-		i++
-		if i == len(children) {
-			wrapped = true
-			i = 0
+		next = func(i int) int {
+			i++
+			if i == len(children) {
+				wrapped = true
+				i = 0
+			}
+			return i
 		}
 	}
-	me := children[i].Control.(MultiEditor)
+	var (
+		me MultiEditor
+		ok bool
+	)
+
+	for {
+		i = next(i)
+		me, ok = children[i].Control.(MultiEditor)
+		if ok {
+			break
+		}
+	}
 	if splitter, ok := me.(*SplitEditor); ok {
 		return splitter.first(direction), wrapped
 	}
