@@ -39,6 +39,11 @@ func NewProjectsPane(cmdr Commander, driver gxui.Driver, theme gxui.Theme, projF
 	}
 	pane.projectsAdapter.SetItems(settings.Projects())
 	pane.projects.SetAdapter(pane.projectsAdapter)
+	pane.projects.OnSelectionChanged(func(selected gxui.AdapterItem) {
+		opener := pane.cmdr.Bindable("open-project").(ProjectSetter)
+		opener.SetProject(selected.(settings.Project))
+		pane.cmdr.Execute(opener)
+	})
 	return pane
 }
 

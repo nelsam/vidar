@@ -7,7 +7,6 @@ package navigator
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
-	"github.com/nelsam/vidar/commander/bind"
 )
 
 // Pane is a type that has a button and a window frame.
@@ -19,15 +18,6 @@ type Pane interface {
 	// Frame returns the frame that is displayed when the Pane's
 	// Button is clicked.
 	Frame() gxui.Control
-
-	// OnComplete takes a function which takes a command, and runs
-	// that function when the Pane's action is complete.
-	OnComplete(func(bind.Bindable))
-}
-
-// Executor is a type that can execute a bind.Bindable
-type Executor interface {
-	Execute(bind.Bindable)
 }
 
 // Caller is any type that can call a function on the UI goroutine
@@ -50,18 +40,15 @@ type Navigator struct {
 	frame   gxui.Control
 
 	panes []Pane
-
-	executor Executor
 }
 
 // New creates and returns a new *Navigator.
-func New(driver gxui.Driver, theme gxui.Theme, executor Executor) *Navigator {
+func New(driver gxui.Driver, theme gxui.Theme) *Navigator {
 	nav := &Navigator{}
 	nav.Init(nav, theme)
 
 	nav.SetDirection(gxui.LeftToRight)
 	nav.caller = driver
-	nav.executor = executor
 
 	nav.buttons = theme.CreateLinearLayout()
 	// TODO: update buttons to use more restrictive type
@@ -84,7 +71,6 @@ func (n *Navigator) Buttons() gxui.LinearLayout {
 }
 
 func (n *Navigator) Add(pane Pane) {
-	pane.OnComplete(n.executor.Execute)
 	n.panes = append(n.panes, pane)
 	button := pane.Button()
 	button.OnClick(func(event gxui.MouseEvent) {

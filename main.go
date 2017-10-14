@@ -120,7 +120,7 @@ func uiMain(driver gxui.Driver) {
 	bindings = append(bindings, plugin.Bindables(cmdr, driver, gTheme)...)
 	cmdr.Push(bindings...)
 
-	nav := navigator.New(driver, gTheme, cmdr)
+	nav := navigator.New(driver, gTheme)
 	controller.SetNavigator(nav)
 
 	editor := editor.New(driver, window, gTheme, theme.Default, gTheme.DefaultMonospaceFont())

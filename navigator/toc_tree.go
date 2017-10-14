@@ -68,6 +68,7 @@ var (
 
 type Commander interface {
 	Bindable(name string) bind.Bindable
+	Execute(bind.Bindable)
 }
 
 type Opener interface {
@@ -234,15 +235,12 @@ type Name struct {
 func newName(cmdr Commander, driver gxui.Driver, theme gxui.Theme, name string, color gxui.Color) *Name {
 	node := &Name{cmdr: cmdr}
 	node.Init(node, driver, theme, name, color)
-	return node
-}
-
-func (n *Name) OnSelected(exec func(bind.Command)) {
-	cmd := n.cmdr.Bindable("open-file").(Opener)
-	n.button.OnClick(func(gxui.MouseEvent) {
-		cmd.SetLocation(n.File(), n.Position())
-		exec(cmd)
+	node.button.OnClick(func(gxui.MouseEvent) {
+		cmd := node.cmdr.Bindable("open-file").(Opener)
+		cmd.SetLocation(node.File(), node.Position())
+		node.cmdr.Execute(cmd)
 	})
+	return node
 }
 
 type TOC struct {

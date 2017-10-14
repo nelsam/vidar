@@ -18,7 +18,6 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/settings"
 )
@@ -72,11 +71,10 @@ type ProjectTree struct {
 	driver gxui.Driver
 	theme  *basic.Theme
 
-	callback func(bind.Bindable)
-	dirs     *directory
-	tocCtl   gxui.Control
-	toc      *TOC
-	tocLock  sync.RWMutex
+	dirs    *directory
+	tocCtl  gxui.Control
+	toc     *TOC
+	tocLock sync.RWMutex
 
 	watcher    *fsnotify.Watcher
 	reloadLock chan struct{}
@@ -248,11 +246,6 @@ func (p *ProjectTree) Frame() gxui.Control {
 	return p.layout
 }
 
-func (p *ProjectTree) OnComplete(callback func(bind.Bindable)) {
-	p.callback = callback
-	go attachCallback(p.TOC(), callback)
-}
-
 type splitterLayout struct {
 	mixins.SplitterLayout
 
@@ -294,22 +287,4 @@ type parent interface {
 
 type irrespParent interface {
 	MissingChild() gxui.Control
-}
-
-type selectionButton interface {
-	OnSelected(func(bind.Bindable))
-}
-
-func attachCallback(control gxui.Control, callback func(bind.Bindable)) {
-	if b, ok := control.(selectionButton); ok {
-		b.OnSelected(callback)
-	}
-	if p, ok := control.(parent); ok {
-		for _, c := range p.Children() {
-			attachCallback(c.Control, callback)
-		}
-	}
-	if p, ok := control.(irrespParent); ok {
-		attachCallback(p.MissingChild(), callback)
-	}
 }

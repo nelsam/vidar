@@ -48,9 +48,6 @@ func newDirectory(projTree *ProjectTree, path string) *directory {
 			projTree.layout.RemoveChild(projTree.tocCtl)
 		}
 		toc := NewTOC(projTree.cmdr, projTree.driver, projTree.theme, path)
-		if projTree.callback != nil {
-			go attachCallback(toc, projTree.callback)
-		}
 		projTree.SetTOC(toc)
 		scrollable := theme.CreateScrollLayout()
 		// Disable horiz scrolling until we can figure out an accurate
@@ -119,7 +116,10 @@ func (d *directory) reload() {
 		log.Printf("Unexpected error reading directory %s: %s", d.tree.path, err)
 		return
 	}
-	defer d.driver.Call(d.Redraw)
+	defer d.driver.Call(func() {
+		d.Relayout()
+		d.Redraw()
+	})
 
 	children := int64(0)
 	for _, finfo := range finfos {
