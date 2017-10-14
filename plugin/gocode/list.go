@@ -122,10 +122,11 @@ func (s *suggestionList) apply() {
 		return
 	}
 	end := carets[0]
+	runes := s.ctrl.TextRunes()
 
-	s.applier.Apply(s.editor, input.Edit{
+	go s.applier.Apply(s.editor, input.Edit{
 		At:  start,
-		Old: s.ctrl.TextRunes()[start:end],
+		Old: runes[start:end],
 		New: []rune(suggestion.Name),
 	})
 }

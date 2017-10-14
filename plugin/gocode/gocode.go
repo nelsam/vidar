@@ -187,8 +187,7 @@ func (g *GoCode) Confirm(ie input.Editor) bool {
 	if !ok {
 		return false
 	}
+	g.stop(e)
 	l.apply()
-	e.RemoveChild(l)
-	delete(g.lists, e)
 	return true
 }
