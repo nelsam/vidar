@@ -20,10 +20,11 @@ type ProjectEditor struct {
 	project settings.Project
 }
 
-func NewProjectEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font, project settings.Project) *ProjectEditor {
+func NewProjectEditor(driver gxui.Driver, window gxui.Window, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font, project settings.Project) *ProjectEditor {
 	p := &ProjectEditor{}
 	p.driver = driver
 	p.window = window
+	p.cmdr = cmdr
 	p.theme = theme
 	p.syntaxTheme = syntaxTheme
 	p.font = font
@@ -34,7 +35,7 @@ func NewProjectEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme
 	p.project = project
 	p.SetMouseEventTarget(true)
 
-	p.AddChild(NewTabbedEditor(driver, theme, syntaxTheme, font))
+	p.AddChild(NewTabbedEditor(driver, cmdr, theme, syntaxTheme, font))
 	return p
 }
 
@@ -74,6 +75,7 @@ type MultiProjectEditor struct {
 	mixins.LinearLayout
 
 	driver      gxui.Driver
+	cmdr        Commander
 	theme       *basic.Theme
 	syntaxTheme theme.Theme
 	font        gxui.Font
@@ -83,8 +85,8 @@ type MultiProjectEditor struct {
 	projects map[string]*ProjectEditor
 }
 
-func New(driver gxui.Driver, window gxui.Window, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *MultiProjectEditor {
-	defaultEditor := NewProjectEditor(driver, window, theme, syntaxTheme, font, settings.DefaultProject)
+func New(driver gxui.Driver, window gxui.Window, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *MultiProjectEditor {
+	defaultEditor := NewProjectEditor(driver, window, cmdr, theme, syntaxTheme, font, settings.DefaultProject)
 
 	e := &MultiProjectEditor{
 		projects: map[string]*ProjectEditor{
@@ -92,6 +94,7 @@ func New(driver gxui.Driver, window gxui.Window, theme *basic.Theme, syntaxTheme
 		},
 		driver:      driver,
 		window:      window,
+		cmdr:        cmdr,
 		font:        font,
 		theme:       theme,
 		syntaxTheme: syntaxTheme,
@@ -105,7 +108,7 @@ func New(driver gxui.Driver, window gxui.Window, theme *basic.Theme, syntaxTheme
 func (e *MultiProjectEditor) SetProject(project settings.Project) {
 	editor, ok := e.projects[project.Name]
 	if !ok {
-		editor = NewProjectEditor(e.driver, e.window, e.theme, e.syntaxTheme, e.font, project)
+		editor = NewProjectEditor(e.driver, e.window, e.cmdr, e.theme, e.syntaxTheme, e.font, project)
 		e.projects[project.Name] = editor
 	}
 	e.RemoveChild(e.current)
@@ -129,10 +132,6 @@ func (e *MultiProjectEditor) CurrentFile() string {
 
 func (e *MultiProjectEditor) CurrentProject() settings.Project {
 	return e.current.Project()
-}
-
-func (e *MultiProjectEditor) Focus() {
-	e.current.Focus()
 }
 
 func (e *MultiProjectEditor) Open(file string, cursor token.Position) (editor *CodeEditor, existed bool) {

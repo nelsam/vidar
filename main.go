@@ -123,7 +123,7 @@ func uiMain(driver gxui.Driver) {
 	nav := navigator.New(driver, gTheme)
 	controller.SetNavigator(nav)
 
-	editor := editor.New(driver, window, gTheme, theme.Default, gTheme.DefaultMonospaceFont())
+	editor := editor.New(driver, window, cmdr, gTheme, theme.Default, gTheme.DefaultMonospaceFont())
 	controller.SetEditor(editor)
 
 	projTree := navigator.NewProjectTree(cmdr, driver, window, gTheme)

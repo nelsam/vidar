@@ -5,6 +5,7 @@
 package editor
 
 import (
+	"go/token"
 	"log"
 	"os"
 	"path/filepath"
@@ -23,20 +24,22 @@ type TabbedEditor struct {
 	editors map[string]*CodeEditor
 
 	driver      gxui.Driver
+	cmdr        Commander
 	theme       *basic.Theme
 	syntaxTheme theme.Theme
 	font        gxui.Font
 }
 
-func NewTabbedEditor(driver gxui.Driver, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *TabbedEditor {
+func NewTabbedEditor(driver gxui.Driver, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *TabbedEditor {
 	editor := &TabbedEditor{}
-	editor.Init(editor, driver, theme, syntaxTheme, font)
+	editor.Init(editor, driver, cmdr, theme, syntaxTheme, font)
 	return editor
 }
 
-func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) {
+func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) {
 	e.editors = make(map[string]*CodeEditor)
 	e.driver = driver
+	e.cmdr = cmdr
 	e.theme = theme
 	e.syntaxTheme = syntaxTheme
 	e.font = font
@@ -53,7 +56,7 @@ func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []str
 	name := relPath(hiddenPrefix, path)
 	if editor, ok := e.editors[name]; ok {
 		e.Select(e.PanelIndex(editor))
-		e.Focus()
+		gxui.SetFocus(editor)
 		return editor, true
 	}
 	editor = &CodeEditor{}
@@ -72,7 +75,7 @@ func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []str
 			e.RemovePanel(editor)
 			e.AddPanelAt(editor, newName, idx)
 			e.Select(e.PanelIndex(focused))
-			e.Focus()
+			gxui.SetFocus(focused.(gxui.Focusable))
 		})
 	})
 	editor.Init(e.driver, e.theme, e.syntaxTheme, e.font, path, headerText)
@@ -85,13 +88,7 @@ func (e *TabbedEditor) Add(name string, editor *CodeEditor) {
 	e.editors[name] = editor
 	e.AddPanel(editor, name)
 	e.Select(e.PanelIndex(editor))
-	e.Focus()
-}
-
-func (e *TabbedEditor) Focus() {
-	if e.SelectedPanel() != nil {
-		gxui.SetFocus(e.SelectedPanel().(gxui.Focusable))
-	}
+	gxui.SetFocus(editor)
 }
 
 func (e *TabbedEditor) Files() []string {
@@ -109,7 +106,9 @@ func (e *TabbedEditor) Editors() uint {
 func (e *TabbedEditor) CreatePanelTab() mixins.PanelTab {
 	tab := basic.CreatePanelTab(e.theme)
 	tab.OnMouseUp(func(gxui.MouseEvent) {
-		e.driver.Call(e.Focus)
+		opener := e.cmdr.Bindable("open-file").(Opener)
+		opener.SetLocation(e.CurrentEditor().Filepath(), token.Position{})
+		e.cmdr.Execute(opener)
 	})
 	return tab
 }
@@ -141,6 +140,13 @@ func (e *TabbedEditor) CloseCurrentEditor() (name string, editor *CodeEditor) {
 		return "", nil
 	}
 	e.RemovePanel(toRemove)
+	defer func() {
+		if ed := e.CurrentEditor(); ed != nil {
+			opener := e.cmdr.Bindable("open-file").(Opener)
+			opener.SetLocation(ed.Filepath(), token.Position{})
+			e.cmdr.Execute(opener)
+		}
+	}()
 	for name, panel := range e.editors {
 		if panel == toRemove {
 			delete(e.editors, name)

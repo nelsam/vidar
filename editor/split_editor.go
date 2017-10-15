@@ -6,6 +6,7 @@ package editor
 
 import (
 	"fmt"
+	"go/token"
 	"log"
 
 	"github.com/go-gl/glfw/v3.2/glfw"
@@ -14,6 +15,7 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/mixins/outer"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/theme"
 )
 
@@ -40,10 +42,19 @@ type Splitter interface {
 	Split(orientation gxui.Orientation)
 }
 
+type Opener interface {
+	bind.Bindable
+	SetLocation(string, token.Position)
+}
+
+type Commander interface {
+	Bindable(string) bind.Bindable
+	Execute(bind.Bindable)
+}
+
 type MultiEditor interface {
 	gxui.Control
 	outer.LayoutChildren
-	Focus()
 	Has(hiddenPrefix, path string) bool
 	Open(hiddenPrefix, path, headerText string, environ []string) (editor *CodeEditor, existed bool)
 	Editors() uint
@@ -67,6 +78,7 @@ type SplitEditor struct {
 	mixins.SplitterLayout
 
 	driver      gxui.Driver
+	cmdr        Commander
 	theme       *basic.Theme
 	syntaxTheme theme.Theme
 	font        gxui.Font
@@ -75,9 +87,10 @@ type SplitEditor struct {
 	current MultiEditor
 }
 
-func NewSplitEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *SplitEditor {
+func NewSplitEditor(driver gxui.Driver, cmdr Commander, window gxui.Window, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *SplitEditor {
 	editor := &SplitEditor{
 		driver:      driver,
+		cmdr:        cmdr,
 		theme:       theme,
 		syntaxTheme: syntaxTheme,
 		font:        font,
@@ -100,16 +113,18 @@ func (e *SplitEditor) Split(orientation gxui.Orientation) {
 		return
 	}
 	name, editor := e.current.CloseCurrentEditor()
-	newSplit := NewTabbedEditor(e.driver, e.theme, e.syntaxTheme, e.font)
+	newSplit := NewTabbedEditor(e.driver, e.cmdr, e.theme, e.syntaxTheme, e.font)
 	defer func() {
 		newSplit.Add(name, editor)
-		newSplit.Focus()
+		opener := e.cmdr.Bindable("open-file").(Opener)
+		opener.SetLocation(editor.Filepath(), token.Position{})
+		e.cmdr.Execute(opener)
 	}()
 	if e.Orientation() == orientation {
 		e.AddChild(newSplit)
 		return
 	}
-	newSplitter := NewSplitEditor(e.driver, e.window, e.theme, e.syntaxTheme, e.font)
+	newSplitter := NewSplitEditor(e.driver, e.cmdr, e.window, e.theme, e.syntaxTheme, e.font)
 	newSplitter.SetOrientation(orientation)
 	var (
 		index       int
@@ -143,7 +158,9 @@ func (e *SplitEditor) CloseCurrentEditor() (name string, editor *CodeEditor) {
 	if e.current.Editors() == 0 && len(e.Children()) > 1 {
 		e.RemoveChild(e.current)
 		e.current = e.Children()[0].Control.(MultiEditor)
-		e.current.Focus()
+		opener := e.cmdr.Bindable("open-file").(Opener)
+		opener.SetLocation(e.current.CurrentEditor().Filepath(), token.Position{})
+		e.cmdr.Execute(opener)
 	}
 	return name, editor
 }
@@ -161,10 +178,6 @@ func (e *SplitEditor) AddChild(child gxui.Control) *gxui.Child {
 		e.current = editor
 	}
 	return e.SplitterLayout.AddChild(child)
-}
-
-func (e *SplitEditor) Focus() {
-	e.current.Focus()
 }
 
 func (l *SplitEditor) CreateSplitterBar() gxui.Control {
@@ -194,7 +207,9 @@ func (e *SplitEditor) MouseUp(event gxui.MouseEvent) {
 			continue
 		}
 		e.current = newFocus
-		e.current.Focus()
+		opener := e.cmdr.Bindable("open-file").(Opener)
+		opener.SetLocation(newFocus.CurrentEditor().Filepath(), token.Position{})
+		e.cmdr.Execute(opener)
 		break
 	}
 	e.SplitterLayout.MouseUp(event)

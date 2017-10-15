@@ -257,7 +257,9 @@ func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 	editor := c.controller.Editor()
 	if event.Modifier == 0 && event.Key == gxui.KeyEscape {
 		c.box.Clear()
-		editor.Focus()
+		if e := editor.CurrentEditor(); e != nil {
+			gxui.SetFocus(e)
+		}
 	}
 	codeEditor := editor.CurrentEditor()
 	if codeEditor != nil && codeEditor.HasFocus() {
