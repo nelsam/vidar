@@ -117,7 +117,7 @@ func (e *SplitEditor) Split(orientation gxui.Orientation) {
 	defer func() {
 		newSplit.Add(name, editor)
 		opener := e.cmdr.Bindable("open-file").(Opener)
-		opener.SetLocation(editor.Filepath(), token.Position{})
+		opener.SetLocation(editor.Filepath(), token.Position{Offset: -1})
 		e.cmdr.Execute(opener)
 	}()
 	if e.Orientation() == orientation {
@@ -159,7 +159,7 @@ func (e *SplitEditor) CloseCurrentEditor() (name string, editor *CodeEditor) {
 		e.RemoveChild(e.current)
 		e.current = e.Children()[0].Control.(MultiEditor)
 		opener := e.cmdr.Bindable("open-file").(Opener)
-		opener.SetLocation(e.current.CurrentEditor().Filepath(), token.Position{})
+		opener.SetLocation(e.current.CurrentEditor().Filepath(), token.Position{Offset: -1})
 		e.cmdr.Execute(opener)
 	}
 	return name, editor
@@ -208,7 +208,7 @@ func (e *SplitEditor) MouseUp(event gxui.MouseEvent) {
 		}
 		e.current = newFocus
 		opener := e.cmdr.Bindable("open-file").(Opener)
-		opener.SetLocation(newFocus.CurrentEditor().Filepath(), token.Position{})
+		opener.SetLocation(newFocus.CurrentEditor().Filepath(), token.Position{Offset: -1})
 		e.cmdr.Execute(opener)
 		break
 	}

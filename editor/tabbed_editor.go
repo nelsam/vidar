@@ -107,7 +107,7 @@ func (e *TabbedEditor) CreatePanelTab() mixins.PanelTab {
 	tab := basic.CreatePanelTab(e.theme)
 	tab.OnMouseUp(func(gxui.MouseEvent) {
 		opener := e.cmdr.Bindable("open-file").(Opener)
-		opener.SetLocation(e.CurrentEditor().Filepath(), token.Position{})
+		opener.SetLocation(e.CurrentEditor().Filepath(), token.Position{Offset: -1})
 		e.cmdr.Execute(opener)
 	})
 	return tab
@@ -143,7 +143,7 @@ func (e *TabbedEditor) CloseCurrentEditor() (name string, editor *CodeEditor) {
 	defer func() {
 		if ed := e.CurrentEditor(); ed != nil {
 			opener := e.cmdr.Bindable("open-file").(Opener)
-			opener.SetLocation(ed.Filepath(), token.Position{})
+			opener.SetLocation(ed.Filepath(), token.Position{Offset: -1})
 			e.cmdr.Execute(opener)
 		}
 	}()
