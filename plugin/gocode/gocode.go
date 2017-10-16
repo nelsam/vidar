@@ -172,7 +172,9 @@ func (g *GoCode) stop(e Editor) bool {
 		delete(g.cancels, e)
 	}
 	if l, ok := g.lists[e]; ok {
-		e.RemoveChild(l)
+		if e.Children().Find(l) != nil {
+			e.RemoveChild(l)
+		}
 		delete(g.lists, e)
 		return true
 	}
