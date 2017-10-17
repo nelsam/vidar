@@ -6,7 +6,6 @@ package commands
 
 import (
 	"errors"
-	"go/token"
 
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/editor"
@@ -23,7 +22,7 @@ type EditorChooser interface {
 
 type Locationer interface {
 	bind.Bindable
-	SetLocation(string, token.Position)
+	For(string, int) bind.Bindable
 }
 
 type ChangeFocus struct {
@@ -85,7 +84,6 @@ func (p *ChangeFocus) Exec() error {
 	if editor == nil {
 		return errors.New("no editor to switch to")
 	}
-	opener.SetLocation(editor.Filepath(), token.Position{Offset: -1})
-	p.binder.Execute(opener)
+	p.binder.Execute(opener.For(editor.Filepath(), -1))
 	return nil
 }

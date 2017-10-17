@@ -5,6 +5,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/nelsam/gxui"
@@ -29,7 +30,10 @@ type ProjectOpener struct {
 	input <-chan gxui.Focusable
 
 	proj settings.Project
-	nav  PaneDisplayer
+
+	nav     PaneDisplayer
+	tree    *navigator.ProjectTree
+	setters []ProjectSetter
 }
 
 func NewProjectOpener(theme gxui.Theme) *ProjectOpener {
@@ -48,9 +52,6 @@ func (p *ProjectOpener) Menu() string {
 }
 
 func (p *ProjectOpener) Start(gxui.Control) gxui.Control {
-	p.nav = nil
-	p.proj = settings.Project{}
-
 	p.name.SetText("")
 	input := make(chan gxui.Focusable, 1)
 	p.input = input
@@ -68,6 +69,14 @@ func (p *ProjectOpener) SetProject(proj settings.Project) {
 }
 
 func (p *ProjectOpener) BeforeExec(interface{}) {
+}
+
+func (p *ProjectOpener) Reset() {
+	p.nav = nil
+	p.setters = nil
+	p.tree = nil
+
+	p.proj = settings.Project{}
 	for _, proj := range settings.Projects() {
 		if proj.Name == p.name.Text() {
 			p.proj = proj
@@ -76,25 +85,38 @@ func (p *ProjectOpener) BeforeExec(interface{}) {
 	}
 }
 
-func (p *ProjectOpener) Exec(element interface{}) bind.Status {
-	if p.proj.Name != p.name.Text() {
-		p.Err = fmt.Sprintf("No project by the name of %s found", p.name.Text())
-		return bind.Failed
-	}
-	switch src := element.(type) {
+func (p *ProjectOpener) Store(elem interface{}) bind.Status {
+	switch src := elem.(type) {
 	case *navigator.ProjectTree:
-		if p.nav == nil {
-			p.Warn = "No navigation pane found to bind project tree to"
-			return bind.Waiting
-		}
-		src.SetProject(p.proj)
-		p.nav.ShowNavPane(src.Frame())
-		return bind.Executing
+		p.tree = src
 	case ProjectSetter:
-		src.SetProject(p.proj)
-		return bind.Executing
+		p.setters = append(p.setters, src)
 	case PaneDisplayer:
 		p.nav = src
 	}
-	return bind.Waiting
+	if p.tree == nil {
+		return bind.Waiting
+	}
+	return bind.Executing
+}
+
+func (p *ProjectOpener) Exec() error {
+	if p.proj.Name != p.name.Text() {
+		p.Err = fmt.Sprintf("No project by the name of %s found", p.name.Text())
+		return errors.New(p.Err)
+	}
+	p.tree.SetProject(p.proj)
+	p.showTree()
+	for _, setter := range p.setters {
+		setter.SetProject(p.proj)
+	}
+	return nil
+}
+
+func (p *ProjectOpener) showTree() {
+	if p.nav == nil {
+		p.Warn = "No navigation pane found to bind project tree to"
+		return
+	}
+	p.nav.ShowNavPane(p.tree.Frame())
 }

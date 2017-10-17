@@ -10,7 +10,6 @@ package godef
 import (
 	"bytes"
 	"fmt"
-	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,13 +30,13 @@ type Commander interface {
 }
 
 type Opener interface {
-	bind.Command
-	SetLocation(filepath string, position token.Position)
+	For(filepath string, offset int) bind.Bindable
 }
 
 type Editor interface {
 	Filepath() string
 	Text() string
+	LineStart(int) int
 }
 
 type CursorController interface {
@@ -117,11 +116,8 @@ func (g *Godef) Exec() error {
 		g.Err = err.Error()
 		return err
 	}
-	g.opener.SetLocation(path, token.Position{
-		Line:   line,
-		Column: column,
-	})
-	g.cmdr.Execute(g.opener)
+	offset := g.editor.LineStart(line) + column
+	g.cmdr.Execute(g.opener.For(path, offset))
 	return nil
 }
 

@@ -74,7 +74,7 @@ type Commander interface {
 type Opener interface {
 	bind.Command
 
-	SetLocation(path string, pos token.Position)
+	For(path string, offset int) bind.Bindable
 }
 
 type genericNode struct {
@@ -237,8 +237,7 @@ func newName(cmdr Commander, driver gxui.Driver, theme gxui.Theme, name string, 
 	node.Init(node, driver, theme, name, color)
 	node.button.OnClick(func(gxui.MouseEvent) {
 		cmd := node.cmdr.Bindable("open-file").(Opener)
-		cmd.SetLocation(node.File(), node.Position())
-		node.cmdr.Execute(cmd)
+		node.cmdr.Execute(cmd.For(node.File(), node.Position().Offset))
 	})
 	return node
 }

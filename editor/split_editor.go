@@ -6,7 +6,6 @@ package editor
 
 import (
 	"fmt"
-	"go/token"
 	"log"
 
 	"github.com/go-gl/glfw/v3.2/glfw"
@@ -43,8 +42,7 @@ type Splitter interface {
 }
 
 type Opener interface {
-	bind.Bindable
-	SetLocation(string, token.Position)
+	For(string, int) bind.Bindable
 }
 
 type Commander interface {
@@ -117,8 +115,7 @@ func (e *SplitEditor) Split(orientation gxui.Orientation) {
 	defer func() {
 		newSplit.Add(name, editor)
 		opener := e.cmdr.Bindable("open-file").(Opener)
-		opener.SetLocation(editor.Filepath(), token.Position{Offset: -1})
-		e.cmdr.Execute(opener)
+		e.cmdr.Execute(opener.For(editor.Filepath(), -1))
 	}()
 	if e.Orientation() == orientation {
 		e.AddChild(newSplit)
@@ -159,8 +156,7 @@ func (e *SplitEditor) CloseCurrentEditor() (name string, editor *CodeEditor) {
 		e.RemoveChild(e.current)
 		e.current = e.Children()[0].Control.(MultiEditor)
 		opener := e.cmdr.Bindable("open-file").(Opener)
-		opener.SetLocation(e.current.CurrentEditor().Filepath(), token.Position{Offset: -1})
-		e.cmdr.Execute(opener)
+		e.cmdr.Execute(opener.For(e.current.CurrentEditor().Filepath(), -1))
 	}
 	return name, editor
 }
@@ -208,8 +204,7 @@ func (e *SplitEditor) MouseUp(event gxui.MouseEvent) {
 		}
 		e.current = newFocus
 		opener := e.cmdr.Bindable("open-file").(Opener)
-		opener.SetLocation(newFocus.CurrentEditor().Filepath(), token.Position{Offset: -1})
-		e.cmdr.Execute(opener)
+		e.cmdr.Execute(opener.For(newFocus.CurrentEditor().Filepath(), -1))
 		break
 	}
 	e.SplitterLayout.MouseUp(event)

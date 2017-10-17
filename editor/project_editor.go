@@ -5,8 +5,6 @@
 package editor
 
 import (
-	"go/token"
-
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
@@ -39,27 +37,14 @@ func NewProjectEditor(driver gxui.Driver, window gxui.Window, cmdr Commander, th
 	return p
 }
 
-func (p *ProjectEditor) Open(path string, cursor token.Position) (editor *CodeEditor, existed bool) {
-	if cursor.Offset == 0 && (cursor.Line != 0 || cursor.Column != 0) {
-		return p.openLine(path, cursor.Line, cursor.Column)
-	}
+func (p *ProjectEditor) Open(path string, offset int) (editor *CodeEditor, existed bool) {
 	editor, existed = p.open(path)
-	if cursor.Offset >= 0 {
+	if offset >= 0 {
 		p.driver.Call(func() {
-			editor.Controller().SetCaret(cursor.Offset)
-			editor.ScrollToRune(cursor.Offset)
+			editor.Controller().SetCaret(offset)
+			editor.ScrollToRune(offset)
 		})
 	}
-	return editor, existed
-}
-
-func (p *ProjectEditor) openLine(path string, line, col int) (editor *CodeEditor, existed bool) {
-	editor, existed = p.open(path)
-	p.driver.Call(func() {
-		lineOffset := editor.LineStart(line)
-		editor.Controller().SetCaret(lineOffset + col)
-		editor.ScrollToLine(line)
-	})
 	return editor, existed
 }
 
@@ -114,6 +99,11 @@ func (e *MultiProjectEditor) SetProject(project settings.Project) {
 	e.RemoveChild(e.current)
 	e.AddChild(editor)
 	e.current = editor
+
+	if ed := e.current.CurrentEditor(); ed != nil {
+		opener := e.cmdr.Bindable("open-file").(Opener)
+		e.cmdr.Execute(opener.For(ed.Filepath(), -1))
+	}
 }
 
 func (e *MultiProjectEditor) Elements() []interface{} {
@@ -134,6 +124,6 @@ func (e *MultiProjectEditor) CurrentProject() settings.Project {
 	return e.current.Project()
 }
 
-func (e *MultiProjectEditor) Open(file string, cursor token.Position) (editor *CodeEditor, existed bool) {
-	return e.current.Open(file, cursor)
+func (e *MultiProjectEditor) Open(file string, offset int) (editor *CodeEditor, existed bool) {
+	return e.current.Open(file, offset)
 }

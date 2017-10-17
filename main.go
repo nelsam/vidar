@@ -5,7 +5,6 @@
 package main
 
 import (
-	"go/token"
 	"io"
 	"io/ioutil"
 	"log"
@@ -166,8 +165,7 @@ func uiMain(driver gxui.Driver) {
 			log.Printf("Failed to get path: %s", err)
 		}
 		opener.Start(nil)
-		opener.SetLocation(filepath, token.Position{})
-		cmdr.Execute(opener)
+		cmdr.Execute(opener.For(filepath, -1))
 	}
 
 	window.OnClose(driver.Terminate)

@@ -5,8 +5,6 @@
 package controller
 
 import (
-	"go/token"
-
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
@@ -21,7 +19,7 @@ type Editor interface {
 	gxui.Control
 	CurrentFile() string
 	CurrentEditor() *editor.CodeEditor
-	Open(path string, cursor token.Position) (editor *editor.CodeEditor, existed bool)
+	Open(path string, offset int) (editor *editor.CodeEditor, existed bool)
 }
 
 type Controller struct {

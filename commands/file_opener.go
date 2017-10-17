@@ -6,7 +6,6 @@ package commands
 
 import (
 	"fmt"
-	"go/token"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
@@ -15,12 +14,12 @@ import (
 )
 
 type EditorOpener interface {
-	Open(string, token.Position) (editor *editor.CodeEditor, existed bool)
+	Open(string, int) (editor *editor.CodeEditor, existed bool)
 	CurrentEditor() *editor.CodeEditor
 }
 
 type Opener interface {
-	Open(string, token.Position)
+	Open(string, int)
 }
 
 // A FileBinder is a type that registers a list of commands
@@ -42,7 +41,7 @@ type FileOpener struct {
 	theme  *basic.Theme
 
 	file   *FSLocator
-	cursor token.Position
+	offset int
 	input  <-chan gxui.Focusable
 
 	binder  Binder
@@ -53,20 +52,22 @@ type FileOpener struct {
 }
 
 func NewFileOpener(driver gxui.Driver, theme *basic.Theme) *FileOpener {
-	fileOpener := new(FileOpener)
-	fileOpener.Init(driver, theme)
-	return fileOpener
+	o := &FileOpener{
+		driver: driver,
+		theme:  theme,
+		offset: -1,
+	}
+	o.file = NewFSLocator(driver, theme)
+	return o
 }
 
-func (f *FileOpener) Init(driver gxui.Driver, theme *basic.Theme) {
-	f.driver = driver
-	f.theme = theme
-	f.file = NewFSLocator(driver, theme)
-}
+func (f *FileOpener) For(path string, offset int) bind.Bindable {
+	newF := NewFileOpener(f.driver, f.theme)
+	newF.hooks = append(newF.hooks, f.hooks...)
 
-func (f *FileOpener) SetLocation(filepath string, position token.Position) {
-	f.file.SetPath(filepath)
-	f.cursor = position
+	newF.file.SetPath(path)
+	newF.offset = offset
+	return newF
 }
 
 func (f *FileOpener) Name() string {
@@ -78,10 +79,6 @@ func (f *FileOpener) Menu() string {
 }
 
 func (f *FileOpener) Start(control gxui.Control) gxui.Control {
-	// f.cursor is set here, rather than in Reset, so that other commands
-	// can call SetLocation and the execute the FileOpener.
-	f.cursor = token.Position{}
-
 	f.file.loadEditorDir(control)
 	input := make(chan gxui.Focusable, 1)
 	f.input = input
@@ -120,9 +117,9 @@ func (f *FileOpener) Exec() error {
 		f.binder.Pop()
 	}
 	path := f.file.Path()
-	f.opener.Open(path, f.cursor)
+	f.opener.Open(path, f.offset)
 	for _, o := range f.openers {
-		o.Open(path, f.cursor)
+		o.Open(path, f.offset)
 	}
 	var b []bind.Bindable
 	for _, h := range f.hooks {

@@ -6,7 +6,6 @@ package commands
 
 import (
 	"errors"
-	"go/token"
 
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/editor"
@@ -67,7 +66,6 @@ func (t *ChangeTab) Exec() error {
 	if editor == nil {
 		return errors.New("no editor to switch to")
 	}
-	opener.SetLocation(editor.Filepath(), token.Position{Offset: -1})
-	t.binder.Execute(opener)
+	t.binder.Execute(opener.For(editor.Filepath(), -1))
 	return nil
 }
