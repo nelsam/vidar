@@ -17,7 +17,7 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/scoring"
-	"github.com/nelsam/vidar/settings"
+	"github.com/nelsam/vidar/setting"
 )
 
 const minInputChars = 10

@@ -13,7 +13,7 @@ import (
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/status"
-	"github.com/nelsam/vidar/settings"
+	"github.com/nelsam/vidar/setting"
 )
 
 const srcDir = string(filepath.Separator) + "src" + string(filepath.Separator)

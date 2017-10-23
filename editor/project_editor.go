@@ -8,7 +8,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/settings"
+	"github.com/nelsam/vidar/setting"
 	"github.com/nelsam/vidar/theme"
 )
 

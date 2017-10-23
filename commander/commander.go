@@ -17,7 +17,7 @@ import (
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/controller"
-	"github.com/nelsam/vidar/settings"
+	"github.com/nelsam/vidar/setting"
 )
 
 // Controller is a type which is used by the Commander to control the

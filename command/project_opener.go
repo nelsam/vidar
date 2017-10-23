@@ -12,7 +12,7 @@ import (
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/navigator"
 	"github.com/nelsam/vidar/plugin/status"
-	"github.com/nelsam/vidar/settings"
+	"github.com/nelsam/vidar/setting"
 )
 
 type ProjectSetter interface {

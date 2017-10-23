@@ -6,7 +6,7 @@ package commands
 
 import (
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commands/cursor"
+	"github.com/nelsam/vidar/command/cursor"
 	"github.com/nelsam/vidar/plugin/command"
 )
 

@@ -8,7 +8,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commands/history"
+	"github.com/nelsam/vidar/command/history"
 )
 
 type EditHook struct {

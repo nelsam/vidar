@@ -14,8 +14,8 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/input"
-	"github.com/nelsam/vidar/settings"
-	"github.com/nelsam/vidar/suggestions"
+	"github.com/nelsam/vidar/setting"
+	"github.com/nelsam/vidar/suggestion"
 )
 
 type Editor interface {

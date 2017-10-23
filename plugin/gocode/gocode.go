@@ -13,8 +13,8 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/input"
-	"github.com/nelsam/vidar/commands/cursor"
-	"github.com/nelsam/vidar/settings"
+	"github.com/nelsam/vidar/command/cursor"
+	"github.com/nelsam/vidar/setting"
 )
 
 type Projecter interface {

@@ -19,7 +19,7 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/editor"
-	"github.com/nelsam/vidar/settings"
+	"github.com/nelsam/vidar/setting"
 )
 
 // maxWatchDirs is here just to ensure that we don't take too long to

@@ -6,7 +6,7 @@ package commands
 
 import (
 	"github.com/nelsam/vidar/editor"
-	"github.com/nelsam/vidar/settings"
+	"github.com/nelsam/vidar/setting"
 )
 
 type ProjectFinder interface {
