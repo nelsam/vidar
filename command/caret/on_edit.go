@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package cursor
+package caret
 
 import (
 	"github.com/nelsam/vidar/commander/bind"
@@ -19,7 +19,7 @@ type OnEdit struct {
 }
 
 func (o *OnEdit) Name() string {
-	return "cursor-movement-on-edit"
+	return "caret-movement-on-edit"
 }
 
 func (o *OnEdit) OpName() string {
@@ -32,7 +32,7 @@ func (o *OnEdit) Applied(e input.Editor, edits []input.Edit) {
 	for _, e := range edits {
 		carets = o.moveCarets(carets, e)
 	}
-	m := o.Commander.Bindable("cursor-movement").(*Mover)
+	m := o.Commander.Bindable("caret-movement").(*Mover)
 	o.Commander.Execute(m.To(carets))
 }
 

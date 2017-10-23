@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package cursor
+package caret
 
 import (
 	"fmt"
@@ -80,7 +80,7 @@ type Mover struct {
 }
 
 func (*Mover) Name() string {
-	return "cursor-movement"
+	return "caret-movement"
 }
 
 func (m *Mover) For(dir Direction, mod Mod) *Mover {

@@ -13,7 +13,7 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/input"
-	"github.com/nelsam/vidar/command/cursor"
+	"github.com/nelsam/vidar/command/caret"
 	"github.com/nelsam/vidar/setting"
 )
 
@@ -56,7 +56,7 @@ func (g *GoCode) Name() string {
 }
 
 func (g *GoCode) OpNames() []string {
-	return []string{"cursor-movement", "input-handler"}
+	return []string{"caret-movement", "input-handler"}
 }
 
 func (g *GoCode) cancel(e Editor) {
@@ -106,7 +106,7 @@ func (g *GoCode) set(e Editor, l *suggestionList, pos int) {
 	go g.show(ctx, l, pos)
 }
 
-func (g *GoCode) Moving(ie input.Editor, d cursor.Direction, cursors []int) cursor.Direction {
+func (g *GoCode) Moving(ie input.Editor, d caret.Direction, carets []int) caret.Direction {
 	e := ie.(Editor)
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -120,22 +120,22 @@ func (g *GoCode) Moving(ie input.Editor, d cursor.Direction, cursors []int) curs
 		}
 		return d
 	}
-	if len(cursors) != 1 {
+	if len(carets) != 1 {
 		g.stop(e)
 		return d
 	}
 	switch d {
-	case cursor.Up:
+	case caret.Up:
 		l.SelectPrevious()
-	case cursor.Down:
+	case caret.Down:
 		l.SelectNext()
 	default:
 		return d
 	}
-	return cursor.NoDirection
+	return caret.NoDirection
 }
 
-func (g *GoCode) Moved(ie input.Editor, d cursor.Direction, cursors []int) {
+func (g *GoCode) Moved(ie input.Editor, d caret.Direction, carets []int) {
 	e := ie.(Editor)
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -146,10 +146,10 @@ func (g *GoCode) Moved(ie input.Editor, d cursor.Direction, cursors []int) {
 	if !l.Attached() {
 		return
 	}
-	if len(cursors) != 1 {
+	if len(carets) != 1 {
 		return
 	}
-	pos := cursors[0]
+	pos := carets[0]
 
 	if cancel, ok := g.cancels[e]; ok {
 		cancel()

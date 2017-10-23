@@ -6,12 +6,12 @@ package commands
 
 import (
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/command/cursor"
+	"github.com/nelsam/vidar/command/caret"
 	"github.com/nelsam/vidar/plugin/command"
 )
 
 type Mover interface {
-	For(cursor.Direction, cursor.Mod) *cursor.Mover
+	For(caret.Direction, caret.Mod) *caret.Mover
 }
 
 type Executor interface {
@@ -29,8 +29,8 @@ type Careter interface {
 
 type Scroll struct {
 	name      string
-	direction cursor.Direction
-	mod       cursor.Mod
+	direction caret.Direction
+	mod       caret.Mod
 
 	mover    Mover
 	exec     Executor
@@ -103,8 +103,8 @@ func (n NavHook) OpName() string {
 
 func (n NavHook) FileBindables(string) []bind.Bindable {
 	return []bind.Bindable{
-		&cursor.Mover{},
-		&cursor.OnEdit{Commander: n.Commander},
+		&caret.Mover{},
+		&caret.OnEdit{Commander: n.Commander},
 		NewPrevLine(),
 		NewSelectPrevLine(),
 		NewNextLine(),
@@ -128,7 +128,7 @@ func NewPrevLine() bind.Command {
 	return &ScrollDeselect{
 		Scroll: Scroll{
 			name:      "prev-line",
-			direction: cursor.Up,
+			direction: caret.Up,
 		},
 	}
 }
@@ -136,8 +136,8 @@ func NewPrevLine() bind.Command {
 func NewSelectPrevLine() bind.Command {
 	return &Scroll{
 		name:      "select-prev-line",
-		direction: cursor.Up,
-		mod:       cursor.Select,
+		direction: caret.Up,
+		mod:       caret.Select,
 	}
 }
 
@@ -145,7 +145,7 @@ func NewNextLine() bind.Command {
 	return &ScrollDeselect{
 		Scroll: Scroll{
 			name:      "next-line",
-			direction: cursor.Down,
+			direction: caret.Down,
 		},
 	}
 }
@@ -153,8 +153,8 @@ func NewNextLine() bind.Command {
 func NewSelectNextLine() bind.Command {
 	return &Scroll{
 		name:      "select-next-line",
-		direction: cursor.Down,
-		mod:       cursor.Select,
+		direction: caret.Down,
+		mod:       caret.Select,
 	}
 }
 
@@ -162,7 +162,7 @@ func NewPrevChar() bind.Command {
 	return &ScrollDeselect{
 		Scroll: Scroll{
 			name:      "prev-char",
-			direction: cursor.Left,
+			direction: caret.Left,
 		},
 	}
 }
@@ -171,8 +171,8 @@ func NewPrevWord() bind.Command {
 	return &ScrollDeselect{
 		Scroll: Scroll{
 			name:      "prev-word",
-			direction: cursor.Left,
-			mod:       cursor.Word,
+			direction: caret.Left,
+			mod:       caret.Word,
 		},
 	}
 }
@@ -180,16 +180,16 @@ func NewPrevWord() bind.Command {
 func NewSelectPrevChar() bind.Command {
 	return &Scroll{
 		name:      "select-prev-char",
-		direction: cursor.Left,
-		mod:       cursor.Select,
+		direction: caret.Left,
+		mod:       caret.Select,
 	}
 }
 
 func NewSelectPrevWord() bind.Command {
 	return &Scroll{
 		name:      "select-prev-word",
-		direction: cursor.Left,
-		mod:       cursor.Select | cursor.Word,
+		direction: caret.Left,
+		mod:       caret.Select | caret.Word,
 	}
 }
 
@@ -197,7 +197,7 @@ func NewNextChar() bind.Command {
 	return &ScrollDeselect{
 		Scroll: Scroll{
 			name:      "next-char",
-			direction: cursor.Right,
+			direction: caret.Right,
 		},
 	}
 }
@@ -206,8 +206,8 @@ func NewNextWord() bind.Command {
 	return &ScrollDeselect{
 		Scroll: Scroll{
 			name:      "next-word",
-			direction: cursor.Right,
-			mod:       cursor.Word,
+			direction: caret.Right,
+			mod:       caret.Word,
 		},
 	}
 }
@@ -215,16 +215,16 @@ func NewNextWord() bind.Command {
 func NewSelectNextChar() bind.Command {
 	return &Scroll{
 		name:      "select-next-char",
-		direction: cursor.Right,
-		mod:       cursor.Select,
+		direction: caret.Right,
+		mod:       caret.Select,
 	}
 }
 
 func NewSelectNextWord() bind.Command {
 	return &Scroll{
 		name:      "select-next-word",
-		direction: cursor.Right,
-		mod:       cursor.Select | cursor.Word,
+		direction: caret.Right,
+		mod:       caret.Select | caret.Word,
 	}
 }
 
@@ -232,8 +232,8 @@ func NewLineEnd() bind.Command {
 	return &ScrollDeselect{
 		Scroll: Scroll{
 			name:      "line-end",
-			direction: cursor.Right,
-			mod:       cursor.Line,
+			direction: caret.Right,
+			mod:       caret.Line,
 		},
 	}
 }
@@ -241,8 +241,8 @@ func NewLineEnd() bind.Command {
 func NewSelectLineEnd() bind.Command {
 	return &Scroll{
 		name:      "select-to-line-end",
-		direction: cursor.Right,
-		mod:       cursor.SelectLine,
+		direction: caret.Right,
+		mod:       caret.SelectLine,
 	}
 }
 
@@ -250,8 +250,8 @@ func NewLineStart() bind.Command {
 	return &ScrollDeselect{
 		Scroll: Scroll{
 			name:      "line-start",
-			direction: cursor.Left,
-			mod:       cursor.Line,
+			direction: caret.Left,
+			mod:       caret.Line,
 		},
 	}
 }
@@ -259,7 +259,7 @@ func NewLineStart() bind.Command {
 func NewSelectLineStart() bind.Command {
 	return &Scroll{
 		name:      "select-to-line-start",
-		direction: cursor.Left,
-		mod:       cursor.SelectLine,
+		direction: caret.Left,
+		mod:       caret.SelectLine,
 	}
 }
