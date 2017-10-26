@@ -24,7 +24,11 @@ import (
 // main UI.
 type Controller interface {
 	gxui.Control
-	Editor() controller.Editor
+	Editor() controller.MultiEditor
+}
+
+type Controllable interface {
+	Controller() *gxui.TextBoxController
 }
 
 // Commander is a gxui.LinearLayout that takes care of displaying the
@@ -153,14 +157,10 @@ func (c *Commander) bindStack() {
 		}
 	}
 
-	multiEditor := c.controller.Editor()
-	if multiEditor != nil {
-		e := multiEditor.CurrentEditor()
-		if e != nil {
-			defer c.driver.Call(func() {
-				c.inputHandler.Init(e, e.Controller().TextRunes())
-			})
-		}
+	if e := c.editor(c.controller.Editor()); e != nil {
+		defer c.driver.Call(func() {
+			c.inputHandler.Init(e, e.(Controllable).Controller().TextRunes())
+		})
 	}
 
 	for _, h := range hooks {
@@ -169,6 +169,13 @@ func (c *Commander) bindStack() {
 	for _, h := range multiHooks {
 		bindNames(c.bound, h, h.OpNames()...)
 	}
+}
+
+func (c *Commander) editor(e controller.MultiEditor) input.Editor {
+	if e == nil {
+		return nil
+	}
+	return e.CurrentEditor()
 }
 
 func (c *Commander) mapBindings() {
@@ -258,11 +265,11 @@ func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 	if event.Modifier == 0 && event.Key == gxui.KeyEscape {
 		c.box.Clear()
 		if e := editor.CurrentEditor(); e != nil {
-			gxui.SetFocus(e)
+			gxui.SetFocus(e.(gxui.Focusable))
 		}
 	}
 	codeEditor := editor.CurrentEditor()
-	if codeEditor != nil && codeEditor.HasFocus() {
+	if codeEditor != nil && codeEditor.(gxui.Focusable).HasFocus() {
 		c.inputHandler.HandleEvent(codeEditor, event)
 	}
 	if command := c.Binding(event); command != nil {
@@ -289,7 +296,7 @@ func (c *Commander) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
 		return false
 	}
 	e := c.controller.Editor().CurrentEditor()
-	if e == nil || !e.HasFocus() {
+	if e == nil || !e.(gxui.Focusable).HasFocus() {
 		return false
 	}
 	c.inputHandler.HandleInput(e, event)

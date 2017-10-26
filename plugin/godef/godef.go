@@ -16,6 +16,7 @@ import (
 	"strconv"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/setting"
@@ -30,7 +31,7 @@ type Commander interface {
 }
 
 type Opener interface {
-	For(filepath string, offset int) bind.Bindable
+	For(...focus.Opt) bind.Bindable
 }
 
 type Editor interface {
@@ -111,13 +112,12 @@ func (g *Godef) Exec() error {
 		g.Err = fmt.Sprintf("godef error: %s", string(output))
 		return err
 	}
-	path, line, column, err := parseGodef(output)
+	path, line, col, err := parseGodef(output)
 	if err != nil {
 		g.Err = err.Error()
 		return err
 	}
-	offset := g.editor.LineStart(line) + column
-	g.cmdr.Execute(g.opener.For(path, offset))
+	g.cmdr.Execute(g.opener.For(focus.Path(path), focus.Line(line), focus.Column(col)))
 	return nil
 }
 

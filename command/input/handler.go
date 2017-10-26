@@ -128,7 +128,9 @@ func (h *Handler) Apply(e input.Editor, edits ...input.Edit) {
 			if newE > oldE {
 				text = append(text, make([]rune, newE-oldE)...)
 			}
-			copy(text[newE:], text[oldE:])
+			if newE < len(text) {
+				copy(text[newE:], text[oldE:])
+			}
 			if oldE > newE {
 				text = text[:len(text)-(oldE-newE)]
 			}

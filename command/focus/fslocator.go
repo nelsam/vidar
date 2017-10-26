@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package commands
+package focus
 
 import (
 	"io/ioutil"
@@ -49,6 +49,10 @@ type Elementer interface {
 	Elements() []interface{}
 }
 
+type Projecter interface {
+	Project() settings.Project
+}
+
 type FSLocator struct {
 	mixins.LinearLayout
 
@@ -81,7 +85,7 @@ func (f *FSLocator) Init(driver gxui.Driver, theme *basic.Theme) {
 	f.loadDirContents()
 }
 
-func (f *FSLocator) loadEditorDir(control gxui.Control) {
+func (f *FSLocator) LoadDir(control gxui.Control) {
 	startingPath := findStart(control)
 
 	f.driver.Call(func() {

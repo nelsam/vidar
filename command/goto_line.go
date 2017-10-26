@@ -16,7 +16,7 @@ import (
 	"github.com/nelsam/vidar/plugin/status"
 )
 
-type Editor interface {
+type Scroller interface {
 	LineStart(int) int
 	ScrollToLine(int)
 }
@@ -32,7 +32,7 @@ type GotoLine struct {
 	lineNumInput gxui.TextBox
 	input        gxui.Focusable
 
-	editor Editor
+	editor Scroller
 	ctrl   LineControl
 }
 
@@ -86,7 +86,7 @@ func (g *GotoLine) Store(elem interface{}) bind.Status {
 	switch src := elem.(type) {
 	case LineControl:
 		g.ctrl = src
-	case Editor:
+	case Scroller:
 		g.editor = src
 	}
 	if g.editor != nil && g.ctrl != nil {

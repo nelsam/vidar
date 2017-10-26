@@ -15,6 +15,7 @@ package input
 // helps plugins avoid needing to be rebuilt every time the editor
 // package changes.
 type Editor interface {
+	Filepath() string
 	Text() string
 	SetText(string)
 	SyntaxLayers() []SyntaxLayer

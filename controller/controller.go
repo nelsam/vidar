@@ -8,18 +8,18 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/commander/input"
 )
 
 type Navigator interface {
 	gxui.Control
 }
 
-type Editor interface {
+type MultiEditor interface {
 	gxui.Control
 	CurrentFile() string
-	CurrentEditor() *editor.CodeEditor
-	Open(path string, offset int) (editor *editor.CodeEditor, existed bool)
+	CurrentEditor() input.Editor
+	Open(path string) (editor input.Editor, existed bool)
 }
 
 type Controller struct {
@@ -29,7 +29,7 @@ type Controller struct {
 	driver    gxui.Driver
 	font      gxui.Font
 	navigator Navigator
-	editor    Editor
+	editor    MultiEditor
 }
 
 func New(driver gxui.Driver, theme *basic.Theme) *Controller {
@@ -73,12 +73,12 @@ func (c *Controller) SetNavigator(navigator Navigator) {
 }
 
 // Editor returns c's Editor instance.
-func (c *Controller) Editor() Editor {
+func (c *Controller) Editor() MultiEditor {
 	return c.editor
 }
 
 // SetEditor sets c's Editor instance.
-func (c *Controller) SetEditor(editor Editor) {
+func (c *Controller) SetEditor(editor MultiEditor) {
 	if c.editor != nil {
 		c.RemoveChild(c.editor)
 	}

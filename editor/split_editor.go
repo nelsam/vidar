@@ -14,7 +14,9 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/mixins/outer"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/theme"
 )
 
@@ -42,7 +44,7 @@ type Splitter interface {
 }
 
 type Opener interface {
-	For(string, int) bind.Bindable
+	For(...focus.Opt) bind.Bindable
 }
 
 type Commander interface {
@@ -54,12 +56,12 @@ type MultiEditor interface {
 	gxui.Control
 	outer.LayoutChildren
 	Has(hiddenPrefix, path string) bool
-	Open(hiddenPrefix, path, headerText string, environ []string) (editor *CodeEditor, existed bool)
+	Open(hiddenPrefix, path, headerText string, environ []string) (editor input.Editor, existed bool)
 	Editors() uint
-	CurrentEditor() *CodeEditor
+	CurrentEditor() input.Editor
 	CurrentFile() string
-	CloseCurrentEditor() (name string, editor *CodeEditor)
-	Add(name string, editor *CodeEditor)
+	CloseCurrentEditor() (name string, editor input.Editor)
+	Add(name string, editor input.Editor)
 	SaveAll()
 }
 
@@ -115,7 +117,7 @@ func (e *SplitEditor) Split(orientation gxui.Orientation) {
 	defer func() {
 		newSplit.Add(name, editor)
 		opener := e.cmdr.Bindable("open-file").(Opener)
-		e.cmdr.Execute(opener.For(editor.Filepath(), -1))
+		e.cmdr.Execute(opener.For(focus.Path(editor.Filepath())))
 	}()
 	if e.Orientation() == orientation {
 		e.AddChild(newSplit)
@@ -150,18 +152,18 @@ func (e *SplitEditor) Editors() (count uint) {
 	return count
 }
 
-func (e *SplitEditor) CloseCurrentEditor() (name string, editor *CodeEditor) {
+func (e *SplitEditor) CloseCurrentEditor() (name string, editor input.Editor) {
 	name, editor = e.current.CloseCurrentEditor()
 	if e.current.Editors() == 0 && len(e.Children()) > 1 {
 		e.RemoveChild(e.current)
 		e.current = e.Children()[0].Control.(MultiEditor)
 		opener := e.cmdr.Bindable("open-file").(Opener)
-		e.cmdr.Execute(opener.For(e.current.CurrentEditor().Filepath(), -1))
+		e.cmdr.Execute(opener.For(focus.Path(e.current.CurrentEditor().Filepath())))
 	}
 	return name, editor
 }
 
-func (e *SplitEditor) Add(name string, editor *CodeEditor) {
+func (e *SplitEditor) Add(name string, editor input.Editor) {
 	e.current.Add(name, editor)
 }
 
@@ -204,7 +206,7 @@ func (e *SplitEditor) MouseUp(event gxui.MouseEvent) {
 		}
 		e.current = newFocus
 		opener := e.cmdr.Bindable("open-file").(Opener)
-		e.cmdr.Execute(opener.For(newFocus.CurrentEditor().Filepath(), -1))
+		e.cmdr.Execute(opener.For(focus.Path(newFocus.CurrentEditor().Filepath())))
 		break
 	}
 	e.SplitterLayout.MouseUp(event)
@@ -219,7 +221,7 @@ func (e *SplitEditor) Has(hiddenPrefix, path string) bool {
 	return false
 }
 
-func (e *SplitEditor) Open(hiddenPrefix, path, headerText string, environ []string) (editor *CodeEditor, existed bool) {
+func (e *SplitEditor) Open(hiddenPrefix, path, headerText string, environ []string) (editor input.Editor, existed bool) {
 	for _, child := range e.Children() {
 		if me, ok := child.Control.(MultiEditor); ok && me.Has(hiddenPrefix, path) {
 			e.current = me
@@ -229,7 +231,7 @@ func (e *SplitEditor) Open(hiddenPrefix, path, headerText string, environ []stri
 	return e.current.Open(hiddenPrefix, path, headerText, environ)
 }
 
-func (e *SplitEditor) CurrentEditor() *CodeEditor {
+func (e *SplitEditor) CurrentEditor() input.Editor {
 	return e.current.CurrentEditor()
 }
 
@@ -249,12 +251,12 @@ func (e *SplitEditor) ChildIndex(c gxui.Control) int {
 	return -1
 }
 
-func (e *SplitEditor) NextEditor(direction Direction) *CodeEditor {
+func (e *SplitEditor) NextEditor(direction Direction) input.Editor {
 	editor, _ := e.nextEditor(direction)
 	return editor
 }
 
-func (e *SplitEditor) nextEditor(direction Direction) (editor *CodeEditor, wrapped bool) {
+func (e *SplitEditor) nextEditor(direction Direction) (editor input.Editor, wrapped bool) {
 	switch direction {
 	case Up, Down:
 		if e.Orientation().Horizontal() {
@@ -327,7 +329,7 @@ func (e *SplitEditor) nextEditor(direction Direction) (editor *CodeEditor, wrapp
 	return me.CurrentEditor(), wrapped
 }
 
-func (e *SplitEditor) first(d Direction) *CodeEditor {
+func (e *SplitEditor) first(d Direction) input.Editor {
 	switch d {
 	case Up, Down:
 		if e.Orientation().Horizontal() {

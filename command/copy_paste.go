@@ -6,15 +6,19 @@ package commands
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"log"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commander/input"
-	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/plugin/status"
 )
+
+type Editor interface {
+	input.Editor
+	Controller() *gxui.TextBoxController
+}
 
 type Copy struct {
 	driver gxui.Driver
@@ -35,13 +39,9 @@ func (c *Copy) Menu() string {
 }
 
 func (c *Copy) Exec(target interface{}) bind.Status {
-	finder, ok := target.(EditorFinder)
+	editor, ok := target.(Editor)
 	if !ok {
 		return bind.Waiting
-	}
-	editor := finder.CurrentEditor()
-	if editor == nil {
-		return bind.Done
 	}
 
 	selections := editor.Controller().Selections()
@@ -54,15 +54,11 @@ func (c *Copy) Exec(target interface{}) bind.Status {
 	return bind.Done
 }
 
-type InputController interface {
-	InputHandler() input.Handler
-}
-
 type Cut struct {
 	Copy
 
-	editor       *editor.CodeEditor
-	inputHandler input.Handler
+	editor  Editor
+	applier Applier
 }
 
 func NewCut(driver gxui.Driver) *Cut {
@@ -74,32 +70,31 @@ func (c *Cut) Name() string {
 	return "cut-selection"
 }
 
-func (c *Cut) Start(gxui.Control) gxui.Control {
-	c.inputHandler = nil
+func (c *Cut) Reset() {
 	c.editor = nil
-	return nil
+	c.applier = nil
 }
 
-func (c *Cut) Exec(target interface{}) bind.Status {
+func (c *Cut) Store(target interface{}) bind.Status {
 	switch src := target.(type) {
-	case EditorFinder:
-		status := c.Copy.Exec(src)
-		if status&bind.Executed == 0 {
-			log.Printf("Error: copy command failed to exec on EditorFinder")
-		}
-		c.editor = src.CurrentEditor()
-		if c.inputHandler != nil {
-			c.removeSelections()
-			return bind.Done
-		}
-	case InputController:
-		c.inputHandler = src.InputHandler()
-		if c.editor != nil {
-			c.removeSelections()
-			return bind.Done
-		}
+	case Editor:
+		c.editor = src
+	case Applier:
+		c.applier = src
+	}
+	if c.editor != nil && c.applier != nil {
+		return bind.Done
 	}
 	return bind.Waiting
+}
+
+func (c *Cut) Exec() error {
+	status := c.Copy.Exec(c.editor)
+	if status&bind.Executed == 0 {
+		return errors.New("copy command failed to exec on Editor")
+	}
+	c.removeSelections()
+	return nil
 }
 
 func (c *Cut) removeSelections() {
@@ -112,15 +107,15 @@ func (c *Cut) removeSelections() {
 			Old: old,
 		})
 	}
-	c.inputHandler.Apply(c.editor, edits...)
+	c.applier.Apply(c.editor, edits...)
 }
 
 type Paste struct {
 	status.General
 
-	driver       gxui.Driver
-	editor       *editor.CodeEditor
-	inputHandler input.Handler
+	driver  gxui.Driver
+	editor  Editor
+	applier Applier
 }
 
 func NewPaste(driver gxui.Driver, theme gxui.Theme) *Paste {
@@ -138,28 +133,27 @@ func (p *Paste) Menu() string {
 	return "Edit"
 }
 
-func (p *Paste) Start(gxui.Control) gxui.Control {
+func (p *Paste) Reset() {
 	p.editor = nil
-	p.inputHandler = nil
-	return nil
+	p.applier = nil
 }
 
-func (p *Paste) Exec(target interface{}) bind.Status {
+func (p *Paste) Store(target interface{}) bind.Status {
 	switch src := target.(type) {
-	case EditorFinder:
-		p.editor = src.CurrentEditor()
-		if p.inputHandler != nil {
-			p.replaceSelections()
-			return bind.Done
-		}
-	case InputController:
-		p.inputHandler = src.InputHandler()
-		if p.editor != nil {
-			p.replaceSelections()
-			return bind.Done
-		}
+	case Editor:
+		p.editor = src
+	case Applier:
+		p.applier = src
+	}
+	if p.editor != nil && p.applier != nil {
+		return bind.Done
 	}
 	return bind.Waiting
+}
+
+func (p *Paste) Exec() error {
+	p.replaceSelections()
+	return nil
 }
 
 func (p *Paste) replaceSelections() {
@@ -179,5 +173,5 @@ func (p *Paste) replaceSelections() {
 			New: replacement,
 		})
 	}
-	p.inputHandler.Apply(p.editor, edits...)
+	p.applier.Apply(p.editor, edits...)
 }

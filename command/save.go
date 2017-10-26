@@ -27,7 +27,6 @@ type Applier interface {
 
 type SaveEditor interface {
 	input.Editor
-	Filepath() string
 	FlushedChanges()
 	LastKnownMTime() time.Time
 }

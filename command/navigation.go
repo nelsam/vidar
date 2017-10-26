@@ -5,20 +5,20 @@
 package commands
 
 import (
-	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/command/caret"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/command"
 )
 
 type Mover interface {
-	For(caret.Direction, caret.Mod) *caret.Mover
+	For(caret.Direction, caret.Mod) bind.Bindable
 }
 
 type Executor interface {
 	Execute(bind.Bindable)
 }
 
-type Scroller interface {
+type RuneScroller interface {
 	ScrollToRune(int)
 }
 
@@ -34,7 +34,7 @@ type Scroll struct {
 
 	mover    Mover
 	exec     Executor
-	scroller Scroller
+	scroller RuneScroller
 	careter  Careter
 }
 
@@ -59,7 +59,7 @@ func (s *Scroll) Store(elem interface{}) bind.Status {
 		s.mover = src
 	case Executor:
 		s.exec = src
-	case Scroller:
+	case RuneScroller:
 		s.scroller = src
 	case Careter:
 		s.careter = src

@@ -25,11 +25,6 @@ type Projecter interface {
 	Project() settings.Project
 }
 
-type Editor interface {
-	input.Editor
-	Filepath() string
-}
-
 type Applier interface {
 	Apply(input.Editor, ...input.Edit)
 }
@@ -52,7 +47,7 @@ func (o OnSave) BeforeSave(proj settings.Project, path, text string) (newText st
 type GoImports struct {
 	status.General
 
-	editor    Editor
+	editor    input.Editor
 	projecter Projecter
 	applier   Applier
 }
@@ -79,7 +74,7 @@ func (gi *GoImports) Reset() {
 
 func (gi *GoImports) Store(target interface{}) bind.Status {
 	switch src := target.(type) {
-	case Editor:
+	case input.Editor:
 		gi.editor = src
 	case Projecter:
 		gi.projecter = src

@@ -8,6 +8,8 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/command/focus"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/setting"
 	"github.com/nelsam/vidar/theme"
 )
@@ -37,18 +39,7 @@ func NewProjectEditor(driver gxui.Driver, window gxui.Window, cmdr Commander, th
 	return p
 }
 
-func (p *ProjectEditor) Open(path string, offset int) (editor *CodeEditor, existed bool) {
-	editor, existed = p.open(path)
-	if offset >= 0 {
-		p.driver.Call(func() {
-			editor.Controller().SetCaret(offset)
-			editor.ScrollToRune(offset)
-		})
-	}
-	return editor, existed
-}
-
-func (p *ProjectEditor) open(path string) (editor *CodeEditor, existed bool) {
+func (p *ProjectEditor) Open(path string) (e input.Editor, existed bool) {
 	return p.SplitEditor.Open(p.project.Path, path, p.project.LicenseHeader(), p.project.Environ())
 }
 
@@ -102,7 +93,7 @@ func (e *MultiProjectEditor) SetProject(project settings.Project) {
 
 	if ed := e.current.CurrentEditor(); ed != nil {
 		opener := e.cmdr.Bindable("open-file").(Opener)
-		e.cmdr.Execute(opener.For(ed.Filepath(), -1))
+		e.cmdr.Execute(opener.For(focus.Path(ed.Filepath())))
 	}
 }
 
@@ -112,7 +103,7 @@ func (e *MultiProjectEditor) Elements() []interface{} {
 	}
 }
 
-func (e *MultiProjectEditor) CurrentEditor() *CodeEditor {
+func (e *MultiProjectEditor) CurrentEditor() input.Editor {
 	return e.current.CurrentEditor()
 }
 
@@ -124,6 +115,6 @@ func (e *MultiProjectEditor) CurrentProject() settings.Project {
 	return e.current.Project()
 }
 
-func (e *MultiProjectEditor) Open(file string, offset int) (editor *CodeEditor, existed bool) {
-	return e.current.Open(file, offset)
+func (e *MultiProjectEditor) Open(file string) (ed input.Editor, existed bool) {
+	return e.current.Open(file)
 }

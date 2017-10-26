@@ -11,6 +11,7 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/setting"
@@ -27,9 +28,9 @@ type ProjectAdder struct {
 
 	status gxui.Label
 
-	path   *FSLocator
+	path   *focus.FSLocator
 	name   gxui.TextBox
-	gopath *FSLocator
+	gopath *focus.FSLocator
 	input  <-chan gxui.Focusable
 }
 
@@ -42,9 +43,9 @@ func NewProjectAdder(driver gxui.Driver, theme *basic.Theme) *ProjectAdder {
 func (p *ProjectAdder) Init(driver gxui.Driver, theme *basic.Theme) {
 	p.Theme = theme
 	p.status = theme.CreateLabel()
-	p.path = NewFSLocator(driver, theme)
+	p.path = focus.NewFSLocator(driver, theme)
 	p.name = theme.CreateTextBox()
-	p.gopath = NewFSLocator(driver, theme)
+	p.gopath = focus.NewFSLocator(driver, theme)
 }
 
 func (p *ProjectAdder) Name() string {
@@ -56,7 +57,7 @@ func (p *ProjectAdder) Menu() string {
 }
 
 func (p *ProjectAdder) Start(control gxui.Control) gxui.Control {
-	p.path.loadEditorDir(control)
+	p.path.LoadDir(control)
 
 	input := make(chan gxui.Focusable, 3)
 	p.input = input

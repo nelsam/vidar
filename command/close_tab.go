@@ -6,12 +6,12 @@ package commands
 
 import (
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/commander/input"
 )
 
 type CurrentEditorCloser interface {
-	CloseCurrentEditor() (string, *editor.CodeEditor)
-	CurrentEditor() *editor.CodeEditor
+	CloseCurrentEditor() (string, input.Editor)
+	CurrentEditor() input.Editor
 }
 
 type BindPopper interface {

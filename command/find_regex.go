@@ -33,7 +33,7 @@ func (f *RegexFind) Start(control gxui.Control) gxui.Control {
 	}
 	f.display = f.theme.CreateLabel()
 	f.display.SetText("Start typing to search")
-	f.pattern = newFindBox(f.driver, f.theme, f.editor)
+	f.pattern = newFindBox(f.driver, f.theme)
 	f.next = f.pattern
 	f.pattern.OnTextChanged(func([]gxui.TextBoxEdit) {
 		f.editor.Controller().ClearSelections()

@@ -7,12 +7,14 @@ package commands
 import (
 	"errors"
 
+	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/editor"
 )
 
 type TabChooser interface {
-	EditorAt(editor.Direction) *editor.CodeEditor
+	EditorAt(editor.Direction) input.Editor
 }
 
 type ChangeTab struct {
@@ -66,6 +68,6 @@ func (t *ChangeTab) Exec() error {
 	if editor == nil {
 		return errors.New("no editor to switch to")
 	}
-	t.binder.Execute(opener.For(editor.Filepath(), -1))
+	t.binder.Execute(opener.For(focus.Path(editor.Filepath())))
 	return nil
 }

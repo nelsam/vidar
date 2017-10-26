@@ -16,10 +16,11 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/gxui/themes/dark"
+	"github.com/nelsam/vidar/command"
+	"github.com/nelsam/vidar/command/focus"
+	"github.com/nelsam/vidar/command/input"
 	"github.com/nelsam/vidar/commander"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/command"
-	"github.com/nelsam/vidar/command/input"
 	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/navigator"
@@ -158,14 +159,14 @@ func uiMain(driver gxui.Driver) {
 		}
 	})
 
-	opener := cmdr.Bindable("open-file").(*commands.FileOpener)
+	opener := cmdr.Bindable("open-file").(*focus.Location)
 	for _, file := range files {
 		filepath, err := filepath.Abs(file)
 		if err != nil {
 			log.Printf("Failed to get path: %s", err)
 		}
 		opener.Start(nil)
-		cmdr.Execute(opener.For(filepath, -1))
+		cmdr.Execute(opener.For(focus.Path(filepath)))
 	}
 
 	window.OnClose(driver.Terminate)

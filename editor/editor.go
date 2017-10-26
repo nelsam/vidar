@@ -75,7 +75,7 @@ func (e *CodeEditor) Carets() []int {
 	return e.Controller().Carets()
 }
 
-func (e *CodeEditor) SetCarets(carets []int) {
+func (e *CodeEditor) SetCarets(carets ...int) {
 	if len(carets) == 0 {
 		e.Controller().ClearSelections()
 		return

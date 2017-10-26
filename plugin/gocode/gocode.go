@@ -12,8 +12,8 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/command/caret"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/setting"
 )
 
@@ -71,7 +71,7 @@ func (g *GoCode) cancel(e Editor) {
 func (g *GoCode) show(ctx context.Context, l *suggestionList, pos int) {
 	n := l.show(ctx, pos)
 	if n == 0 || ctxCancelled(ctx) {
-		log.Printf("cancelled or %d == 0", n)
+		log.Printf("gocode: context cancelled or %d == 0", n)
 		return
 	}
 

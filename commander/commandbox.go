@@ -63,7 +63,7 @@ func newCommandBox(driver gxui.Driver, theme gxui.Theme, controller Controller) 
 func (b *commandBox) Finish() {
 	defer func() {
 		if e := b.controller.Editor().CurrentEditor(); e != nil {
-			gxui.SetFocus(e)
+			gxui.SetFocus(e.(gxui.Focusable))
 		}
 	}()
 	statuser, ok := b.current.(Statuser)

@@ -7,6 +7,7 @@ package commands
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/command"
 )
@@ -20,7 +21,7 @@ func Commands(_ command.Commander, driver gxui.Driver, theme *basic.Theme) []bin
 	return []bind.Command{
 		NewProjectAdder(driver, theme),
 		NewProjectOpener(theme),
-		NewFileOpener(driver, theme),
+		focus.NewLocation(driver, theme),
 	}
 }
 

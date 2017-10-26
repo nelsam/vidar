@@ -14,17 +14,19 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander"
-	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/commander/input"
 )
 
-type EditorFinder interface {
-	CurrentEditor() *editor.CodeEditor
+type SelectionEditor interface {
+	input.Editor
+	Controller() *gxui.TextBoxController
+	Select(gxui.TextSelectionList)
 }
 
 type Find struct {
 	driver  gxui.Driver
 	theme   *basic.Theme
-	editor  *editor.CodeEditor
+	editor  SelectionEditor
 	display gxui.Label
 	pattern *findBox
 
@@ -49,7 +51,7 @@ func (f *Find) Start(control gxui.Control) gxui.Control {
 	}
 	f.display = f.theme.CreateLabel()
 	f.display.SetText("Start typing to search")
-	f.pattern = newFindBox(f.driver, f.theme, f.editor)
+	f.pattern = newFindBox(f.driver, f.theme)
 	f.next = f.pattern
 	f.pattern.OnTextChanged(func([]gxui.TextBoxEdit) {
 		f.editor.Controller().ClearSelections()
@@ -94,18 +96,16 @@ func (f *Find) Next() gxui.Focusable {
 
 type findBox struct {
 	mixins.TextBox
-	editor *editor.CodeEditor
 }
 
-func newFindBox(driver gxui.Driver, theme *basic.Theme, editor *editor.CodeEditor) *findBox {
+func newFindBox(driver gxui.Driver, theme *basic.Theme) *findBox {
 	box := &findBox{}
-	box.Init(driver, theme, editor)
+	box.Init(driver, theme)
 	return box
 }
 
-func (b *findBox) Init(driver gxui.Driver, theme *basic.Theme, editor *editor.CodeEditor) {
+func (b *findBox) Init(driver gxui.Driver, theme *basic.Theme) {
 	b.TextBox.Init(b, driver, theme, theme.DefaultMonospaceFont())
-	b.editor = editor
 
 	b.SetTextColor(theme.TextBoxDefaultStyle.FontColor)
 	b.SetMargin(math.Spacing{L: 3, T: 3, R: 3, B: 3})
@@ -115,9 +115,9 @@ func (b *findBox) Init(driver gxui.Driver, theme *basic.Theme, editor *editor.Co
 	b.SetMultiline(false)
 }
 
-func findEditor(elem interface{}) *editor.CodeEditor {
+func findEditor(elem interface{}) SelectionEditor {
 	switch src := elem.(type) {
-	case *editor.CodeEditor:
+	case SelectionEditor:
 		return src
 	case commander.Elementer:
 		for _, child := range src.Elements() {

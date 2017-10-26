@@ -7,7 +7,9 @@ package commands
 import (
 	"errors"
 
+	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/editor"
 )
 
@@ -17,12 +19,12 @@ type BindManager interface {
 }
 
 type EditorChooser interface {
-	NextEditor(editor.Direction) *editor.CodeEditor
+	NextEditor(editor.Direction) input.Editor
 }
 
 type Locationer interface {
 	bind.Bindable
-	For(string, int) bind.Bindable
+	For(...focus.Opt) bind.Bindable
 }
 
 type ChangeFocus struct {
@@ -84,6 +86,6 @@ func (p *ChangeFocus) Exec() error {
 	if editor == nil {
 		return errors.New("no editor to switch to")
 	}
-	p.binder.Execute(opener.For(editor.Filepath(), -1))
+	p.binder.Execute(opener.For(focus.Path(editor.Filepath())))
 	return nil
 }

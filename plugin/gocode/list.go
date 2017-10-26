@@ -26,7 +26,6 @@ type Editor interface {
 	Padding() math.Spacing
 	LineIndex(caret int) int
 	Line(idx int) mixins.TextBoxLine
-	Filepath() string
 	AddChild(gxui.Control) *gxui.Child
 	RemoveChild(gxui.Control)
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
 )
 
@@ -74,7 +75,7 @@ type Commander interface {
 type Opener interface {
 	bind.Command
 
-	For(path string, offset int) bind.Bindable
+	For(...focus.Opt) bind.Bindable
 }
 
 type genericNode struct {
@@ -237,7 +238,7 @@ func newName(cmdr Commander, driver gxui.Driver, theme gxui.Theme, name string, 
 	node.Init(node, driver, theme, name, color)
 	node.button.OnClick(func(gxui.MouseEvent) {
 		cmd := node.cmdr.Bindable("open-file").(Opener)
-		node.cmdr.Execute(cmd.For(node.File(), node.Position().Offset))
+		node.cmdr.Execute(cmd.For(focus.Path(node.File()), focus.Offset(node.Position().Offset)))
 	})
 	return node
 }

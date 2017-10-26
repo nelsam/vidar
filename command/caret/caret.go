@@ -33,7 +33,7 @@ type Controller interface {
 
 type CaretHandler interface {
 	Carets() []int
-	SetCarets([]int)
+	SetCarets(...int)
 }
 
 type MovingHook interface {
@@ -47,7 +47,11 @@ type MovedHook interface {
 type Direction int
 
 const (
+	// NoDirection means that there was no Direction used
+	// to move the caret.  It does not necessarily mean
+	// that it didn't move.
 	NoDirection Direction = iota
+
 	Up
 	Down
 	Left
@@ -83,7 +87,7 @@ func (*Mover) Name() string {
 	return "caret-movement"
 }
 
-func (m *Mover) For(dir Direction, mod Mod) *Mover {
+func (m *Mover) For(dir Direction, mod Mod) bind.Bindable {
 	return &Mover{
 		direction: dir,
 		mod:       mod,
@@ -94,7 +98,7 @@ func (m *Mover) For(dir Direction, mod Mod) *Mover {
 	}
 }
 
-func (m *Mover) To(carets []int) *Mover {
+func (m *Mover) To(carets ...int) bind.Bindable {
 	return &Mover{
 		carets: carets,
 		moving: m.moving,
@@ -148,7 +152,7 @@ func (m *Mover) Store(elem interface{}) bind.Status {
 func (m *Mover) Exec() error {
 	if m.direction != NoDirection {
 		for _, h := range m.moving {
-			m = m.For(h.Moving(m.editor, m.direction, m.ctrl.Carets()), m.mod)
+			m = m.For(h.Moving(m.editor, m.direction, m.ctrl.Carets()), m.mod).(*Mover)
 		}
 	}
 	// TODO: a lot of this is workaround BS.  This should be cleaned up soon.
@@ -158,7 +162,7 @@ func (m *Mover) Exec() error {
 			return nil
 		}
 		h := m.editor.(CaretHandler)
-		h.SetCarets(m.carets)
+		h.SetCarets(m.carets...)
 	case Up:
 		switch m.mod {
 		case NoMod:

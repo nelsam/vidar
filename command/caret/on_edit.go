@@ -33,7 +33,7 @@ func (o *OnEdit) Applied(e input.Editor, edits []input.Edit) {
 		carets = o.moveCarets(carets, e)
 	}
 	m := o.Commander.Bindable("caret-movement").(*Mover)
-	o.Commander.Execute(m.To(carets))
+	o.Commander.Execute(m.To(carets...))
 }
 
 func (o *OnEdit) moveCarets(carets []int, e input.Edit) []int {
