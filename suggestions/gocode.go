@@ -34,7 +34,7 @@ func NewGoCodeProvider(fileContainer FileContainer, environ []string) *GoCodePro
 }
 
 func (p *GoCodeProvider) SuggestionsAt(runeIndex int) []gxui.CodeSuggestion {
-	cmd := exec.Command("gocode", "-f", "json", "autocomplete", p.fileContainer.Filepath(), strconv.Itoa(runeIndex))
+	cmd := exec.Command("gocode", "-f", "json", "autocomplete", p.fileContainer.Filepath(), "c"+strconv.Itoa(runeIndex))
 	cmd.Env = p.environ
 	cmd.Stdin = bytes.NewBufferString(p.fileContainer.Text())
 	outputJSON, err := cmd.Output()
