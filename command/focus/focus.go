@@ -86,6 +86,13 @@ func Offset(offset int) Opt {
 	}
 }
 
+func SkipUnbind() Opt {
+	return func(l *Location) error {
+		l.skipUnbind = true
+		return nil
+	}
+}
+
 type Location struct {
 	status.General
 
@@ -97,6 +104,7 @@ type Location struct {
 
 	// These can only be set by FocusOpts in For().
 	offset, line, col int
+	skipUnbind        bool
 
 	mover   Mover
 	binder  Binder
@@ -124,6 +132,7 @@ func (f *Location) For(opts ...Opt) bind.Bindable {
 	newF.offset = f.offset
 	newF.line = f.line
 	newF.col = f.col
+	newF.skipUnbind = f.skipUnbind
 	newF.hooks = append(newF.hooks, f.hooks...)
 	for _, o := range opts {
 		if err := o(newF); err != nil {
@@ -191,11 +200,18 @@ func (f *Location) moverReady() bool {
 }
 
 func (f *Location) Exec() error {
-	if f.opener.CurrentEditor() != nil {
+	e := f.opener.CurrentEditor()
+	if !f.skipUnbind && e != nil {
 		f.binder.Pop()
 	}
 	path := f.file.Path()
-	e, _ := f.opener.Open(path)
+	if path == "" && e != nil {
+		path = e.Filepath()
+	}
+	if path == "" {
+		return errors.New("focus.Location: No file provided and no editor is in-tree.  Can't focus.")
+	}
+	e, _ = f.opener.Open(path)
 	for _, o := range f.openers {
 		o.Open(path)
 	}

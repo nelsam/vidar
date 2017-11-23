@@ -9,7 +9,9 @@ import (
 	"fmt"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/navigator"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/setting"
@@ -23,6 +25,16 @@ type PaneDisplayer interface {
 	ShowNavPane(gxui.Control)
 }
 
+type Focuser interface {
+	For(...focus.Opt) bind.Bindable
+}
+
+// A Binder is a type which can bind bindables
+type Binder interface {
+	Pop() []bind.Bindable
+	Execute(bind.Bindable)
+}
+
 type ProjectOpener struct {
 	status.General
 
@@ -32,6 +44,9 @@ type ProjectOpener struct {
 	proj settings.Project
 
 	nav     PaneDisplayer
+	focuser Focuser
+	binder  Binder
+	editor  input.Editor
 	tree    *navigator.ProjectTree
 	setters []ProjectSetter
 }
@@ -68,13 +83,13 @@ func (p *ProjectOpener) SetProject(proj settings.Project) {
 	p.name.SetText(proj.Name)
 }
 
-func (p *ProjectOpener) BeforeExec(interface{}) {
-}
-
 func (p *ProjectOpener) Reset() {
 	p.nav = nil
 	p.setters = nil
 	p.tree = nil
+	p.focuser = nil
+	p.binder = nil
+	p.editor = nil
 
 	p.proj = settings.Project{}
 	for _, proj := range settings.Projects() {
@@ -87,6 +102,12 @@ func (p *ProjectOpener) Reset() {
 
 func (p *ProjectOpener) Store(elem interface{}) bind.Status {
 	switch src := elem.(type) {
+	case input.Editor:
+		p.editor = src
+	case Binder:
+		p.binder = src
+	case Focuser:
+		p.focuser = src
 	case *navigator.ProjectTree:
 		p.tree = src
 	case ProjectSetter:
@@ -94,7 +115,7 @@ func (p *ProjectOpener) Store(elem interface{}) bind.Status {
 	case PaneDisplayer:
 		p.nav = src
 	}
-	if p.tree == nil {
+	if p.tree == nil || p.binder == nil || p.focuser == nil {
 		return bind.Waiting
 	}
 	return bind.Executing
@@ -105,11 +126,15 @@ func (p *ProjectOpener) Exec() error {
 		p.Err = fmt.Sprintf("No project by the name of %s found", p.name.Text())
 		return errors.New(p.Err)
 	}
+	if p.editor != nil {
+		p.binder.Pop()
+	}
 	p.tree.SetProject(p.proj)
 	p.showTree()
 	for _, setter := range p.setters {
 		setter.SetProject(p.proj)
 	}
+	p.binder.Execute(p.focuser.For(focus.SkipUnbind()))
 	return nil
 }
 
