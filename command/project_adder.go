@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package commands
+package command
 
 import (
 	"fmt"
@@ -11,7 +11,6 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/setting"
@@ -28,9 +27,9 @@ type ProjectAdder struct {
 
 	status gxui.Label
 
-	path   *focus.FSLocator
+	path   *FSLocator
 	name   gxui.TextBox
-	gopath *focus.FSLocator
+	gopath *FSLocator
 	input  <-chan gxui.Focusable
 }
 
@@ -43,9 +42,9 @@ func NewProjectAdder(driver gxui.Driver, theme *basic.Theme) *ProjectAdder {
 func (p *ProjectAdder) Init(driver gxui.Driver, theme *basic.Theme) {
 	p.Theme = theme
 	p.status = theme.CreateLabel()
-	p.path = focus.NewFSLocator(driver, theme)
+	p.path = NewFSLocator(driver, theme)
 	p.name = theme.CreateTextBox()
-	p.gopath = focus.NewFSLocator(driver, theme)
+	p.gopath = NewFSLocator(driver, theme)
 }
 
 func (p *ProjectAdder) Name() string {

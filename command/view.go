@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package commands
+package command
 
 import "github.com/nelsam/vidar/commander/bind"
 
@@ -13,7 +13,7 @@ func (h ViewHook) Name() string {
 }
 
 func (h ViewHook) OpName() string {
-	return "open-file"
+	return "focus-location"
 }
 
 func (h ViewHook) FileBindables(string) []bind.Bindable {

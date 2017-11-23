@@ -22,7 +22,7 @@ func (h GolangHook) Name() string {
 }
 
 func (h GolangHook) OpName() string {
-	return "open-file"
+	return "focus-location"
 }
 
 func (h GolangHook) FileBindables(path string) []bind.Bindable {

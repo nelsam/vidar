@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package commands
+package command
 
 import (
 	"github.com/nelsam/vidar/command/caret"
@@ -98,7 +98,7 @@ func (n NavHook) Name() string {
 }
 
 func (n NavHook) OpName() string {
-	return "open-file"
+	return "focus-location"
 }
 
 func (n NavHook) FileBindables(string) []bind.Bindable {

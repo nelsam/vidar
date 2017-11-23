@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package commands
+package command
 
 import (
 	"errors"
@@ -78,7 +78,7 @@ func (p *ChangeFocus) Store(target interface{}) bind.Status {
 }
 
 func (p *ChangeFocus) Exec() error {
-	opener, ok := p.binder.Bindable("open-file").(Locationer)
+	opener, ok := p.binder.Bindable("focus-location").(Locationer)
 	if !ok {
 		return errors.New("no open-file command found of type Opener")
 	}

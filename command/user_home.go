@@ -2,13 +2,13 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-// +build windows
+// +build !windows
 
-package focus
+package command
 
 import "os"
 
 var (
-	userHome   = os.Getenv("USERPROFILE")
-	systemRoot = os.Getenv("SYSTEMROOT")
+	userHome   = os.Getenv("HOME")
+	systemRoot = "/"
 )

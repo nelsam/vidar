@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package commands
+package command
 
 import (
 	"github.com/nelsam/gxui/themes/basic"
@@ -18,7 +18,7 @@ func (h FileHook) Name() string {
 }
 
 func (h FileHook) OpName() string {
-	return "open-file"
+	return "focus-location"
 }
 
 func (h FileHook) FileBindables(string) []bind.Bindable {

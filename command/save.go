@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package commands
+package command
 
 import (
 	"fmt"
@@ -16,10 +16,6 @@ import (
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/setting"
 )
-
-type Projecter interface {
-	Project() settings.Project
-}
 
 type Applier interface {
 	Apply(input.Editor, ...input.Edit)

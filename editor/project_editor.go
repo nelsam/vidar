@@ -92,7 +92,7 @@ func (e *MultiProjectEditor) SetProject(project settings.Project) {
 	e.current = editor
 
 	if ed := e.current.CurrentEditor(); ed != nil {
-		opener := e.cmdr.Bindable("open-file").(Opener)
+		opener := e.cmdr.Bindable("focus-location").(Opener)
 		e.cmdr.Execute(opener.For(focus.Path(ed.Filepath())))
 	}
 }

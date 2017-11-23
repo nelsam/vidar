@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package commands
+package command
 
 import (
 	"github.com/nelsam/gxui"
@@ -21,7 +21,7 @@ func Commands(_ command.Commander, driver gxui.Driver, theme *basic.Theme) []bin
 	return []bind.Command{
 		NewProjectAdder(driver, theme),
 		NewProjectOpener(theme),
-		focus.NewLocation(driver, theme),
+		NewFileOpener(driver, theme),
 	}
 }
 
@@ -29,6 +29,7 @@ func Commands(_ command.Commander, driver gxui.Driver, theme *basic.Theme) []bin
 // than key bindings.
 func Hooks(cmdr command.Commander, driver gxui.Driver, theme *basic.Theme) []bind.Bindable {
 	return []bind.Bindable{
+		&focus.Location{},
 		FileHook{Theme: theme},
 		EditHook{Theme: theme, Driver: driver},
 		ViewHook{},
