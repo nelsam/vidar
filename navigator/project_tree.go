@@ -114,6 +114,10 @@ func (p *ProjectTree) Button() gxui.Button {
 }
 
 func (p *ProjectTree) SetRoot(path string) {
+	defer p.driver.Call(func() {
+		p.layout.Relayout()
+		p.layout.Redraw()
+	})
 	p.layout.RemoveAll()
 	p.SetTOC(nil)
 	p.tocCtl = nil

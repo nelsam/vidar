@@ -62,11 +62,3 @@ func (p *Projects) Frame() gxui.Control {
 func (p *Projects) Projects() []settings.Project {
 	return p.projectsAdapter.Items().([]settings.Project)
 }
-
-func (p *Projects) OnComplete(onComplete func(bind.Bindable)) {
-	opener := p.cmdr.Bindable("open-project").(ProjectSetter)
-	p.projects.OnSelectionChanged(func(selected gxui.AdapterItem) {
-		opener.SetProject(selected.(settings.Project))
-		onComplete(opener)
-	})
-}
