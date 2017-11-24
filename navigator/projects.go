@@ -11,10 +11,9 @@ import (
 )
 
 type ProjectSetter interface {
-	Name() string
-	Menu() string
+	bind.Bindable
+
 	SetProject(settings.Project)
-	Exec(interface{}) bind.Status
 }
 
 type Projects struct {
