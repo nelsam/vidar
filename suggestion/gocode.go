@@ -41,7 +41,7 @@ func (p *GoCodeProvider) SuggestionsAt(runeIndex int) []Suggestion {
 }
 
 func For(environ []string, filepath, contents string, runeIndex int) ([]Suggestion, error) {
-	cmd := exec.Command("gocode", "-f", "json", "autocomplete", filepath, strconv.Itoa(runeIndex))
+	cmd := exec.Command("gocode", "-f", "json", "autocomplete", filepath, "c"+strconv.Itoa(runeIndex))
 	cmd.Env = environ
 	cmd.Stdin = bytes.NewBufferString(contents)
 	outputJSON, err := cmd.Output()
