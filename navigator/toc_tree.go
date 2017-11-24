@@ -73,8 +73,6 @@ type Commander interface {
 }
 
 type Opener interface {
-	bind.Command
-
 	For(...focus.Opt) bind.Bindable
 }
 

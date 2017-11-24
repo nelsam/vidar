@@ -76,14 +76,21 @@ func (e *CodeEditor) Carets() []int {
 }
 
 func (e *CodeEditor) SetCarets(carets ...int) {
-	if len(carets) == 0 {
-		e.Controller().ClearSelections()
-		return
-	}
-	e.Controller().SetCaret(carets[0])
-	for _, c := range carets[1:] {
-		e.Controller().AddCaret(c)
-	}
+	// The following is added to the UI call stack because *some* calls to
+	// SetCarets will happen in a UI call while there are still SetCarets
+	// calls in the UI stack.  This happens especially in the case where
+	// a new file has been opened, which adds SetCarets([0]) as a call in
+	// the UI call stack.
+	e.driver.Call(func() {
+		if len(carets) == 0 {
+			e.Controller().ClearSelections()
+			return
+		}
+		e.Controller().SetCaret(carets[0])
+		for _, c := range carets[1:] {
+			e.Controller().AddCaret(c)
+		}
+	})
 }
 
 func (e *CodeEditor) OnRename(callback func(newPath string)) {
