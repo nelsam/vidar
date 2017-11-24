@@ -205,8 +205,12 @@ func (e *SplitEditor) MouseUp(event gxui.MouseEvent) {
 			continue
 		}
 		e.current = newFocus
+		ed := newFocus.CurrentEditor()
+		if ed == nil {
+			break
+		}
 		opener := e.cmdr.Bindable("focus-location").(Opener)
-		e.cmdr.Execute(opener.For(focus.Path(newFocus.CurrentEditor().Filepath())))
+		e.cmdr.Execute(opener.For(focus.Path(ed.Filepath())))
 		break
 	}
 	e.SplitterLayout.MouseUp(event)

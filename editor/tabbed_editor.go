@@ -109,10 +109,22 @@ func (e *TabbedEditor) Editors() uint {
 func (e *TabbedEditor) CreatePanelTab() mixins.PanelTab {
 	tab := basic.CreatePanelTab(e.theme)
 	tab.OnMouseUp(func(gxui.MouseEvent) {
+		if e.CurrentEditor() == nil {
+			e.purgeSelf()
+			return
+		}
 		opener := e.cmdr.Bindable("focus-location").(Opener)
 		e.cmdr.Execute(opener.For(focus.Path(e.CurrentEditor().Filepath())))
 	})
 	return tab
+}
+
+func (e *TabbedEditor) purgeSelf() {
+	// Because of the order of events in gxui when a mouse drag happens,
+	// the tab will move to a separate split *after* the SplitEditor's
+	// MouseUp method is called, so the SplitEditor has no idea that
+	// we're now empty.  We have to purge ourselves from the SplitEditor.
+	e.Parent().(gxui.Container).RemoveChild(e)
 }
 
 func (e *TabbedEditor) EditorAt(d Direction) input.Editor {
