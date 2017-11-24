@@ -8,7 +8,6 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/setting"
 	"github.com/nelsam/vidar/theme"
@@ -90,11 +89,6 @@ func (e *MultiProjectEditor) SetProject(project settings.Project) {
 	e.RemoveChild(e.current)
 	e.AddChild(editor)
 	e.current = editor
-
-	if ed := e.current.CurrentEditor(); ed != nil {
-		opener := e.cmdr.Bindable("focus-location").(Opener)
-		e.cmdr.Execute(opener.For(focus.Path(ed.Filepath())))
-	}
 }
 
 func (e *MultiProjectEditor) Elements() []interface{} {
