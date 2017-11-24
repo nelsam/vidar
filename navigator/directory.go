@@ -18,15 +18,18 @@ import (
 )
 
 type directory struct {
+	// length is an atomically updated list of child nodes of
+	// this directory.  Only access via atomics.
+	//
+	// Because it's accessed via atomics, it must be the first
+	// field in the struct, for the sake of 32-bit systems.
+	length int64
+
 	mixins.LinearLayout
 
 	driver gxui.Driver
 	button *treeButton
 	tree   *dirTree
-
-	// length is an atomically updated list of child nodes of
-	// this directory.  Only access via atomics.
-	length int64
 }
 
 func newDirectory(projTree *ProjectTree, path string) *directory {

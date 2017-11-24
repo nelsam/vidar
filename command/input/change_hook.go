@@ -58,10 +58,13 @@ func (e *editNode) nextNode() *editNode {
 }
 
 type hookReader struct {
+	// next and last are accessed via atomics and therefor must
+	// be the first fields in the struct.
+	next unsafe.Pointer
+	last unsafe.Pointer
+
 	driver gxui.Driver
 	cond   *sync.Cond
-	next   unsafe.Pointer
-	last   unsafe.Pointer
 	hook   ChangeHook
 }
 
