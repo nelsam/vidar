@@ -13,6 +13,8 @@
 // For more information, see vidar's plugin package documentation.
 package bind
 
+import "fmt"
+
 // A Bindable is the base type for all types that can be bound to
 // events.
 type Bindable interface {
@@ -107,6 +109,12 @@ type Command interface {
 	// displayed under.  All user-executed Bindings *must* have an
 	// entry in the menu to make them more discoverable.
 	Menu() string
+
+	// Defaults returns the default bindings for this command.
+	// Bindings may be arbitrary Stringer types.  Commands that
+	// want to support bindings for multiple input.Handler types
+	// may provide bindings in multiple formats.
+	Defaults() []fmt.Stringer
 }
 
 type Status int

@@ -4,7 +4,12 @@
 
 package command
 
-import "github.com/nelsam/vidar/commander/bind"
+import (
+	"fmt"
+
+	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander/bind"
+)
 
 type Selecter interface {
 	SelectAll()
@@ -22,6 +27,13 @@ func (s *SelectAll) Name() string {
 
 func (s *SelectAll) Menu() string {
 	return "File"
+}
+
+func (s *SelectAll) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl,
+		Key:      gxui.KeyA,
+	}}
 }
 
 func (s *SelectAll) Exec(target interface{}) bind.Status {

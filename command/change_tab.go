@@ -6,7 +6,9 @@ package command
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commander/input"
@@ -39,6 +41,17 @@ func (t *ChangeTab) Name() string {
 
 func (t *ChangeTab) Menu() string {
 	return "View"
+}
+
+func (t *ChangeTab) Defaults() []fmt.Stringer {
+	e := gxui.KeyboardEvent{
+		Modifier: gxui.ModControl,
+		Key:      gxui.KeyTab,
+	}
+	if t.shift == editor.Left {
+		e.Modifier |= gxui.ModShift
+	}
+	return []fmt.Stringer{e}
 }
 
 func (t *ChangeTab) Reset() {

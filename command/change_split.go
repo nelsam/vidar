@@ -6,7 +6,9 @@ package command
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commander/input"
@@ -57,6 +59,25 @@ func (p *ChangeFocus) Name() string {
 
 func (p *ChangeFocus) Menu() string {
 	return "View"
+}
+
+func (p *ChangeFocus) Defaults() []fmt.Stringer {
+	e := gxui.KeyboardEvent{
+		Modifier: gxui.ModAlt,
+	}
+	switch p.direction {
+	case editor.Right:
+		e.Key = gxui.KeyRight
+	case editor.Left:
+		e.Key = gxui.KeyLeft
+	case editor.Up:
+		e.Key = gxui.KeyUp
+	case editor.Down:
+		e.Key = gxui.KeyDown
+	default:
+		panic(fmt.Errorf("Direction %d is invalid", p.direction))
+	}
+	return []fmt.Stringer{e}
 }
 
 func (p *ChangeFocus) Reset() {

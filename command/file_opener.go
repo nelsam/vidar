@@ -6,6 +6,7 @@ package command
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
@@ -46,6 +47,13 @@ func (f *FileOpener) Name() string {
 
 func (f *FileOpener) Menu() string {
 	return "File"
+}
+
+func (f *FileOpener) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl,
+		Key:      gxui.KeyO,
+	}}
 }
 
 func (f *FileOpener) Start(control gxui.Control) gxui.Control {

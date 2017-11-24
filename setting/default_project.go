@@ -4,7 +4,7 @@
 
 // +build !windows
 
-package settings
+package setting
 
 import "os"
 

@@ -71,6 +71,13 @@ func (g *GotoLine) Menu() string {
 	return "Edit"
 }
 
+func (g *GotoLine) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl,
+		Key:      gxui.KeyG,
+	}}
+}
+
 func (g *GotoLine) Next() gxui.Focusable {
 	input := g.input
 	g.input = nil

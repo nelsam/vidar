@@ -39,13 +39,13 @@ type suggestionList struct {
 	driver  gxui.Driver
 	adapter *suggestions.Adapter
 	font    gxui.Font
-	project settings.Project
+	project setting.Project
 	editor  Editor
 	ctrl    TextController
 	applier Applier
 }
 
-func newSuggestionList(driver gxui.Driver, theme *basic.Theme, proj settings.Project, editor Editor, ctrl TextController, applier Applier) *suggestionList {
+func newSuggestionList(driver gxui.Driver, theme *basic.Theme, proj setting.Project, editor Editor, ctrl TextController, applier Applier) *suggestionList {
 	s := &suggestionList{
 		driver:  driver,
 		adapter: &suggestions.Adapter{},

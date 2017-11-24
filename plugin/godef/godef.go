@@ -23,7 +23,7 @@ import (
 )
 
 type Projecter interface {
-	Project() settings.Project
+	Project() setting.Project
 }
 
 type Commander interface {
@@ -66,6 +66,13 @@ func (g *Godef) Name() string {
 
 func (g *Godef) Menu() string {
 	return "Golang"
+}
+
+func (g *Godef) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl | gxui.ModShift,
+		Key:      gxui.KeyG,
+	}}
 }
 
 func (g *Godef) Reset() {

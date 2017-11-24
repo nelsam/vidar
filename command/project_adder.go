@@ -19,7 +19,7 @@ import (
 const srcDir = string(filepath.Separator) + "src" + string(filepath.Separator)
 
 type projectPane interface {
-	Add(settings.Project)
+	Add(setting.Project)
 }
 
 type ProjectAdder struct {
@@ -55,6 +55,13 @@ func (p *ProjectAdder) Menu() string {
 	return "File"
 }
 
+func (p *ProjectAdder) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl | gxui.ModShift,
+		Key:      gxui.KeyN,
+	}}
+}
+
 func (p *ProjectAdder) Start(control gxui.Control) gxui.Control {
 	p.path.LoadDir(control)
 
@@ -87,8 +94,8 @@ func (p *ProjectAdder) Next() gxui.Focusable {
 	return next
 }
 
-func (p *ProjectAdder) Project() settings.Project {
-	return settings.Project{
+func (p *ProjectAdder) Project() setting.Project {
+	return setting.Project{
 		Name:   p.name.Text(),
 		Path:   p.path.Path(),
 		Gopath: p.gopath.Path(),
@@ -101,14 +108,14 @@ func (p *ProjectAdder) Exec(element interface{}) bind.Status {
 		return bind.Waiting
 	}
 	project := p.Project()
-	for _, prevProject := range settings.Projects() {
+	for _, prevProject := range setting.Projects() {
 		if prevProject.Name == project.Name {
 			// TODO: Let the user choose a new name
 			p.Err = fmt.Sprintf("There is already a project named %s", project.Name)
 			return bind.Failed
 		}
 	}
-	settings.AddProject(project)
+	setting.AddProject(project)
 	projects.Add(project)
 	return bind.Done
 }

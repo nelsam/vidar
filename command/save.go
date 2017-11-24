@@ -29,18 +29,18 @@ type SaveEditor interface {
 
 type BeforeSaver interface {
 	Name() string
-	BeforeSave(proj settings.Project, path, contents string) (newContents string, err error)
+	BeforeSave(proj setting.Project, path, contents string) (newContents string, err error)
 }
 
 type AfterSaver interface {
 	Name() string
-	AfterSave(proj settings.Project, path, contents string) error
+	AfterSave(proj setting.Project, path, contents string) error
 }
 
 type SaveCurrent struct {
 	status.General
 
-	proj    *settings.Project
+	proj    *setting.Project
 	applier Applier
 	editor  SaveEditor
 
@@ -60,6 +60,13 @@ func (s *SaveCurrent) Name() string {
 
 func (s *SaveCurrent) Menu() string {
 	return "File"
+}
+
+func (s *SaveCurrent) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl,
+		Key:      gxui.KeyS,
+	}}
 }
 
 func (s *SaveCurrent) Bind(h bind.Bindable) (bind.HookedMultiOp, error) {

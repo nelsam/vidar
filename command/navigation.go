@@ -5,6 +5,9 @@
 package command
 
 import (
+	"fmt"
+
+	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/command/caret"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/command"
@@ -75,6 +78,40 @@ func (s *Scroll) Exec() error {
 	s.exec.Execute(m)
 	s.scroller.ScrollToRune(s.careter.FirstCaret())
 	return nil
+}
+
+func (s *Scroll) Defaults() []fmt.Stringer {
+	var e gxui.KeyboardEvent
+	switch s.direction {
+	case caret.Up:
+		e.Key = gxui.KeyUp
+	case caret.Down:
+		e.Key = gxui.KeyDown
+	case caret.Left:
+		e.Key = gxui.KeyLeft
+	case caret.Right:
+		e.Key = gxui.KeyRight
+	default:
+		return nil
+	}
+	if s.mod&caret.Select == caret.Select {
+		e.Modifier |= gxui.ModShift
+	}
+	if s.mod&caret.Line == caret.Line {
+		switch s.direction {
+		case caret.Left:
+			e.Key = gxui.KeyHome
+		case caret.Right:
+			e.Key = gxui.KeyEnd
+		default:
+			return nil
+		}
+		return []fmt.Stringer{e}
+	}
+	if s.mod&caret.Word == caret.Word {
+		e.Modifier |= gxui.ModControl
+	}
+	return []fmt.Stringer{e}
 }
 
 type ScrollDeselect struct {

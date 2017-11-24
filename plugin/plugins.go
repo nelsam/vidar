@@ -45,7 +45,7 @@ const lookupName = "Bindables"
 // gxui.Theme as arguments.
 func Bindables(cmdr command.Commander, driver gxui.Driver, theme gxui.Theme) []bind.Bindable {
 	var bindables []bind.Bindable
-	for _, path := range settings.Plugins() {
+	for _, path := range setting.Plugins() {
 		plugin, err := plugin.Open(path)
 		if err != nil {
 			log.Printf("Error opening plugin at %s: %s", path, err)

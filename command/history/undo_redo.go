@@ -5,6 +5,9 @@
 package history
 
 import (
+	"fmt"
+
+	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/plugin/status"
@@ -29,6 +32,13 @@ func (u *Undo) Name() string {
 
 func (u *Undo) Menu() string {
 	return "Edit"
+}
+
+func (u *Undo) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl,
+		Key:      gxui.KeyZ,
+	}}
 }
 
 func (u *Undo) Reset() {
@@ -74,6 +84,13 @@ func (r *Redo) Name() string {
 
 func (r *Redo) Menu() string {
 	return "Edit"
+}
+
+func (r *Redo) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl | gxui.ModShift,
+		Key:      gxui.KeyZ,
+	}}
 }
 
 func (r *Redo) Reset() {

@@ -6,7 +6,9 @@ package gocode
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/status"
@@ -33,6 +35,13 @@ func (c *Completions) Name() string {
 
 func (c *Completions) Menu() string {
 	return "Golang"
+}
+
+func (c *Completions) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl,
+		Key:      gxui.KeySpace,
+	}}
 }
 
 func (c *Completions) Reset() {

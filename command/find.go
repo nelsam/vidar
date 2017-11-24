@@ -88,6 +88,13 @@ func (f *Find) Menu() string {
 	return "Edit"
 }
 
+func (f *Find) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl,
+		Key:      gxui.KeyF,
+	}}
+}
+
 func (f *Find) Next() gxui.Focusable {
 	next := f.next
 	f.next = nil

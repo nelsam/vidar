@@ -92,7 +92,7 @@ func NewProjectTree(cmdr Commander, driver gxui.Driver, window gxui.Window, them
 		layout:     newSplitterLayout(window, theme),
 	}
 	tree.layout.SetOrientation(gxui.Vertical)
-	tree.SetProject(settings.DefaultProject)
+	tree.SetProject(setting.DefaultProject)
 
 	return tree
 }
@@ -237,7 +237,7 @@ func (p *ProjectTree) update(path string) {
 	}
 }
 
-func (p *ProjectTree) SetProject(project settings.Project) {
+func (p *ProjectTree) SetProject(project setting.Project) {
 	p.SetRoot(project.Path)
 }
 

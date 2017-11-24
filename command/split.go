@@ -46,6 +46,22 @@ func (s *Split) Menu() string {
 	return "View"
 }
 
+func (s *Split) Defaults() []fmt.Stringer {
+	var key gxui.KeyboardKey
+	switch s.orientation {
+	case gxui.Horizontal:
+		key = gxui.KeyH
+	case gxui.Vertical:
+		key = gxui.KeyV
+	default:
+		panic(fmt.Errorf("Orientation %d is invalid", s.orientation))
+	}
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModAlt,
+		Key:      key,
+	}}
+}
+
 func (s *Split) Exec(target interface{}) bind.Status {
 	// TODO: refocus the currently focused editor after we split.
 	splitter, ok := target.(Splitter)

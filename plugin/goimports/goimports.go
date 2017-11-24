@@ -22,7 +22,7 @@ import (
 const stdinPathPattern = "<standard input>:"
 
 type Projecter interface {
-	Project() settings.Project
+	Project() setting.Project
 }
 
 type Applier interface {
@@ -40,7 +40,7 @@ func (o OnSave) OpName() string {
 	return "save-current-file"
 }
 
-func (o OnSave) BeforeSave(proj settings.Project, path, text string) (newText string, err error) {
+func (o OnSave) BeforeSave(proj setting.Project, path, text string) (newText string, err error) {
 	return goimports(proj.Gopath, path, text)
 }
 
@@ -64,6 +64,13 @@ func (gi *GoImports) Name() string {
 
 func (gi *GoImports) Menu() string {
 	return "Golang"
+}
+
+func (gi *GoImports) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl | gxui.ModShift,
+		Key:      gxui.KeyF,
+	}}
 }
 
 func (gi *GoImports) Reset() {

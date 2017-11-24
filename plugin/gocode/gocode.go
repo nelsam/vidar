@@ -18,7 +18,7 @@ import (
 )
 
 type Projecter interface {
-	Project() settings.Project
+	Project() setting.Project
 }
 
 func New(theme *basic.Theme, driver gxui.Driver) (*Completions, *GoCode) {

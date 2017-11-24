@@ -59,12 +59,12 @@ func main() {
 }
 
 func font(driver gxui.Driver) gxui.Font {
-	desiredFonts := settings.DesiredFonts()
+	desiredFonts := setting.DesiredFonts()
 	if len(desiredFonts) == 0 {
 		return nil
 	}
 	var (
-		font       settings.Font
+		font       setting.Font
 		fontReader io.Reader
 		err        error
 	)

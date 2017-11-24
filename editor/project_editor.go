@@ -16,10 +16,10 @@ import (
 type ProjectEditor struct {
 	SplitEditor
 
-	project settings.Project
+	project setting.Project
 }
 
-func NewProjectEditor(driver gxui.Driver, window gxui.Window, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font, project settings.Project) *ProjectEditor {
+func NewProjectEditor(driver gxui.Driver, window gxui.Window, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font, project setting.Project) *ProjectEditor {
 	p := &ProjectEditor{}
 	p.driver = driver
 	p.window = window
@@ -42,7 +42,7 @@ func (p *ProjectEditor) Open(path string) (e input.Editor, existed bool) {
 	return p.SplitEditor.Open(p.project.Path, path, p.project.LicenseHeader(), p.project.Environ())
 }
 
-func (p *ProjectEditor) Project() settings.Project {
+func (p *ProjectEditor) Project() setting.Project {
 	return p.project
 }
 
@@ -61,7 +61,7 @@ type MultiProjectEditor struct {
 }
 
 func New(driver gxui.Driver, window gxui.Window, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *MultiProjectEditor {
-	defaultEditor := NewProjectEditor(driver, window, cmdr, theme, syntaxTheme, font, settings.DefaultProject)
+	defaultEditor := NewProjectEditor(driver, window, cmdr, theme, syntaxTheme, font, setting.DefaultProject)
 
 	e := &MultiProjectEditor{
 		projects: map[string]*ProjectEditor{
@@ -80,7 +80,7 @@ func New(driver gxui.Driver, window gxui.Window, cmdr Commander, theme *basic.Th
 	return e
 }
 
-func (e *MultiProjectEditor) SetProject(project settings.Project) {
+func (e *MultiProjectEditor) SetProject(project setting.Project) {
 	editor, ok := e.projects[project.Name]
 	if !ok {
 		editor = NewProjectEditor(e.driver, e.window, e.cmdr, e.theme, e.syntaxTheme, e.font, project)
@@ -105,7 +105,7 @@ func (e *MultiProjectEditor) CurrentFile() string {
 	return e.current.CurrentFile()
 }
 
-func (e *MultiProjectEditor) CurrentProject() settings.Project {
+func (e *MultiProjectEditor) CurrentProject() setting.Project {
 	return e.current.Project()
 }
 

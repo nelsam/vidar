@@ -50,7 +50,7 @@ type Elementer interface {
 }
 
 type Projecter interface {
-	Project() settings.Project
+	Project() setting.Project
 }
 
 type FSLocator struct {
@@ -426,7 +426,7 @@ func findStart(control gxui.Control) string {
 	if project, ok := findProject(control); ok {
 		return project.Path
 	}
-	return settings.DefaultProject.Path
+	return setting.DefaultProject.Path
 }
 
 func findCurrentFile(control gxui.Control) string {
@@ -443,7 +443,7 @@ func findCurrentFile(control gxui.Control) string {
 	return ""
 }
 
-func findProject(e interface{}) (settings.Project, bool) {
+func findProject(e interface{}) (setting.Project, bool) {
 	switch src := e.(type) {
 	case Projecter:
 		return src.Project(), true
@@ -454,5 +454,5 @@ func findProject(e interface{}) (settings.Project, bool) {
 			}
 		}
 	}
-	return settings.Project{}, false
+	return setting.Project{}, false
 }

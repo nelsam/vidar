@@ -11,5 +11,5 @@ import (
 
 type ProjectFinder interface {
 	CurrentEditor() input.Editor
-	Project() settings.Project
+	Project() setting.Project
 }

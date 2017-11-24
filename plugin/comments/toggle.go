@@ -5,6 +5,7 @@
 package comments
 
 import (
+	"fmt"
 	"regexp"
 
 	"github.com/nelsam/gxui"
@@ -40,6 +41,13 @@ func (c *Toggle) Name() string {
 
 func (c *Toggle) Menu() string {
 	return "Golang"
+}
+
+func (c *Toggle) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl,
+		Key:      gxui.KeySlash,
+	}}
 }
 
 func (t *Toggle) Reset() {

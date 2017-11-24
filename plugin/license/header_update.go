@@ -5,6 +5,7 @@
 package license
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/nelsam/gxui"
@@ -15,7 +16,7 @@ import (
 )
 
 type Projecter interface {
-	Project() settings.Project
+	Project() setting.Project
 }
 
 type Applier interface {
@@ -49,6 +50,13 @@ func (u *HeaderUpdate) Name() string {
 
 func (u *HeaderUpdate) Menu() string {
 	return "Golang"
+}
+
+func (u *HeaderUpdate) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl | gxui.ModShift,
+		Key:      gxui.KeyL,
+	}}
 }
 
 func (u *HeaderUpdate) Store(target interface{}) bind.Status {

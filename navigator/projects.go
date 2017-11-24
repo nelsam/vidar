@@ -13,7 +13,7 @@ import (
 type ProjectSetter interface {
 	bind.Bindable
 
-	SetProject(settings.Project)
+	SetProject(setting.Project)
 }
 
 type Projects struct {
@@ -36,18 +36,18 @@ func NewProjectsPane(cmdr Commander, driver gxui.Driver, theme gxui.Theme, projF
 		projects:        theme.CreateList(),
 		projectsAdapter: gxui.CreateDefaultAdapter(),
 	}
-	pane.projectsAdapter.SetItems(settings.Projects())
+	pane.projectsAdapter.SetItems(setting.Projects())
 	pane.projects.SetAdapter(pane.projectsAdapter)
 	pane.projects.OnSelectionChanged(func(selected gxui.AdapterItem) {
 		opener := pane.cmdr.Bindable("open-project").(ProjectSetter)
-		opener.SetProject(selected.(settings.Project))
+		opener.SetProject(selected.(setting.Project))
 		pane.cmdr.Execute(opener)
 	})
 	return pane
 }
 
-func (p *Projects) Add(project settings.Project) {
-	projects := append(p.projectsAdapter.Items().([]settings.Project), project)
+func (p *Projects) Add(project setting.Project) {
+	projects := append(p.projectsAdapter.Items().([]setting.Project), project)
 	p.projectsAdapter.SetItems(projects)
 }
 
@@ -59,6 +59,6 @@ func (p *Projects) Frame() gxui.Control {
 	return p.projects
 }
 
-func (p *Projects) Projects() []settings.Project {
-	return p.projectsAdapter.Items().([]settings.Project)
+func (p *Projects) Projects() []setting.Project {
+	return p.projectsAdapter.Items().([]setting.Project)
 }

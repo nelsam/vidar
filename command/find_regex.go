@@ -79,6 +79,13 @@ func (f *RegexFind) Menu() string {
 	return "Edit"
 }
 
+func (f *RegexFind) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl | gxui.ModAlt,
+		Key:      gxui.KeyF,
+	}}
+}
+
 func (f *RegexFind) Next() gxui.Focusable {
 	next := f.next
 	f.next = nil

@@ -2,13 +2,14 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package settings
+package setting
 
 import (
 	"log"
 	"strings"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/spf13/viper"
 )
 
@@ -19,32 +20,6 @@ var bindings = viper.New()
 func init() {
 	bindings.AddConfigPath(defaultConfigDir)
 	bindings.SetConfigName(keysFilename)
-	setDefaultBindings()
-	err := bindings.ReadInConfig()
-	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-		err = writeConfig(bindings, keysFilename)
-	}
-	if err != nil {
-		log.Printf("Error parsing key bindings: %s", err)
-	}
-	updateBindings()
-}
-
-func updateBindings() {
-	updated := false
-	for event, action := range bindings.AllSettings() {
-		// 2017-03-05: goimports now registers itself as a hook in
-		// save-current-file when a go file is open.
-		if action == "goimports, save-current-file" {
-			updated = true
-			bindings.Set(event, "save-current-file")
-		}
-	}
-	if updated {
-		if err := writeConfig(bindings, keysFilename); err != nil {
-			log.Printf("Error updating config: %s", err)
-		}
-	}
 }
 
 func Bindings(commandName string) (events []gxui.KeyboardEvent) {
@@ -56,7 +31,23 @@ func Bindings(commandName string) (events []gxui.KeyboardEvent) {
 	return events
 }
 
+func parseBindings() {
+	err := bindings.ReadInConfig()
+	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		err = writeConfig(bindings, keysFilename)
+		if err != nil {
+			log.Printf("Error writing new config: %s", err)
+			return
+		}
+	}
+	if err != nil {
+		log.Printf("Error parsing key bindings: %s", err)
+	}
+}
+
 func parseBinding(eventPattern string) []gxui.KeyboardEvent {
+	// TODO: Move this logic to input.Handler so that other handlers can define
+	// their own keybinding format.
 	eventPattern = strings.ToLower(eventPattern)
 	keys := strings.Split(eventPattern, "-")
 	modifiers, key := keys[:len(keys)-1], keys[len(keys)-1]
@@ -94,52 +85,13 @@ func parseBinding(eventPattern string) []gxui.KeyboardEvent {
 	return nil
 }
 
-func setDefaultBindings() {
-	bindings.SetDefault("Ctrl-Shift-N", "add-project")
-	bindings.SetDefault("Ctrl-Shift-O", "open-project")
-	bindings.SetDefault("Ctrl-O", "open-file")
-	bindings.SetDefault("Ctrl-A", "select-all")
-	bindings.SetDefault("Ctrl-S", "save-current-file")
-	bindings.SetDefault("Ctrl-Shift-S", "save-all-files")
-	bindings.SetDefault("Ctrl-W", "close-current-tab")
-
-	bindings.SetDefault("Ctrl-Z", "undo-last-edit")
-	bindings.SetDefault("Ctrl-Shift-Z", "redo-next-edit")
-	bindings.SetDefault("Ctrl-F", "find")
-	bindings.SetDefault("Ctrl-Alt-F", "regex-find")
-	bindings.SetDefault("Ctrl-C", "copy-selection")
-	bindings.SetDefault("Ctrl-X", "cut-selection")
-	bindings.SetDefault("Ctrl-V", "paste")
-	bindings.SetDefault("Ctrl-Space", "show-suggestions")
-	bindings.SetDefault("Ctrl-G", "goto-line")
-	bindings.SetDefault("Ctrl-Shift-G", "goto-definition")
-	bindings.SetDefault("Ctrl-Shift-L", "update-license")
-	bindings.SetDefault("Ctrl-Shift-F", "goimports")
-	bindings.SetDefault("Ctrl-/", "toggle-comments")
-
-	bindings.SetDefault("Alt-H", "split-view-horizontally")
-	bindings.SetDefault("Alt-V", "split-view-vertically")
-	bindings.SetDefault("Ctrl-Tab", "next-tab")
-	bindings.SetDefault("Ctrl-Shift-Tab", "prev-tab")
-	bindings.SetDefault("Alt-Up", "focus-up")
-	bindings.SetDefault("Alt-Down", "focus-down")
-	bindings.SetDefault("Alt-Left", "focus-left")
-	bindings.SetDefault("Alt-Right", "focus-right")
-
-	bindings.SetDefault("Left", "prev-char")
-	bindings.SetDefault("Ctrl-Left", "prev-word")
-	bindings.SetDefault("Shift-Left", "select-prev-char")
-	bindings.SetDefault("Ctrl-Shift-Left", "select-prev-word")
-	bindings.SetDefault("Right", "next-char")
-	bindings.SetDefault("Ctrl-Right", "next-word")
-	bindings.SetDefault("Shift-Right", "select-next-char")
-	bindings.SetDefault("Ctrl-Shift-Right", "select-next-word")
-	bindings.SetDefault("Up", "prev-line")
-	bindings.SetDefault("Shift-Up", "select-prev-line")
-	bindings.SetDefault("Down", "next-line")
-	bindings.SetDefault("Shift-Down", "select-next-line")
-	bindings.SetDefault("End", "line-end")
-	bindings.SetDefault("Shift-End", "select-to-line-end")
-	bindings.SetDefault("Home", "line-start")
-	bindings.SetDefault("Shift-Home", "select-to-line-start")
+func SetDefaultBindings(cmds ...bind.Command) {
+	parseBindings()
+	for _, c := range cmds {
+		defaults := c.Defaults()
+		for _, d := range defaults {
+			bindings.SetDefault(d.String(), c.Name())
+		}
+	}
+	writeConfig(bindings, keysFilename)
 }

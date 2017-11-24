@@ -179,17 +179,24 @@ func (c *Commander) editor(e controller.MultiEditor) input.Editor {
 }
 
 func (c *Commander) mapBindings() {
-	var handler input.Handler
+	var (
+		handler input.Handler
+		cmds    []bind.Command
+	)
 	// Loop through the slice to preserve order.
 	for _, b := range c.stack[len(c.stack)-1] {
 		// Load from the map to ensure hooks are bound.
 		b = c.bound[b.Name()]
 		switch src := b.(type) {
 		case bind.Command:
-			c.bind(src, settings.Bindings(src.Name())...)
+			cmds = append(cmds, src)
 		case input.Handler:
 			handler = src
 		}
+	}
+	setting.SetDefaultBindings(cmds...)
+	for _, cmd := range cmds {
+		c.bind(cmd, setting.Bindings(cmd.Name())...)
 	}
 	if handler == nil {
 		log.Fatal("There is no input handler available!  This should never happen.  Please create an issue in github stating that you saw this message.")

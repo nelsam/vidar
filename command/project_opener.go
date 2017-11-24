@@ -18,7 +18,7 @@ import (
 )
 
 type ProjectSetter interface {
-	SetProject(settings.Project)
+	SetProject(setting.Project)
 }
 
 type PaneDisplayer interface {
@@ -37,7 +37,7 @@ type ProjectOpener struct {
 	name  gxui.TextBox
 	input <-chan gxui.Focusable
 
-	proj settings.Project
+	proj setting.Project
 
 	nav     PaneDisplayer
 	focuser Focuser
@@ -62,6 +62,13 @@ func (p *ProjectOpener) Menu() string {
 	return "File"
 }
 
+func (p *ProjectOpener) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl | gxui.ModShift,
+		Key:      gxui.KeyO,
+	}}
+}
+
 func (p *ProjectOpener) Start(gxui.Control) gxui.Control {
 	p.name.SetText("")
 	input := make(chan gxui.Focusable, 1)
@@ -75,7 +82,7 @@ func (p *ProjectOpener) Next() gxui.Focusable {
 	return <-p.input
 }
 
-func (p *ProjectOpener) SetProject(proj settings.Project) {
+func (p *ProjectOpener) SetProject(proj setting.Project) {
 	p.name.SetText(proj.Name)
 }
 
@@ -87,8 +94,8 @@ func (p *ProjectOpener) Reset() {
 	p.binder = nil
 	p.editor = nil
 
-	p.proj = settings.Project{}
-	for _, proj := range settings.Projects() {
+	p.proj = setting.Project{}
+	for _, proj := range setting.Projects() {
 		if proj.Name == p.name.Text() {
 			p.proj = proj
 			break

@@ -5,6 +5,8 @@
 package command
 
 import (
+	"fmt"
+
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
 )
@@ -25,6 +27,13 @@ func (s *SaveAll) Name() string {
 
 func (s *SaveAll) Menu() string {
 	return "File"
+}
+
+func (s *SaveAll) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl | gxui.ModShift,
+		Key:      gxui.KeyS,
+	}}
 }
 
 func (s *SaveAll) Exec(target interface{}) bind.Status {

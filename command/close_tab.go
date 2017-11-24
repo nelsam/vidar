@@ -5,6 +5,9 @@
 package command
 
 import (
+	"fmt"
+
+	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commander/input"
 )
@@ -33,6 +36,13 @@ func (s *CloseTab) Name() string {
 
 func (s *CloseTab) Menu() string {
 	return "File"
+}
+
+func (s *CloseTab) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl,
+		Key:      gxui.KeyW,
+	}}
 }
 
 func (s *CloseTab) Reset() {

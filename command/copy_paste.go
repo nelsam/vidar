@@ -38,6 +38,13 @@ func (c *Copy) Menu() string {
 	return "Edit"
 }
 
+func (c *Copy) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl,
+		Key:      gxui.KeyC,
+	}}
+}
+
 func (c *Copy) Exec(target interface{}) bind.Status {
 	editor, ok := target.(Editor)
 	if !ok {
@@ -68,6 +75,13 @@ func NewCut(driver gxui.Driver) *Cut {
 
 func (c *Cut) Name() string {
 	return "cut-selection"
+}
+
+func (c *Cut) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl,
+		Key:      gxui.KeyX,
+	}}
 }
 
 func (c *Cut) Reset() {
@@ -131,6 +145,13 @@ func (p *Paste) Name() string {
 
 func (p *Paste) Menu() string {
 	return "Edit"
+}
+
+func (p *Paste) Defaults() []fmt.Stringer {
+	return []fmt.Stringer{gxui.KeyboardEvent{
+		Modifier: gxui.ModControl,
+		Key:      gxui.KeyV,
+	}}
 }
 
 func (p *Paste) Reset() {
