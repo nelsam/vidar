@@ -5,8 +5,6 @@
 package commander
 
 import (
-	"strings"
-
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
@@ -126,21 +124,7 @@ func newMenuItem(theme *basic.Theme, name string, bindings ...gxui.KeyboardEvent
 		} else {
 			name += ", "
 		}
-		parts := make([]string, 0, 5)
-		if binding.Modifier.Control() {
-			parts = append(parts, "Ctrl")
-		}
-		if binding.Modifier.Super() {
-			parts = append(parts, "Cmd")
-		}
-		if binding.Modifier.Alt() {
-			parts = append(parts, "Alt")
-		}
-		if binding.Modifier.Shift() {
-			parts = append(parts, "Shift")
-		}
-		parts = append(parts, binding.Key.String())
-		name += strings.Join(parts, "-")
+		name += binding.String()
 	}
 	b.SetText(name)
 	b.SetPadding(math.Spacing{L: 1, R: 1, B: 1, T: 1})

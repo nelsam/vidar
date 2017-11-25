@@ -206,9 +206,9 @@ func (c *Commander) mapBindings() {
 }
 
 func (c *Commander) mapMenu() {
-	keys := make(map[bind.Command][]gxui.KeyboardEvent)
+	keys := make(map[string][]gxui.KeyboardEvent)
 	for key, bound := range c.commands {
-		keys[bound] = append(keys[bound], key)
+		keys[bound.Name()] = append(keys[bound.Name()], key)
 	}
 	// As usual, use the stack slice to preserve order
 	for _, b := range c.stack[len(c.stack)-1] {
@@ -216,7 +216,7 @@ func (c *Commander) mapMenu() {
 		if !ok {
 			continue
 		}
-		c.menuBar.Add(cmd, keys[cmd]...)
+		c.menuBar.Add(cmd, keys[cmd.Name()]...)
 	}
 }
 
