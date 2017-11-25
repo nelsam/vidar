@@ -31,7 +31,7 @@ func Commands(_ command.Commander, driver gxui.Driver, theme *basic.Theme) []bin
 func Hooks(cmdr command.Commander, driver gxui.Driver, theme *basic.Theme) []bind.Bindable {
 	return []bind.Bindable{
 		&caret.Mover{},
-		&focus.Location{},
+		focus.NewLocation(driver),
 		FileHook{Theme: theme},
 		EditHook{Theme: theme, Driver: driver},
 		ViewHook{},

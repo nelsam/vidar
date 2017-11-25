@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/plugin/status"
@@ -101,6 +102,7 @@ func cp(ptr *int) *int {
 
 type Location struct {
 	status.General
+	driver gxui.Driver
 
 	// These can only be set by FocusOpts in For().
 	path              string
@@ -115,8 +117,13 @@ type Location struct {
 	hooks []FileBinder
 }
 
+func NewLocation(driver gxui.Driver) *Location {
+	return &Location{driver: driver}
+}
+
 func (f *Location) For(opts ...Opt) bind.Bindable {
 	newF := &Location{
+		driver:     f.driver,
 		path:       f.path,
 		skipUnbind: f.skipUnbind,
 		offset:     cp(f.offset),
@@ -193,7 +200,12 @@ func (f *Location) Exec() error {
 		b = append(b, h.FileBindables(path)...)
 	}
 	f.binder.Push(b...)
-	f.moveCarets(e.(LineStarter))
+
+	// Let the editor finish loading its text before we try
+	// to load the start of a line.
+	f.driver.Call(func() {
+		f.moveCarets(e.(LineStarter))
+	})
 	return nil
 }
 
