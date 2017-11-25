@@ -7,6 +7,7 @@ package commander
 import (
 	"fmt"
 	"log"
+	"runtime/debug"
 	"sync"
 
 	"github.com/nelsam/gxui"
@@ -315,6 +316,7 @@ func (c *Commander) Execute(e bind.Bindable) {
 		// Mitigate the potential for plugins to cause the editor to panic
 		if r := recover(); r != nil {
 			log.Printf("ERR: panic while executing bindable %T: %v", e, r)
+			log.Printf("Stack trace:\n%s", debug.Stack())
 		}
 	}()
 	if before, ok := e.(BeforeExecutor); ok {
