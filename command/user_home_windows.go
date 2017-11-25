@@ -9,6 +9,11 @@ package command
 import "os"
 
 var (
-	userHome   = os.Getenv("USERPROFILE")
-	systemRoot = os.Getenv("SYSTEMROOT")
+	userHome = os.Getenv("USERPROFILE")
+
+	// On Windows, we consider an empty string the system root
+	// because the drive letter still needs to be chosen.  This
+	// used to be os.Getenv("SYSTEMROOT"), but it prevented users
+	// from opening files on other drives.
+	systemRoot = ""
 )
