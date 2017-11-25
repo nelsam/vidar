@@ -100,7 +100,7 @@ func (s *SaveCurrent) Store(target interface{}) bind.Status {
 	case SaveEditor:
 		s.editor = src
 	}
-	if s.editor != nil && s.proj != nil && s.applier != nil && s.editor != nil {
+	if s.editor != nil && s.proj != nil && s.applier != nil {
 		return bind.Done
 	}
 	return bind.Waiting
