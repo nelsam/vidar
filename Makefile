@@ -36,9 +36,9 @@ plugins: build/gosyntax.so build/goimports.so build/comments.so build/godef.so b
 .PHONY: plugins
 
 # Install all plugins included with vidar to
-# $HOME/.config/vidar/plugins.  If plugins have
-# not yet been built, they will be built before
-# installing.
+# $HOME/.local/share/vidar/plugins.  If plugins
+# have not yet been built, they will be built
+# before installing.
 plugins-install: plugins | $(HOME)/.local/share/vidar/plugins
 	@for plugin in $$(ls -1 build); do \
 		echo "Installing $$plugin to $$HOME/.local/share/vidar/plugins"; \
