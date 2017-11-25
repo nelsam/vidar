@@ -311,6 +311,12 @@ func (c *Commander) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
 }
 
 func (c *Commander) Execute(e bind.Bindable) {
+	defer func() {
+		// Mitigate the potential for plugins to cause the editor to panic
+		if r := recover(); r != nil {
+			log.Printf("ERR: panic while executing bindable %T: %v", e, r)
+		}
+	}()
 	if before, ok := e.(BeforeExecutor); ok {
 		before.BeforeExec(c)
 	}
