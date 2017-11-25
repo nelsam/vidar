@@ -34,7 +34,7 @@ To build and install plugins on linux, use make:
 make plugins-install
 ```
 
-This will build and install plugins to `~/.config/vidar/plugins/`
+This will build and install plugins to `~/.local/share/vidar/plugins/`
 
 ### Go Version
 
