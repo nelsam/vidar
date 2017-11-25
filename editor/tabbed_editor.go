@@ -19,6 +19,10 @@ import (
 	"github.com/nelsam/vidar/theme"
 )
 
+type refocuser interface {
+	ReFocus()
+}
+
 type TabbedEditor struct {
 	mixins.PanelHolder
 
@@ -124,7 +128,9 @@ func (e *TabbedEditor) purgeSelf() {
 	// the tab will move to a separate split *after* the SplitEditor's
 	// MouseUp method is called, so the SplitEditor has no idea that
 	// we're now empty.  We have to purge ourselves from the SplitEditor.
-	e.Parent().(gxui.Container).RemoveChild(e)
+	parent := e.Parent()
+	parent.(gxui.Container).RemoveChild(e)
+	parent.(refocuser).ReFocus()
 }
 
 func (e *TabbedEditor) EditorAt(d Direction) input.Editor {

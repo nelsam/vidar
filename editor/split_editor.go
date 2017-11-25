@@ -163,6 +163,21 @@ func (e *SplitEditor) CloseCurrentEditor() (name string, editor input.Editor) {
 	return name, editor
 }
 
+func (e *SplitEditor) ReFocus() {
+	children := e.Children()
+	if e.current != nil && children.Find(e.current) != nil {
+		gxui.SetFocus(e.current.CurrentEditor().(gxui.Focusable))
+		return
+	}
+	// e.current is no longer our child.
+	if len(children) == 0 {
+		e.current = nil
+		return
+	}
+	e.current = children[0].Control.(MultiEditor)
+	gxui.SetFocus(e.current.CurrentEditor().(gxui.Focusable))
+}
+
 func (e *SplitEditor) Add(name string, editor input.Editor) {
 	e.current.Add(name, editor)
 }
