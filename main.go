@@ -5,7 +5,6 @@
 package main
 
 import (
-	"go/token"
 	"io"
 	"io/ioutil"
 	"log"
@@ -17,15 +16,19 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/gxui/themes/dark"
+	"github.com/nelsam/vidar/command"
+	"github.com/nelsam/vidar/command/focus"
+	"github.com/nelsam/vidar/command/input"
 	"github.com/nelsam/vidar/commander"
-	"github.com/nelsam/vidar/commands"
-	"github.com/nelsam/vidar/settings"
-	"github.com/tmc/fonts"
-
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/editor"
 	"github.com/nelsam/vidar/navigator"
+	"github.com/nelsam/vidar/plugin"
+	"github.com/nelsam/vidar/setting"
+	"github.com/nelsam/vidar/theme"
 	"github.com/spf13/cobra"
+	"github.com/tmc/fonts"
 )
 
 var (
@@ -56,12 +59,12 @@ func main() {
 }
 
 func font(driver gxui.Driver) gxui.Font {
-	desiredFonts := settings.DesiredFonts()
+	desiredFonts := setting.DesiredFonts()
 	if len(desiredFonts) == 0 {
 		return nil
 	}
 	var (
-		font       settings.Font
+		font       setting.Font
 		fontReader io.Reader
 		err        error
 	)
@@ -91,27 +94,40 @@ func font(driver gxui.Driver) gxui.Font {
 }
 
 func uiMain(driver gxui.Driver) {
-	theme := dark.CreateTheme(driver).(*basic.Theme)
+	gTheme := dark.CreateTheme(driver).(*basic.Theme)
 	font := font(driver)
 	if font == nil {
-		font = theme.DefaultMonospaceFont()
+		font = gTheme.DefaultMonospaceFont()
 	}
-	theme.SetDefaultMonospaceFont(font)
-	theme.SetDefaultFont(font)
-	theme.WindowBackground = background
+	gTheme.SetDefaultMonospaceFont(font)
+	gTheme.SetDefaultFont(font)
+	gTheme.WindowBackground = background
 
 	// TODO: figure out a better way to get this resolution
-	window := theme.CreateWindow(1600, 800, "Vidar - GXUI Go Editor")
-	controller := controller.New(driver, theme)
+	window := gTheme.CreateWindow(1600, 800, "Vidar - GXUI Go Editor")
+	controller := controller.New(driver, gTheme)
 
-	nav := navigator.New(driver, theme, controller)
+	// Bindings should be added immediately after creating the commander,
+	// since other types rely on the bindings having been bound.
+	cmdr := commander.New(driver, gTheme, controller)
+	bindings := []bind.Bindable{input.New(driver, cmdr)}
+	for _, c := range command.Commands(cmdr, driver, gTheme) {
+		bindings = append(bindings, c)
+	}
+	for _, h := range command.Hooks(cmdr, driver, gTheme) {
+		bindings = append(bindings, h)
+	}
+	bindings = append(bindings, plugin.Bindables(cmdr, driver, gTheme)...)
+	cmdr.Push(bindings...)
+
+	nav := navigator.New(driver, gTheme)
 	controller.SetNavigator(nav)
 
-	editor := editor.New(driver, window, theme, theme.DefaultMonospaceFont())
+	editor := editor.New(driver, window, cmdr, gTheme, theme.Default, gTheme.DefaultMonospaceFont())
 	controller.SetEditor(editor)
 
-	projTree := navigator.NewProjectTree(driver, window, theme)
-	projects := navigator.NewProjectsPane(driver, theme, projTree.Frame())
+	projTree := navigator.NewProjectTree(cmdr, driver, window, gTheme)
+	projects := navigator.NewProjectsPane(cmdr, driver, gTheme, projTree.Frame())
 
 	nav.Add(projects)
 	nav.Add(projTree)
@@ -121,16 +137,10 @@ func uiMain(driver gxui.Driver) {
 		nav.Resize(window.Size().H)
 	})
 
-	commander := commander.New(driver, theme, controller)
-
 	// TODO: Check the system's DPI settings for this value
 	window.SetScale(1)
 
-	window.AddChild(commander)
-
-	for _, command := range commands.Commands(driver, theme, projTree.Frame()) {
-		commander.Map(command, settings.Bindings(command.Name())...)
-	}
+	window.AddChild(cmdr)
 
 	window.OnKeyDown(func(event gxui.KeyboardEvent) {
 		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {
@@ -140,21 +150,22 @@ func uiMain(driver gxui.Driver) {
 			window.SetFullscreen(!window.Fullscreen())
 		}
 		if window.Focus() == nil {
-			commander.KeyDown(event)
+			cmdr.KeyDown(event)
 		}
 	})
 	window.OnKeyUp(func(event gxui.KeyboardEvent) {
 		if window.Focus() == nil {
-			commander.KeyPress(event)
+			cmdr.KeyPress(event)
 		}
 	})
 
+	opener := cmdr.Bindable("focus-location").(*focus.Location)
 	for _, file := range files {
 		filepath, err := filepath.Abs(file)
 		if err != nil {
 			log.Printf("Failed to get path: %s", err)
 		}
-		commander.Controller().Editor().Open(filepath, token.Position{})
+		cmdr.Execute(opener.For(focus.Path(filepath)))
 	}
 
 	window.OnClose(driver.Terminate)

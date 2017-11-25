@@ -10,22 +10,22 @@ import (
 	"go/token"
 	"unicode/utf8"
 
-	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/theme"
 )
 
 // Syntax is a type that reads Go source code to provide information
 // on it.
 type Syntax struct {
-	Theme Theme
-
+	scope       theme.LanguageConstruct
 	fileSet     *token.FileSet
-	layers      map[Color]*gxui.CodeSyntaxLayer
+	layers      map[theme.LanguageConstruct]*input.SyntaxLayer
 	runeOffsets []int
 }
 
 // New constructs a new *Syntax value with theme as its Theme field.
-func New(theme Theme) *Syntax {
-	return &Syntax{Theme: theme}
+func New() *Syntax {
+	return &Syntax{}
 }
 
 // Parse parses the passed in Go source code, replacing s's stored
@@ -45,18 +45,19 @@ func (s *Syntax) Parse(source string) error {
 	}
 
 	s.fileSet = token.NewFileSet()
-	s.layers = make(map[Color]*gxui.CodeSyntaxLayer)
+	s.scope = theme.ScopePair
+	s.layers = make(map[theme.LanguageConstruct]*input.SyntaxLayer)
 	f, err := parser.ParseFile(s.fileSet, "", source, parser.ParseComments)
 
 	// Parse everything we can before returning the error.
 	if f.Package.IsValid() {
-		s.add(s.Theme.Colors.Keyword, f.Package, len("package"))
+		s.add(theme.Keyword, f.Package, len("package"))
 	}
 	for _, importSpec := range f.Imports {
-		s.addNode(s.Theme.Colors.String, importSpec)
+		s.addNode(theme.String, importSpec)
 	}
 	for _, comment := range f.Comments {
-		s.addNode(s.Theme.Colors.Comment, comment)
+		s.addNode(theme.Comment, comment)
 	}
 	for _, decl := range f.Decls {
 		s.addDecl(decl)
@@ -67,25 +68,32 @@ func (s *Syntax) Parse(source string) error {
 	return err
 }
 
-// Layers returns a gxui.CodeSyntaxLayer for each color used from
+// Layers returns a gxui.CodeSyntaxLayer for each construct used from
 // s.Theme when s.Parse was called.  The corresponding
 // gxui.CodeSyntaxLayer will have its foreground and background
-// colors set, and all positions that should be highlighted that
-// color will be stored.
-func (s *Syntax) Layers() map[Color]*gxui.CodeSyntaxLayer {
+// constructs set, and all positions that should be highlighted that
+// construct will be stored.
+func (s *Syntax) Layers() map[theme.LanguageConstruct]*input.SyntaxLayer {
 	return s.layers
 }
 
-func (s *Syntax) add(color Color, pos token.Pos, byteLength int) {
+func (s *Syntax) rainbowScope(openStart token.Pos, openLen int, closeStart token.Pos, closeLen int) (unscope func()) {
+	s.add(s.scope, openStart, openLen)
+	s.add(s.scope, closeStart, closeLen)
+	s.scope++
+	return func() { s.scope-- }
+}
+
+func (s *Syntax) add(construct theme.LanguageConstruct, pos token.Pos, byteLength int) {
 	if byteLength == 0 {
 		return
 	}
-	layer, ok := s.layers[color]
+	layer, ok := s.layers[construct]
 	if !ok {
-		layer = &gxui.CodeSyntaxLayer{}
-		layer.SetColor(color.Foreground)
-		layer.SetBackgroundColor(color.Background)
-		s.layers[color] = layer
+		layer = &input.SyntaxLayer{
+			Construct: construct,
+		}
+		s.layers[construct] = layer
 	}
 	bytePos := s.fileSet.Position(pos).Offset
 	if bytePos >= len(s.runeOffsets) {
@@ -93,7 +101,7 @@ func (s *Syntax) add(color Color, pos token.Pos, byteLength int) {
 	}
 	idx := s.runePos(bytePos)
 	end := s.runePos(bytePos + byteLength)
-	layer.Add(idx, end-idx)
+	layer.Spans = append(layer.Spans, input.Span{Start: idx, End: end})
 }
 
 func (s *Syntax) runePos(bytePos int) int {
@@ -103,6 +111,6 @@ func (s *Syntax) runePos(bytePos int) int {
 	return bytePos + s.runeOffsets[bytePos]
 }
 
-func (s *Syntax) addNode(color Color, node ast.Node) {
-	s.add(color, node.Pos(), int(node.End()-node.Pos()))
+func (s *Syntax) addNode(construct theme.LanguageConstruct, node ast.Node) {
+	s.add(construct, node.Pos(), int(node.End()-node.Pos()))
 }

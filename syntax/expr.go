@@ -7,16 +7,19 @@ package syntax
 import (
 	"go/ast"
 	"log"
+
+	"github.com/nelsam/vidar/theme"
 )
 
 func (s *Syntax) addTypeExpr(expr ast.Expr) {
-	orig := s.Theme.Colors.Ident
-	s.Theme.Colors.Ident = s.Theme.Colors.Type
-	s.addExpr(expr)
-	s.Theme.Colors.Ident = orig
+	s.addIdentTypeExpr(expr, theme.Type)
 }
 
 func (s *Syntax) addExpr(expr ast.Expr) {
+	s.addIdentTypeExpr(expr, theme.Ident)
+}
+
+func (s *Syntax) addIdentTypeExpr(expr ast.Expr, identType theme.LanguageConstruct) {
 	if expr == nil {
 		return
 	}
@@ -67,11 +70,11 @@ func (s *Syntax) addExpr(expr ast.Expr) {
 			"delete", "imag", "len", "make", "new", "panic",
 			"print", "println", "real", "recover":
 
-			s.addNode(s.Theme.Colors.Builtin, src)
+			s.addNode(theme.Builtin, src)
 		case "nil":
-			s.addNode(s.Theme.Colors.Nil, src)
+			s.addNode(theme.Nil, src)
 		default:
-			s.addNode(s.Theme.Colors.Ident, src)
+			s.addNode(identType, src)
 		}
 	case *ast.CompositeLit:
 		s.addCompositeLit(src)
@@ -81,7 +84,7 @@ func (s *Syntax) addExpr(expr ast.Expr) {
 }
 
 func (s *Syntax) addBadExpr(src *ast.BadExpr) {
-	s.addNode(s.Theme.Colors.Bad, src)
+	s.addNode(theme.Bad, src)
 }
 
 func (s *Syntax) addBinaryExpr(src *ast.BinaryExpr) {
@@ -91,11 +94,10 @@ func (s *Syntax) addBinaryExpr(src *ast.BinaryExpr) {
 
 func (s *Syntax) addCallExpr(src *ast.CallExpr) {
 	s.addExpr(src.Fun)
-	s.add(s.Theme.Rainbow.New(), src.Lparen, 1)
+	defer s.rainbowScope(src.Lparen, 1, src.Rparen, 1)()
 	for _, arg := range src.Args {
 		s.addExpr(arg)
 	}
-	s.add(s.Theme.Rainbow.Pop(), src.Rparen, 1)
 }
 
 func (s *Syntax) addFuncLitExpr(src *ast.FuncLit) {
@@ -105,9 +107,8 @@ func (s *Syntax) addFuncLitExpr(src *ast.FuncLit) {
 
 func (s *Syntax) addIndexExpr(src *ast.IndexExpr) {
 	s.addExpr(src.X)
-	s.add(s.Theme.Rainbow.New(), src.Lbrack, 1)
+	defer s.rainbowScope(src.Lbrack, 1, src.Rbrack, 1)()
 	s.addExpr(src.Index)
-	s.add(s.Theme.Rainbow.Pop(), src.Rbrack, 1)
 }
 
 func (s *Syntax) addKeyValueExpr(src *ast.KeyValueExpr) {
@@ -116,23 +117,21 @@ func (s *Syntax) addKeyValueExpr(src *ast.KeyValueExpr) {
 }
 
 func (s *Syntax) addParenExpr(src *ast.ParenExpr) {
-	s.add(s.Theme.Rainbow.New(), src.Lparen, 1)
+	defer s.rainbowScope(src.Lparen, 1, src.Rparen, 1)()
 	s.addExpr(src.X)
-	s.add(s.Theme.Rainbow.Pop(), src.Rparen, 1)
 }
 
 func (s *Syntax) addSelectorExpr(src *ast.SelectorExpr) {
 	s.addExpr(src.X)
-	s.addNode(s.Theme.Colors.Func, src.Sel)
+	s.addNode(theme.Func, src.Sel)
 }
 
 func (s *Syntax) addSliceExpr(src *ast.SliceExpr) {
 	s.addExpr(src.X)
-	s.add(s.Theme.Rainbow.New(), src.Lbrack, 1)
+	defer s.rainbowScope(src.Lbrack, 1, src.Rbrack, 1)()
 	s.addExpr(src.Low)
 	s.addExpr(src.High)
 	s.addExpr(src.Max)
-	s.add(s.Theme.Rainbow.Pop(), src.Rbrack, 1)
 }
 
 func (s *Syntax) addStarExpr(src *ast.StarExpr) {
@@ -141,9 +140,8 @@ func (s *Syntax) addStarExpr(src *ast.StarExpr) {
 
 func (s *Syntax) addTypeAssertExpr(src *ast.TypeAssertExpr) {
 	s.addExpr(src.X)
-	s.add(s.Theme.Rainbow.New(), src.Lparen, 1)
+	defer s.rainbowScope(src.Lparen, 1, src.Rparen, 1)()
 	s.addExpr(src.Type)
-	s.add(s.Theme.Rainbow.Pop(), src.Rparen, 1)
 }
 
 func (s *Syntax) addUnaryExpr(src *ast.UnaryExpr) {

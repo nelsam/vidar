@@ -9,6 +9,7 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
+	"github.com/nelsam/vidar/commander/bind"
 )
 
 const maxStatusAge = 5 * time.Second
@@ -26,106 +27,7 @@ var (
 		B: 0.6,
 		A: 1,
 	}
-
-	ColorErr = gxui.Color{
-		R: 1,
-		G: 0.2,
-		B: 0,
-		A: 1,
-	}
-	ColorWarn = gxui.Color{
-		R: 0.8,
-		G: 0.7,
-		B: 0.1,
-		A: 1,
-	}
-	ColorInfo = gxui.Color{
-		R: 0.1,
-		G: 0.8,
-		B: 0,
-		A: 1,
-	}
 )
-
-// Completer is a type which defines when a gxui.KeyboardEvent
-// completes an action.  Types returned from
-// "../commands".Command.Next() may implement this if they don't want
-// to immediately complete when the "enter" key is pressed.
-type Completer interface {
-	// Complete returns whether or not the key signals a completion of
-	// the input.
-	Complete(gxui.KeyboardEvent) bool
-}
-
-// A Command is any command that can be run by the commandBox.  Commands
-// have many optional interfaces they can implement - see other
-// interfaces in this package for what else can be implemented by a
-// command.
-type Command interface {
-	// Name returns the name of the command
-	Name() string
-
-	// Menu returns the name of the menu that the command should be
-	// displayed under.
-	Menu() string
-}
-
-// A Starter is a type of command which needs to initialize itself
-// whenever the command is started.
-type Starter interface {
-	// Start starts the command.  The element that the command is
-	// targeting will be passed in as target.  If the returned
-	// status element is non-nil, it will be displayed as an
-	// element to display the current status of the command to
-	// the user.
-	Start(target gxui.Control) (status gxui.Control)
-}
-
-// An InputQueue is a type of command which needs to read user input
-// before executing a command.
-type InputQueue interface {
-	// Next returns the next element for reading user input. By
-	// default, this is called every time the commander receives a
-	// gxui.KeyEnter event in KeyPress.  If there are situations where
-	// this is not the desired behavior, the returned gxui.Focusable
-	// can consume the gxui.KeyboardEvent.  If the input element has
-	// other keyboard events that would trigger completion, it can
-	// implement Completer, which will allow it to define when it
-	// is complete.
-	//
-	// Next will continue to be called until it returns nil, at which
-	// point the command is assumed to be done.
-	Next() gxui.Focusable
-}
-
-// An Executor is a type of command that needs to execute some
-// operation on one or more elements.  It will continue to be
-// called for every element currently in the UI until it returns
-// true for consume.
-//
-// If executed is never returned as true, an error will be
-// displayed to the user stating that the command never
-// executed.
-type Executor interface {
-	Exec(interface{}) (executed, consume bool)
-}
-
-// A Statuser is a type that needs to display its status after being
-// run.  The commands should use their discretion for status colors,
-// but colors for some common message types are exported by this
-// package to keep things consistent.
-type Statuser interface {
-	// Status returns the element to display for the command's status.
-	// The element will be removed after some time.
-	Status() gxui.Control
-}
-
-// ColorSetter is a type that can have its color set.
-type ColorSetter interface {
-	// SetColor is called when a command element is displayed, so
-	// that it matches the color theme of the commander.
-	SetColor(gxui.Color)
-}
 
 type commandBox struct {
 	mixins.LinearLayout
@@ -134,7 +36,7 @@ type commandBox struct {
 	controller Controller
 
 	label   gxui.Label
-	current Command
+	current bind.Command
 	display gxui.Control
 	input   gxui.Focusable
 	status  gxui.Control
@@ -159,7 +61,11 @@ func newCommandBox(driver gxui.Driver, theme gxui.Theme, controller Controller) 
 }
 
 func (b *commandBox) Finish() {
-	defer b.controller.Editor().Focus()
+	defer func() {
+		if e := b.controller.Editor().CurrentEditor(); e != nil {
+			gxui.SetFocus(e.(gxui.Focusable))
+		}
+	}()
 	statuser, ok := b.current.(Statuser)
 	if !ok {
 		b.Clear()
@@ -188,7 +94,7 @@ func (b *commandBox) Clear() {
 	b.current = nil
 }
 
-func (b *commandBox) Run(command Command) (needsInput bool) {
+func (b *commandBox) Run(command bind.Command) (needsInput bool) {
 	b.Clear()
 	if b.statusTimer != nil {
 		b.statusTimer.Stop()
@@ -198,6 +104,10 @@ func (b *commandBox) Run(command Command) (needsInput bool) {
 	b.label.SetText(b.current.Name())
 	b.startCurrent()
 	return b.nextInput()
+}
+
+func (b *commandBox) Finished(event gxui.KeyboardEvent) bool {
+	return event.Modifier == 0 && event.Key == gxui.KeyEnter
 }
 
 func (b *commandBox) startCurrent() {
@@ -215,7 +125,7 @@ func (b *commandBox) startCurrent() {
 	b.AddChild(b.display)
 }
 
-func (b *commandBox) Current() Command {
+func (b *commandBox) Current() bind.Command {
 	return b.current
 }
 

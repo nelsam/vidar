@@ -1,9 +1,20 @@
 language: go
 
+os:
+- linux
+- osx
+
 go:
-- 1.7
+- 1.8
+- 1.9
+- tip
+
+matrix:
+  allow_failures:
+  - go: tip
 
 install:
-- sudo apt-get -qq update
-- sudo apt-get install libxi-dev libxcursor-dev libxrandr-dev libxinerama-dev mesa-common-dev libgl1-mesa-dev libxxf86vm-dev
-- go get -t -v ./...
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq update; sudo apt-get install libxi-dev libxcursor-dev libxrandr-dev libxinerama-dev mesa-common-dev libgl1-mesa-dev libxxf86vm-dev; fi
+- go get -t -v -d ./...
+- go test -v -race $(find . -type d -not \( -path ./plugin -prune -o -path ./.git -prune \))
+- go install

@@ -9,6 +9,7 @@ import (
 
 	"github.com/a8m/expect"
 	"github.com/nelsam/vidar/syntax"
+	"github.com/nelsam/vidar/theme"
 )
 
 func TestBuiltins(t *testing.T) {
@@ -41,36 +42,36 @@ func TestBuiltins(t *testing.T) {
 		panic("foo")
 	}
 	`
-	s := syntax.New(syntax.DefaultTheme)
+	s := syntax.New()
 	err := s.Parse(src)
 	expect(err).To.Be.Nil().Else.FailNow()
 
 	layers := s.Layers()
 
-	builtins := layers[syntax.DefaultTheme.Colors.Builtin]
-	expect(builtins.Spans()).To.Have.Len(15).Else.FailNow()
+	builtins := layers[theme.Builtin]
+	expect(builtins.Spans).To.Have.Len(15).Else.FailNow()
 
-	expect(builtins.Spans()[0]).To.Pass(position{src: src, match: "recover"})
-	expect(builtins.Spans()[1]).To.Pass(position{src: src, match: "append"})
-	expect(builtins.Spans()[2]).To.Pass(position{src: src, match: "cap"})
-	expect(builtins.Spans()[3]).To.Pass(position{src: src, match: "copy"})
-	expect(builtins.Spans()[4]).To.Pass(position{src: src, match: "delete"})
-	expect(builtins.Spans()[5]).To.Pass(position{src: src, match: "len"})
-	expect(builtins.Spans()[6]).To.Pass(position{src: src, match: "new"})
-	expect(builtins.Spans()[7]).To.Pass(position{src: src, match: "print"})
-	expect(builtins.Spans()[8]).To.Pass(position{src: src, match: "println"})
-	expect(builtins.Spans()[9]).To.Pass(position{src: src, match: "make"})
-	expect(builtins.Spans()[10]).To.Pass(position{src: src, match: "close"})
-	expect(builtins.Spans()[11]).To.Pass(position{src: src, match: "complex"})
-	expect(builtins.Spans()[12]).To.Pass(position{src: src, match: "imag"})
-	expect(builtins.Spans()[13]).To.Pass(position{src: src, match: "real"})
-	expect(builtins.Spans()[14]).To.Pass(position{src: src, match: "panic"})
+	expect(builtins.Spans[0]).To.Pass(position{src: src, match: "recover"})
+	expect(builtins.Spans[1]).To.Pass(position{src: src, match: "append"})
+	expect(builtins.Spans[2]).To.Pass(position{src: src, match: "cap"})
+	expect(builtins.Spans[3]).To.Pass(position{src: src, match: "copy"})
+	expect(builtins.Spans[4]).To.Pass(position{src: src, match: "delete"})
+	expect(builtins.Spans[5]).To.Pass(position{src: src, match: "len"})
+	expect(builtins.Spans[6]).To.Pass(position{src: src, match: "new"})
+	expect(builtins.Spans[7]).To.Pass(position{src: src, match: "print"})
+	expect(builtins.Spans[8]).To.Pass(position{src: src, match: "println"})
+	expect(builtins.Spans[9]).To.Pass(position{src: src, match: "make"})
+	expect(builtins.Spans[10]).To.Pass(position{src: src, match: "close"})
+	expect(builtins.Spans[11]).To.Pass(position{src: src, match: "complex"})
+	expect(builtins.Spans[12]).To.Pass(position{src: src, match: "imag"})
+	expect(builtins.Spans[13]).To.Pass(position{src: src, match: "real"})
+	expect(builtins.Spans[14]).To.Pass(position{src: src, match: "panic"})
 
-	nils := layers[syntax.DefaultTheme.Colors.Nil]
-	expect(nils.Spans()).To.Have.Len(1).Else.FailNow()
-	expect(nils.Spans()[0]).To.Pass(position{src: src, match: "nil"})
+	nils := layers[theme.Nil]
+	expect(nils.Spans).To.Have.Len(1).Else.FailNow()
+	expect(nils.Spans[0]).To.Pass(position{src: src, match: "nil"})
 
 	// Test that we're not highlighting these as both idents and builtins.
-	idents := layers[syntax.DefaultTheme.Colors.Ident]
-	expect(idents.Spans()).To.Have.Len(6)
+	idents := layers[theme.Ident]
+	expect(idents.Spans).To.Have.Len(6)
 }

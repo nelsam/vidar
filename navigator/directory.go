@@ -18,15 +18,18 @@ import (
 )
 
 type directory struct {
+	// length is an atomically updated list of child nodes of
+	// this directory.  Only access via atomics.
+	//
+	// Because it's accessed via atomics, it must be the first
+	// field in the struct, for the sake of 32-bit systems.
+	length int64
+
 	mixins.LinearLayout
 
 	driver gxui.Driver
 	button *treeButton
 	tree   *dirTree
-
-	// length is an atomically updated list of child nodes of
-	// this directory.  Only access via atomics.
-	length int64
 }
 
 func newDirectory(projTree *ProjectTree, path string) *directory {
@@ -47,10 +50,7 @@ func newDirectory(projTree *ProjectTree, path string) *directory {
 		if projTree.tocCtl != nil {
 			projTree.layout.RemoveChild(projTree.tocCtl)
 		}
-		toc := NewTOC(projTree.driver, projTree.theme, path)
-		if projTree.callback != nil {
-			go attachCallback(toc, projTree.callback)
-		}
+		toc := NewTOC(projTree.cmdr, projTree.driver, projTree.theme, path)
 		projTree.SetTOC(toc)
 		scrollable := theme.CreateScrollLayout()
 		// Disable horiz scrolling until we can figure out an accurate
@@ -119,7 +119,10 @@ func (d *directory) reload() {
 		log.Printf("Unexpected error reading directory %s: %s", d.tree.path, err)
 		return
 	}
-	defer d.driver.Call(d.Redraw)
+	defer d.driver.Call(func() {
+		d.Relayout()
+		d.Redraw()
+	})
 
 	children := int64(0)
 	for _, finfo := range finfos {

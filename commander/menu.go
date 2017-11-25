@@ -5,13 +5,12 @@
 package commander
 
 import (
-	"strings"
-
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/mixins/parts"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commander/bind"
 )
 
 type Boundser interface {
@@ -38,16 +37,21 @@ func newMenuBar(commander *Commander, theme *basic.Theme) *menuBar {
 	return m
 }
 
-func (m *menuBar) Add(menuName string, command Command, bindings ...gxui.KeyboardEvent) {
-	menu, ok := m.menus[menuName]
+func (m *menuBar) Add(command bind.Command, bindings ...gxui.KeyboardEvent) {
+	menu, ok := m.menus[command.Menu()]
 	if !ok {
 		menu = newMenu(m.commander, m.theme)
-		m.menus[menuName] = menu
-		button := newMenuButton(m.commander, m.theme, menuName)
+		m.menus[command.Menu()] = menu
+		button := newMenuButton(m.commander, m.theme, command.Menu())
 		child := m.AddChild(button)
 		button.SetMenu(child, menu)
 	}
 	menu.Add(command, bindings...)
+}
+
+func (m *menuBar) Clear() {
+	m.RemoveAll()
+	m.menus = make(map[string]*menu)
 }
 
 func (m *menuBar) Paint(canvas gxui.Canvas) {
@@ -90,7 +94,7 @@ func newMenu(commander *Commander, theme *basic.Theme) *menu {
 	return m
 }
 
-func (m *menu) Add(command Command, bindings ...gxui.KeyboardEvent) {
+func (m *menu) Add(command bind.Command, bindings ...gxui.KeyboardEvent) {
 	item := newMenuItem(m.theme, command.Name(), bindings...)
 	m.AddChild(item)
 	item.OnClick(func(gxui.MouseEvent) {
@@ -98,9 +102,7 @@ func (m *menu) Add(command Command, bindings ...gxui.KeyboardEvent) {
 			gxui.SetFocus(m.commander.box.input)
 			return
 		}
-		if executor, ok := command.(Executor); ok {
-			m.commander.Controller().Execute(executor)
-		}
+		m.commander.Execute(command)
 		m.commander.box.Finish()
 	})
 }
@@ -122,21 +124,7 @@ func newMenuItem(theme *basic.Theme, name string, bindings ...gxui.KeyboardEvent
 		} else {
 			name += ", "
 		}
-		parts := make([]string, 0, 5)
-		if binding.Modifier.Control() {
-			parts = append(parts, "Ctrl")
-		}
-		if binding.Modifier.Super() {
-			parts = append(parts, "Cmd")
-		}
-		if binding.Modifier.Alt() {
-			parts = append(parts, "Alt")
-		}
-		if binding.Modifier.Shift() {
-			parts = append(parts, "Shift")
-		}
-		parts = append(parts, binding.Key.String())
-		name += strings.Join(parts, "-")
+		name += binding.String()
 	}
 	b.SetText(name)
 	b.SetPadding(math.Spacing{L: 1, R: 1, B: 1, T: 1})

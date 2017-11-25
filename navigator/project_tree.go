@@ -18,9 +18,8 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/editor"
-	"github.com/nelsam/vidar/settings"
+	"github.com/nelsam/vidar/setting"
 )
 
 // maxWatchDirs is here just to ensure that we don't take too long to
@@ -68,14 +67,14 @@ type Locationer interface {
 type ProjectTree struct {
 	button gxui.Button
 
+	cmdr   Commander
 	driver gxui.Driver
 	theme  *basic.Theme
 
-	callback func(controller.Executor)
-	dirs     *directory
-	tocCtl   gxui.Control
-	toc      *TOC
-	tocLock  sync.RWMutex
+	dirs    *directory
+	tocCtl  gxui.Control
+	toc     *TOC
+	tocLock sync.RWMutex
 
 	watcher    *fsnotify.Watcher
 	reloadLock chan struct{}
@@ -83,8 +82,9 @@ type ProjectTree struct {
 	layout *splitterLayout
 }
 
-func NewProjectTree(driver gxui.Driver, window gxui.Window, theme *basic.Theme) *ProjectTree {
+func NewProjectTree(cmdr Commander, driver gxui.Driver, window gxui.Window, theme *basic.Theme) *ProjectTree {
 	tree := &ProjectTree{
+		cmdr:       cmdr,
 		driver:     driver,
 		theme:      theme,
 		reloadLock: make(chan struct{}, 1),
@@ -92,7 +92,7 @@ func NewProjectTree(driver gxui.Driver, window gxui.Window, theme *basic.Theme) 
 		layout:     newSplitterLayout(window, theme),
 	}
 	tree.layout.SetOrientation(gxui.Vertical)
-	tree.SetProject(settings.DefaultProject)
+	tree.SetProject(setting.DefaultProject)
 
 	return tree
 }
@@ -114,6 +114,10 @@ func (p *ProjectTree) Button() gxui.Button {
 }
 
 func (p *ProjectTree) SetRoot(path string) {
+	defer p.driver.Call(func() {
+		p.layout.Relayout()
+		p.layout.Redraw()
+	})
 	p.layout.RemoveAll()
 	p.SetTOC(nil)
 	p.tocCtl = nil
@@ -233,7 +237,7 @@ func (p *ProjectTree) update(path string) {
 	}
 }
 
-func (p *ProjectTree) SetProject(project settings.Project) {
+func (p *ProjectTree) SetProject(project setting.Project) {
 	p.SetRoot(project.Path)
 }
 
@@ -244,11 +248,6 @@ func (p *ProjectTree) Open(path string, pos token.Position) {
 
 func (p *ProjectTree) Frame() gxui.Control {
 	return p.layout
-}
-
-func (p *ProjectTree) OnComplete(callback func(controller.Executor)) {
-	p.callback = callback
-	go attachCallback(p.TOC(), callback)
 }
 
 type splitterLayout struct {
@@ -292,22 +291,4 @@ type parent interface {
 
 type irrespParent interface {
 	MissingChild() gxui.Control
-}
-
-type selectionButton interface {
-	OnSelected(func(controller.Executor))
-}
-
-func attachCallback(control gxui.Control, callback func(controller.Executor)) {
-	if b, ok := control.(selectionButton); ok {
-		b.OnSelected(callback)
-	}
-	if p, ok := control.(parent); ok {
-		for _, c := range p.Children() {
-			attachCallback(c.Control, callback)
-		}
-	}
-	if p, ok := control.(irrespParent); ok {
-		attachCallback(p.MissingChild(), callback)
-	}
 }

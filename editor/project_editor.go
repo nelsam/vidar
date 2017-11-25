@@ -5,25 +5,27 @@
 package editor
 
 import (
-	"go/token"
-
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/settings"
+	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/setting"
+	"github.com/nelsam/vidar/theme"
 )
 
 type ProjectEditor struct {
 	SplitEditor
 
-	project settings.Project
+	project setting.Project
 }
 
-func NewProjectEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme, font gxui.Font, project settings.Project) *ProjectEditor {
+func NewProjectEditor(driver gxui.Driver, window gxui.Window, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font, project setting.Project) *ProjectEditor {
 	p := &ProjectEditor{}
 	p.driver = driver
 	p.window = window
+	p.cmdr = cmdr
 	p.theme = theme
+	p.syntaxTheme = syntaxTheme
 	p.font = font
 	p.SplitterLayout.Init(p, theme)
 	p.SetOrientation(gxui.Horizontal)
@@ -32,58 +34,45 @@ func NewProjectEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme
 	p.project = project
 	p.SetMouseEventTarget(true)
 
-	p.AddChild(NewTabbedEditor(driver, theme, font))
+	p.AddChild(NewTabbedEditor(driver, cmdr, theme, syntaxTheme, font))
 	return p
 }
 
-func (p *ProjectEditor) Open(path string, cursor token.Position) {
-	editor := p.open(path)
-	p.driver.Call(func() {
-		editor.Controller().SetCaret(cursor.Offset)
-		editor.ScrollToRune(cursor.Offset)
-	})
-}
-
-func (p *ProjectEditor) OpenLine(path string, line, col int) {
-	editor := p.open(path)
-	p.driver.Call(func() {
-		lineOffset := editor.LineStart(line)
-		editor.Controller().SetCaret(lineOffset + col)
-		editor.ScrollToLine(line)
-	})
-}
-
-func (p *ProjectEditor) open(path string) *CodeEditor {
+func (p *ProjectEditor) Open(path string) (e input.Editor, existed bool) {
 	return p.SplitEditor.Open(p.project.Path, path, p.project.LicenseHeader(), p.project.Environ())
 }
 
-func (p *ProjectEditor) Project() settings.Project {
+func (p *ProjectEditor) Project() setting.Project {
 	return p.project
 }
 
 type MultiProjectEditor struct {
 	mixins.LinearLayout
 
-	driver gxui.Driver
-	theme  *basic.Theme
-	font   gxui.Font
-	window gxui.Window
+	driver      gxui.Driver
+	cmdr        Commander
+	theme       *basic.Theme
+	syntaxTheme theme.Theme
+	font        gxui.Font
+	window      gxui.Window
 
 	current  *ProjectEditor
 	projects map[string]*ProjectEditor
 }
 
-func New(driver gxui.Driver, window gxui.Window, theme *basic.Theme, font gxui.Font) *MultiProjectEditor {
-	defaultEditor := NewProjectEditor(driver, window, theme, font, settings.DefaultProject)
+func New(driver gxui.Driver, window gxui.Window, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *MultiProjectEditor {
+	defaultEditor := NewProjectEditor(driver, window, cmdr, theme, syntaxTheme, font, setting.DefaultProject)
 
 	e := &MultiProjectEditor{
 		projects: map[string]*ProjectEditor{
 			"*default*": defaultEditor,
 		},
-		driver: driver,
-		window: window,
-		font:   font,
-		theme:  theme,
+		driver:      driver,
+		window:      window,
+		cmdr:        cmdr,
+		font:        font,
+		theme:       theme,
+		syntaxTheme: syntaxTheme,
 	}
 	e.LinearLayout.Init(e, theme)
 	e.AddChild(defaultEditor)
@@ -91,10 +80,10 @@ func New(driver gxui.Driver, window gxui.Window, theme *basic.Theme, font gxui.F
 	return e
 }
 
-func (e *MultiProjectEditor) SetProject(project settings.Project) {
+func (e *MultiProjectEditor) SetProject(project setting.Project) {
 	editor, ok := e.projects[project.Name]
 	if !ok {
-		editor = NewProjectEditor(e.driver, e.window, e.theme, e.font, project)
+		editor = NewProjectEditor(e.driver, e.window, e.cmdr, e.theme, e.syntaxTheme, e.font, project)
 		e.projects[project.Name] = editor
 	}
 	e.RemoveChild(e.current)
@@ -102,18 +91,24 @@ func (e *MultiProjectEditor) SetProject(project settings.Project) {
 	e.current = editor
 }
 
+func (e *MultiProjectEditor) Elements() []interface{} {
+	return []interface{}{
+		e.current,
+	}
+}
+
+func (e *MultiProjectEditor) CurrentEditor() input.Editor {
+	return e.current.CurrentEditor()
+}
+
 func (e *MultiProjectEditor) CurrentFile() string {
 	return e.current.CurrentFile()
 }
 
-func (e *MultiProjectEditor) CurrentProject() settings.Project {
+func (e *MultiProjectEditor) CurrentProject() setting.Project {
 	return e.current.Project()
 }
 
-func (e *MultiProjectEditor) Focus() {
-	e.current.Focus()
-}
-
-func (e *MultiProjectEditor) Open(file string, cursor token.Position) {
-	e.current.Open(file, cursor)
+func (e *MultiProjectEditor) Open(file string) (ed input.Editor, existed bool) {
+	return e.current.Open(file)
 }

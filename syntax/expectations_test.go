@@ -7,11 +7,9 @@ package syntax_test
 import (
 	"errors"
 	"fmt"
-)
 
-type ranger interface {
-	Range() (int, int)
-}
+	"github.com/nelsam/vidar/commander/input"
+)
 
 func numSuffix(n int) string {
 	switch n % 10 {
@@ -32,9 +30,9 @@ type position struct {
 }
 
 func (p position) Match(actual interface{}) error {
-	ranger, ok := actual.(ranger)
+	span, ok := actual.(input.Span)
 	if !ok {
-		return errors.New("have a Range() (int, int) method")
+		return errors.New("be of type input.Span")
 	}
 	// Switch to []rune, since we want to match positions based on rune index, not byte
 	runes, sep := []rune(p.src), []rune(p.match)
@@ -49,11 +47,10 @@ func (p position) Match(actual interface{}) error {
 		expectedEnd = expectedStart + len(sep)
 	}
 
-	start, end := ranger.Range()
-	if start != expectedStart {
+	if span.Start != expectedStart {
 		return fmt.Errorf("have a start position of %d for the %s %s in %s", expectedStart, humanIdx, p.match, p.src)
 	}
-	if end != expectedEnd {
+	if span.End != expectedEnd {
 		return fmt.Errorf("have an end position of %d for the %s %s in %s", expectedEnd, humanIdx, p.match, p.src)
 	}
 	return nil

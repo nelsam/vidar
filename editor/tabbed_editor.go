@@ -14,79 +14,88 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/suggestions"
+	"github.com/nelsam/vidar/command/focus"
+	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/theme"
 )
+
+type refocuser interface {
+	ReFocus()
+}
 
 type TabbedEditor struct {
 	mixins.PanelHolder
 
-	editors map[string]*CodeEditor
+	editors map[string]input.Editor
 
-	driver gxui.Driver
-	theme  *basic.Theme
-	font   gxui.Font
+	driver      gxui.Driver
+	cmdr        Commander
+	theme       *basic.Theme
+	syntaxTheme theme.Theme
+	font        gxui.Font
 }
 
-func NewTabbedEditor(driver gxui.Driver, theme *basic.Theme, font gxui.Font) *TabbedEditor {
+func NewTabbedEditor(driver gxui.Driver, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *TabbedEditor {
 	editor := &TabbedEditor{}
-	editor.Init(editor, driver, theme, font)
+	editor.Init(editor, driver, cmdr, theme, syntaxTheme, font)
 	return editor
 }
 
-func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, theme *basic.Theme, font gxui.Font) {
-	e.editors = make(map[string]*CodeEditor)
+func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) {
+	e.editors = make(map[string]input.Editor)
 	e.driver = driver
+	e.cmdr = cmdr
 	e.theme = theme
+	e.syntaxTheme = syntaxTheme
 	e.font = font
 	e.PanelHolder.Init(outer, theme)
 	e.SetMargin(math.Spacing{L: 0, T: 2, R: 0, B: 0})
 }
 
-func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []string) *CodeEditor {
+func (e *TabbedEditor) Has(hiddenPrefix, path string) bool {
+	_, ok := e.editors[relPath(hiddenPrefix, path)]
+	return ok
+}
+
+func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []string) (editor input.Editor, existed bool) {
 	name := relPath(hiddenPrefix, path)
 	if editor, ok := e.editors[name]; ok {
-		e.Select(e.PanelIndex(editor))
-		e.Focus()
-		return editor
+		e.Select(e.PanelIndex(editor.(gxui.Control)))
+		gxui.SetFocus(editor.(gxui.Focusable))
+		return editor, true
 	}
-	editor := &CodeEditor{}
+	ce := &CodeEditor{}
+	editor = ce
 	// We want the OnRename trigger set up before the editor opens the file
 	// in its Init method.
-	editor.OnRename(func(newPath string) {
+	ce.OnRename(func(newPath string) {
 		e.driver.Call(func() {
 			delete(e.editors, name)
 			newName := relPath(hiddenPrefix, newPath)
 			focused := e.SelectedPanel()
 			e.editors[newName] = editor
-			idx := e.PanelIndex(editor)
+			idx := e.PanelIndex(ce)
 			if idx == -1 {
 				return
 			}
-			e.RemovePanel(editor)
-			e.AddPanelAt(editor, newName, idx)
+			e.RemovePanel(ce)
+			e.AddPanelAt(ce, newName, idx)
 			e.Select(e.PanelIndex(focused))
-			e.Focus()
+			gxui.SetFocus(focused.(gxui.Focusable))
 		})
 	})
-	editor.Init(e.driver, e.theme, e.font, path, headerText)
-	editor.SetTabWidth(4)
-	suggester := suggestions.NewGoCodeProvider(editor, environ)
-	editor.SetSuggestionProvider(suggester)
+	ce.Init(e.driver, e.theme, e.syntaxTheme, e.font, path, headerText)
+	ce.SetTabWidth(4)
 	e.Add(name, editor)
-	return editor
+	return editor, false
 }
 
-func (e *TabbedEditor) Add(name string, editor *CodeEditor) {
+func (e *TabbedEditor) Add(name string, editor input.Editor) {
 	e.editors[name] = editor
-	e.AddPanel(editor, name)
-	e.Select(e.PanelIndex(editor))
-	e.Focus()
-}
-
-func (e *TabbedEditor) Focus() {
-	if e.SelectedPanel() != nil {
-		gxui.SetFocus(e.SelectedPanel().(gxui.Focusable))
-	}
+	ec := editor.(gxui.Control)
+	e.AddPanel(ec, name)
+	e.Select(e.PanelIndex(ec))
+	gxui.SetFocus(editor.(gxui.Focusable))
 }
 
 func (e *TabbedEditor) Files() []string {
@@ -104,34 +113,59 @@ func (e *TabbedEditor) Editors() uint {
 func (e *TabbedEditor) CreatePanelTab() mixins.PanelTab {
 	tab := basic.CreatePanelTab(e.theme)
 	tab.OnMouseUp(func(gxui.MouseEvent) {
-		e.driver.Call(e.Focus)
+		if e.CurrentEditor() == nil {
+			e.purgeSelf()
+			return
+		}
+		opener := e.cmdr.Bindable("focus-location").(Opener)
+		e.cmdr.Execute(opener.For(focus.Path(e.CurrentEditor().Filepath())))
 	})
 	return tab
 }
 
-func (e *TabbedEditor) ShiftTab(delta int) {
-	panels := e.PanelCount()
-	if panels < 2 {
-		return
-	}
-	current := e.PanelIndex(e.SelectedPanel())
-	next := current + delta
-	for next < 0 {
-		next = panels + next
-	}
-	next = next % panels
-	e.Select(next)
-	e.driver.Call(func() {
-		e.Focus()
-	})
+func (e *TabbedEditor) purgeSelf() {
+	// Because of the order of events in gxui when a mouse drag happens,
+	// the tab will move to a separate split *after* the SplitEditor's
+	// MouseUp method is called, so the SplitEditor has no idea that
+	// we're now empty.  We have to purge ourselves from the SplitEditor.
+	parent := e.Parent()
+	parent.(gxui.Container).RemoveChild(e)
+	parent.(refocuser).ReFocus()
 }
 
-func (e *TabbedEditor) CloseCurrentEditor() (name string, editor *CodeEditor) {
+func (e *TabbedEditor) EditorAt(d Direction) input.Editor {
+	panels := e.PanelCount()
+	if panels < 2 {
+		return e.CurrentEditor()
+	}
+	idx := e.PanelIndex(e.SelectedPanel())
+	switch d {
+	case Right:
+		idx++
+		if idx == panels {
+			idx = 0
+		}
+	case Left:
+		idx--
+		if idx < 0 {
+			idx = panels - 1
+		}
+	}
+	return e.Panel(idx).(input.Editor)
+}
+
+func (e *TabbedEditor) CloseCurrentEditor() (name string, editor input.Editor) {
 	toRemove := e.CurrentEditor()
 	if toRemove == nil {
 		return "", nil
 	}
-	e.RemovePanel(toRemove)
+	e.RemovePanel(toRemove.(gxui.Control))
+	defer func() {
+		if ed := e.CurrentEditor(); ed != nil {
+			opener := e.cmdr.Bindable("focus-location").(Opener)
+			e.cmdr.Execute(opener.For(focus.Path(ed.Filepath())))
+		}
+	}()
 	for name, panel := range e.editors {
 		if panel == toRemove {
 			delete(e.editors, name)
@@ -154,18 +188,25 @@ func (e *TabbedEditor) SaveAll() {
 	}
 }
 
-func (e *TabbedEditor) CurrentEditor() *CodeEditor {
+func (e *TabbedEditor) CurrentEditor() input.Editor {
 	if e.SelectedPanel() == nil {
 		return nil
 	}
-	return e.SelectedPanel().(*CodeEditor)
+	return e.SelectedPanel().(input.Editor)
 }
 
 func (e *TabbedEditor) CurrentFile() string {
 	if e.SelectedPanel() == nil {
 		return ""
 	}
-	return e.SelectedPanel().(*CodeEditor).Filepath()
+	return e.SelectedPanel().(input.Editor).Filepath()
+}
+
+func (e *TabbedEditor) Elements() []interface{} {
+	if e.SelectedPanel() == nil {
+		return nil
+	}
+	return []interface{}{e.SelectedPanel()}
 }
 
 func relPath(from, path string) string {

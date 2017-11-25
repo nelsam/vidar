@@ -6,6 +6,7 @@ package editor
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/nelsam/gxui"
@@ -13,6 +14,10 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/mixins/outer"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/command/focus"
+	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/theme"
 )
 
 var (
@@ -38,16 +43,25 @@ type Splitter interface {
 	Split(orientation gxui.Orientation)
 }
 
+type Opener interface {
+	For(...focus.Opt) bind.Bindable
+}
+
+type Commander interface {
+	Bindable(string) bind.Bindable
+	Execute(bind.Bindable)
+}
+
 type MultiEditor interface {
 	gxui.Control
 	outer.LayoutChildren
-	Focus()
-	Open(name, path, headerText string, environ []string) *CodeEditor
+	Has(hiddenPrefix, path string) bool
+	Open(hiddenPrefix, path, headerText string, environ []string) (editor input.Editor, existed bool)
 	Editors() uint
-	CurrentEditor() *CodeEditor
+	CurrentEditor() input.Editor
 	CurrentFile() string
-	CloseCurrentEditor() (name string, editor *CodeEditor)
-	Add(name string, editor *CodeEditor)
+	CloseCurrentEditor() (name string, editor input.Editor)
+	Add(name string, editor input.Editor)
 	SaveAll()
 }
 
@@ -63,20 +77,24 @@ const (
 type SplitEditor struct {
 	mixins.SplitterLayout
 
-	driver gxui.Driver
-	theme  *basic.Theme
-	font   gxui.Font
-	window gxui.Window
+	driver      gxui.Driver
+	cmdr        Commander
+	theme       *basic.Theme
+	syntaxTheme theme.Theme
+	font        gxui.Font
+	window      gxui.Window
 
 	current MultiEditor
 }
 
-func NewSplitEditor(driver gxui.Driver, window gxui.Window, theme *basic.Theme, font gxui.Font) *SplitEditor {
+func NewSplitEditor(driver gxui.Driver, cmdr Commander, window gxui.Window, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *SplitEditor {
 	editor := &SplitEditor{
-		driver: driver,
-		theme:  theme,
-		font:   font,
-		window: window,
+		driver:      driver,
+		cmdr:        cmdr,
+		theme:       theme,
+		syntaxTheme: syntaxTheme,
+		font:        font,
+		window:      window,
 	}
 	editor.SplitterLayout.Init(editor, theme)
 	return editor
@@ -95,16 +113,17 @@ func (e *SplitEditor) Split(orientation gxui.Orientation) {
 		return
 	}
 	name, editor := e.current.CloseCurrentEditor()
-	newSplit := NewTabbedEditor(e.driver, e.theme, e.font)
+	newSplit := NewTabbedEditor(e.driver, e.cmdr, e.theme, e.syntaxTheme, e.font)
 	defer func() {
 		newSplit.Add(name, editor)
-		newSplit.Focus()
+		opener := e.cmdr.Bindable("focus-location").(Opener)
+		e.cmdr.Execute(opener.For(focus.Path(editor.Filepath())))
 	}()
 	if e.Orientation() == orientation {
 		e.AddChild(newSplit)
 		return
 	}
-	newSplitter := NewSplitEditor(e.driver, e.window, e.theme, e.font)
+	newSplitter := NewSplitEditor(e.driver, e.cmdr, e.window, e.theme, e.syntaxTheme, e.font)
 	newSplitter.SetOrientation(orientation)
 	var (
 		index       int
@@ -133,17 +152,33 @@ func (e *SplitEditor) Editors() (count uint) {
 	return count
 }
 
-func (e *SplitEditor) CloseCurrentEditor() (name string, editor *CodeEditor) {
+func (e *SplitEditor) CloseCurrentEditor() (name string, editor input.Editor) {
 	name, editor = e.current.CloseCurrentEditor()
 	if e.current.Editors() == 0 && len(e.Children()) > 1 {
 		e.RemoveChild(e.current)
 		e.current = e.Children()[0].Control.(MultiEditor)
-		e.current.Focus()
+		opener := e.cmdr.Bindable("focus-location").(Opener)
+		e.cmdr.Execute(opener.For(focus.Path(e.current.CurrentEditor().Filepath())))
 	}
 	return name, editor
 }
 
-func (e *SplitEditor) Add(name string, editor *CodeEditor) {
+func (e *SplitEditor) ReFocus() {
+	children := e.Children()
+	if e.current != nil && children.Find(e.current) != nil {
+		gxui.SetFocus(e.current.CurrentEditor().(gxui.Focusable))
+		return
+	}
+	// e.current is no longer our child.
+	if len(children) == 0 {
+		e.current = nil
+		return
+	}
+	e.current = children[0].Control.(MultiEditor)
+	gxui.SetFocus(e.current.CurrentEditor().(gxui.Focusable))
+}
+
+func (e *SplitEditor) Add(name string, editor input.Editor) {
 	e.current.Add(name, editor)
 }
 
@@ -156,10 +191,6 @@ func (e *SplitEditor) AddChild(child gxui.Control) *gxui.Child {
 		e.current = editor
 	}
 	return e.SplitterLayout.AddChild(child)
-}
-
-func (e *SplitEditor) Focus() {
-	e.current.Focus()
 }
 
 func (l *SplitEditor) CreateSplitterBar() gxui.Control {
@@ -189,17 +220,37 @@ func (e *SplitEditor) MouseUp(event gxui.MouseEvent) {
 			continue
 		}
 		e.current = newFocus
-		e.current.Focus()
+		ed := newFocus.CurrentEditor()
+		if ed == nil {
+			break
+		}
+		opener := e.cmdr.Bindable("focus-location").(Opener)
+		e.cmdr.Execute(opener.For(focus.Path(ed.Filepath())))
 		break
 	}
 	e.SplitterLayout.MouseUp(event)
 }
 
-func (e *SplitEditor) Open(name, path, headerText string, environ []string) *CodeEditor {
-	return e.current.Open(name, path, headerText, environ)
+func (e *SplitEditor) Has(hiddenPrefix, path string) bool {
+	for _, child := range e.Children() {
+		if me, ok := child.Control.(MultiEditor); ok && me.Has(hiddenPrefix, path) {
+			return true
+		}
+	}
+	return false
 }
 
-func (e *SplitEditor) CurrentEditor() *CodeEditor {
+func (e *SplitEditor) Open(hiddenPrefix, path, headerText string, environ []string) (editor input.Editor, existed bool) {
+	for _, child := range e.Children() {
+		if me, ok := child.Control.(MultiEditor); ok && me.Has(hiddenPrefix, path) {
+			e.current = me
+			return me.Open(hiddenPrefix, path, headerText, environ)
+		}
+	}
+	return e.current.Open(hiddenPrefix, path, headerText, environ)
+}
+
+func (e *SplitEditor) CurrentEditor() input.Editor {
 	return e.current.CurrentEditor()
 }
 
@@ -219,41 +270,118 @@ func (e *SplitEditor) ChildIndex(c gxui.Control) int {
 	return -1
 }
 
-func (e *SplitEditor) ShiftSplit(direction Direction) {
+func (e *SplitEditor) NextEditor(direction Direction) input.Editor {
+	editor, _ := e.nextEditor(direction)
+	return editor
+}
+
+func (e *SplitEditor) nextEditor(direction Direction) (editor input.Editor, wrapped bool) {
 	switch direction {
 	case Up, Down:
 		if e.Orientation().Horizontal() {
 			if splitter, ok := e.current.(*SplitEditor); ok {
-				splitter.ShiftSplit(direction)
+				return splitter.nextEditor(direction)
 			}
-			return
+			return nil, false
 		}
 	case Left, Right:
 		if e.Orientation().Vertical() {
 			if splitter, ok := e.current.(*SplitEditor); ok {
-				splitter.ShiftSplit(direction)
+				return splitter.nextEditor(direction)
 			}
-			return
+			return nil, false
 		}
 	}
 
+	if splitter, ok := e.current.(*SplitEditor); ok {
+		// Special case - there could be another split editor with our orientation
+		// as a child, and *that* is the editor that needs the split moved.
+		ed, wrapped := splitter.nextEditor(direction)
+		if e != nil && !wrapped {
+			return ed, false
+		}
+	}
+
+	children := e.Children()
+	i := children.IndexOf(e.current)
+	if i < 0 {
+		log.Printf("Error: Current editor is not part of the splitter's layout")
+		return nil, false
+	}
+	var next func(i int) int
 	switch direction {
-	case Up:
-		if !e.shiftUp() {
-			e.focus(Down)
+	case Up, Left:
+		next = func(i int) int {
+			i--
+			if i < 0 {
+				wrapped = true
+				i = len(children) - 1
+			}
+			return i
 		}
-	case Down:
-		if !e.shiftDown() {
-			e.focus(Up)
+	case Down, Right:
+		next = func(i int) int {
+			i++
+			if i == len(children) {
+				wrapped = true
+				i = 0
+			}
+			return i
 		}
-	case Left:
-		if !e.shiftLeft() {
-			e.focus(Right)
+	}
+	var (
+		me MultiEditor
+		ok bool
+	)
+
+	for {
+		i = next(i)
+		me, ok = children[i].Control.(MultiEditor)
+		if ok {
+			break
 		}
-	case Right:
-		if !e.shiftRight() {
-			e.focus(Left)
+	}
+	if splitter, ok := me.(*SplitEditor); ok {
+		return splitter.first(direction), wrapped
+	}
+
+	return me.CurrentEditor(), wrapped
+}
+
+func (e *SplitEditor) first(d Direction) input.Editor {
+	switch d {
+	case Up, Down:
+		if e.Orientation().Horizontal() {
+			if splitter, ok := e.current.(*SplitEditor); ok {
+				return splitter.first(d)
+			}
+			return e.current.CurrentEditor()
 		}
+	case Left, Right:
+		if e.Orientation().Vertical() {
+			if splitter, ok := e.current.(*SplitEditor); ok {
+				return splitter.first(d)
+			}
+			return e.current.CurrentEditor()
+		}
+	}
+
+	var first *gxui.Child
+	switch d {
+	case Up, Left:
+		first = e.Children()[0]
+	case Down, Right:
+		first = e.Children()[len(e.Children())-1]
+	}
+
+	switch src := first.Control.(type) {
+	case *SplitEditor:
+		return src.first(d)
+	case MultiEditor:
+		return src.CurrentEditor()
+	default:
+		log.Printf("Error: first editor is not an editor")
+		return nil
 	}
 }
 
@@ -265,135 +393,6 @@ func (e *SplitEditor) SaveAll() {
 		}
 		editor.SaveAll()
 	}
-}
-
-func (e *SplitEditor) focusFirst() {
-	e.current = e.Children()[0].Control.(MultiEditor)
-}
-
-func (e *SplitEditor) focusLast() {
-	e.current = e.Children()[len(e.Children())-1].Control.(MultiEditor)
-}
-
-func (e *SplitEditor) focus(d Direction) {
-	defer func() {
-		if splitter, ok := e.current.(*SplitEditor); ok {
-			splitter.focus(d)
-		}
-	}()
-
-	switch d {
-	case Left, Right:
-		if e.Orientation().Vertical() {
-			return
-		}
-	case Up, Down:
-		if e.Orientation().Horizontal() {
-			return
-		}
-	}
-	switch d {
-	case Up, Left:
-		e.focusFirst()
-	case Down, Right:
-		e.focusLast()
-	}
-}
-
-func (e *SplitEditor) focusIndex(idx int, d Direction) bool {
-	editor, ok := e.Children()[idx].Control.(MultiEditor)
-	if !ok {
-		return false
-	}
-	if splitter, ok := editor.(*SplitEditor); ok {
-		splitter.focus(d)
-	}
-	e.current = editor
-	return true
-}
-
-func (e *SplitEditor) shiftUp() bool {
-	if e.Orientation().Horizontal() {
-		if editor, ok := e.current.(*SplitEditor); ok {
-			return editor.shiftUp()
-		}
-		return false
-	}
-
-	if splitter, ok := e.current.(*SplitEditor); ok {
-		if splitter.shiftUp() {
-			return true
-		}
-	}
-	for idx := e.ChildIndex(e.current) - 1; idx >= 0; idx-- {
-		if e.focusIndex(idx, Down) {
-			return true
-		}
-	}
-	return false
-}
-
-func (e *SplitEditor) shiftDown() bool {
-	if e.Orientation().Horizontal() {
-		if editor, ok := e.current.(*SplitEditor); ok {
-			return editor.shiftDown()
-		}
-		return false
-	}
-
-	if splitter, ok := e.current.(*SplitEditor); ok {
-		if splitter.shiftDown() {
-			return true
-		}
-	}
-	for idx := e.ChildIndex(e.current) + 1; idx < len(e.Children()); idx++ {
-		if e.focusIndex(idx, Up) {
-			return true
-		}
-	}
-	return false
-}
-
-func (e *SplitEditor) shiftLeft() bool {
-	if e.Orientation().Vertical() {
-		if editor, ok := e.current.(*SplitEditor); ok {
-			return editor.shiftLeft()
-		}
-		return false
-	}
-
-	if splitter, ok := e.current.(*SplitEditor); ok {
-		if splitter.shiftLeft() {
-			return true
-		}
-	}
-	for idx := e.ChildIndex(e.current) - 1; idx >= 0; idx-- {
-		if e.focusIndex(idx, Right) {
-			return true
-		}
-	}
-	return false
-}
-
-func (e *SplitEditor) shiftRight() bool {
-	if e.Orientation().Vertical() {
-		if editor, ok := e.current.(*SplitEditor); ok {
-			return editor.shiftRight()
-		}
-		return false
-	}
-
-	if splitter, ok := e.current.(*SplitEditor); ok {
-		if splitter.shiftRight() {
-			return true
-		}
-	}
-	for idx := e.ChildIndex(e.current) + 1; idx < len(e.Children()); idx++ {
-		if e.focusIndex(idx, Left) {
-			return true
-		}
-	}
-	return false
 }
 
 type SplitterBar struct {

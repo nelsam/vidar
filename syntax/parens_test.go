@@ -9,6 +9,7 @@ import (
 
 	"github.com/a8m/expect"
 	"github.com/nelsam/vidar/syntax"
+	"github.com/nelsam/vidar/theme"
 )
 
 func TestParens(t *testing.T) {
@@ -27,26 +28,26 @@ func FuncBody(t *testing.T) {
 		baz.Bar()
 	}
 	`
-	s := syntax.New(syntax.DefaultTheme)
+	s := syntax.New()
 	err := s.Parse(src)
 	expect(err).To.Be.Nil().Else.FailNow()
 
 	layers := s.Layers()
 
-	firstParens := layers[syntax.DefaultTheme.Rainbow.New()]
-	expect(firstParens.Spans()).To.Have.Len(6).Else.FailNow()
+	firstParens := layers[theme.ScopePair]
+	expect(firstParens.Spans).To.Have.Len(6).Else.FailNow()
 
-	expect(firstParens.Spans()[0]).To.Pass(position{src: src, match: "("})
-	expect(firstParens.Spans()[1]).To.Pass(position{src: src, match: ")"})
-	expect(firstParens.Spans()[2]).To.Pass(position{src: src, match: "(", idx: 1})
-	expect(firstParens.Spans()[3]).To.Pass(position{src: src, match: ")", idx: 1})
-	expect(firstParens.Spans()[4]).To.Pass(position{src: src, match: "{"})
-	expect(firstParens.Spans()[5]).To.Pass(position{src: src, match: "}"})
+	expect(firstParens.Spans[0]).To.Pass(position{src: src, match: "("})
+	expect(firstParens.Spans[1]).To.Pass(position{src: src, match: ")"})
+	expect(firstParens.Spans[2]).To.Pass(position{src: src, match: "(", idx: 1})
+	expect(firstParens.Spans[3]).To.Pass(position{src: src, match: ")", idx: 1})
+	expect(firstParens.Spans[4]).To.Pass(position{src: src, match: "{"})
+	expect(firstParens.Spans[5]).To.Pass(position{src: src, match: "}"})
 
-	secondParens := layers[syntax.DefaultTheme.Rainbow.New()]
-	expect(secondParens.Spans()).To.Have.Len(2).Else.FailNow()
-	expect(secondParens.Spans()[0]).To.Pass(position{src: src, match: "(", idx: 2})
-	expect(secondParens.Spans()[1]).To.Pass(position{src: src, match: ")", idx: 2})
+	secondParens := layers[theme.ScopePair+1]
+	expect(secondParens.Spans).To.Have.Len(2).Else.FailNow()
+	expect(secondParens.Spans[0]).To.Pass(position{src: src, match: "(", idx: 2})
+	expect(secondParens.Spans[1]).To.Pass(position{src: src, match: ")", idx: 2})
 }
 
 func Array(t *testing.T) {
@@ -60,28 +61,26 @@ func Array(t *testing.T) {
 		v := [...]string{"foo"}
 	}
 	`
-	s := syntax.New(syntax.DefaultTheme)
+	s := syntax.New()
 	err := s.Parse(src)
 	expect(err).To.Be.Nil().Else.FailNow()
 
 	layers := s.Layers()
 
-	// Ditch the function color
-	syntax.DefaultTheme.Rainbow.New()
+	// Skip the function ScopePair
+	arrParens := layers[theme.ScopePair+1]
+	expect(arrParens.Spans).To.Have.Len(6).Else.FailNow()
+	expect(arrParens.Spans[0]).To.Pass(position{src: src, match: "["})
+	expect(arrParens.Spans[1]).To.Pass(position{src: src, match: "]"})
+	expect(arrParens.Spans[2]).To.Pass(position{src: src, match: "[", idx: 1})
+	expect(arrParens.Spans[3]).To.Pass(position{src: src, match: "]", idx: 1})
+	expect(arrParens.Spans[4]).To.Pass(position{src: src, match: "{", idx: 1})
+	expect(arrParens.Spans[5]).To.Pass(position{src: src, match: "}"})
 
-	arrParens := layers[syntax.DefaultTheme.Rainbow.New()]
-	expect(arrParens.Spans()).To.Have.Len(6).Else.FailNow()
-	expect(arrParens.Spans()[0]).To.Pass(position{src: src, match: "["})
-	expect(arrParens.Spans()[1]).To.Pass(position{src: src, match: "]"})
-	expect(arrParens.Spans()[2]).To.Pass(position{src: src, match: "[", idx: 1})
-	expect(arrParens.Spans()[3]).To.Pass(position{src: src, match: "]", idx: 1})
-	expect(arrParens.Spans()[4]).To.Pass(position{src: src, match: "{", idx: 1})
-	expect(arrParens.Spans()[5]).To.Pass(position{src: src, match: "}"})
-
-	typs := layers[syntax.DefaultTheme.Colors.Type]
-	expect(typs.Spans()).To.Have.Len(2).Else.FailNow()
-	expect(typs.Spans()[0]).To.Pass(position{src: src, match: "string"})
-	expect(typs.Spans()[1]).To.Pass(position{src: src, match: "string", idx: 1})
+	typs := layers[theme.Type]
+	expect(typs.Spans).To.Have.Len(2).Else.FailNow()
+	expect(typs.Spans[0]).To.Pass(position{src: src, match: "string"})
+	expect(typs.Spans[1]).To.Pass(position{src: src, match: "string", idx: 1})
 }
 
 func Slice(t *testing.T) {
@@ -98,26 +97,24 @@ func Slice(t *testing.T) {
 		z := x[:1]
 	}
 	`
-	s := syntax.New(syntax.DefaultTheme)
+	s := syntax.New()
 	err := s.Parse(src)
 	expect(err).To.Be.Nil().Else.FailNow()
 
 	layers := s.Layers()
 
-	// Ditch the function color
-	syntax.DefaultTheme.Rainbow.New()
-
-	arrParens := layers[syntax.DefaultTheme.Rainbow.New()]
-	expect(arrParens.Spans()).To.Have.Len(12).Else.FailNow()
+	// Skip the function ScopePair
+	arrParens := layers[theme.ScopePair+1]
+	expect(arrParens.Spans).To.Have.Len(12).Else.FailNow()
 	// 0 and 1 are the [3]string, for an array type.
-	expect(arrParens.Spans()[2]).To.Pass(position{src: src, match: "[", idx: 1})
-	expect(arrParens.Spans()[3]).To.Pass(position{src: src, match: "]", idx: 1})
-	expect(arrParens.Spans()[4]).To.Pass(position{src: src, match: "[", idx: 2})
-	expect(arrParens.Spans()[5]).To.Pass(position{src: src, match: "]", idx: 2})
-	expect(arrParens.Spans()[6]).To.Pass(position{src: src, match: "{", idx: 1})
-	expect(arrParens.Spans()[7]).To.Pass(position{src: src, match: "}"})
-	expect(arrParens.Spans()[8]).To.Pass(position{src: src, match: "[", idx: 3})
-	expect(arrParens.Spans()[9]).To.Pass(position{src: src, match: "]", idx: 3})
-	expect(arrParens.Spans()[10]).To.Pass(position{src: src, match: "[", idx: 4})
-	expect(arrParens.Spans()[11]).To.Pass(position{src: src, match: "]", idx: 4})
+	expect(arrParens.Spans[2]).To.Pass(position{src: src, match: "[", idx: 1})
+	expect(arrParens.Spans[3]).To.Pass(position{src: src, match: "]", idx: 1})
+	expect(arrParens.Spans[4]).To.Pass(position{src: src, match: "[", idx: 2})
+	expect(arrParens.Spans[5]).To.Pass(position{src: src, match: "]", idx: 2})
+	expect(arrParens.Spans[6]).To.Pass(position{src: src, match: "{", idx: 1})
+	expect(arrParens.Spans[7]).To.Pass(position{src: src, match: "}"})
+	expect(arrParens.Spans[8]).To.Pass(position{src: src, match: "[", idx: 3})
+	expect(arrParens.Spans[9]).To.Pass(position{src: src, match: "]", idx: 3})
+	expect(arrParens.Spans[10]).To.Pass(position{src: src, match: "[", idx: 4})
+	expect(arrParens.Spans[11]).To.Pass(position{src: src, match: "]", idx: 4})
 }

@@ -5,44 +5,21 @@
 package controller
 
 import (
-	"go/token"
-	"log"
-
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commander/input"
 )
 
 type Navigator interface {
 	gxui.Control
 }
 
-type Editor interface {
+type MultiEditor interface {
 	gxui.Control
-	Focus()
 	CurrentFile() string
-	Open(path string, cursor token.Position)
-}
-
-type Elementer interface {
-	Elements() []interface{}
-}
-
-// An Executor is a type which can execute operations on the
-// controller and/or its children.
-type Executor interface {
-	// Exec executes the operation(s).  Exec will be called once for
-	// the controller and each of its children, until consume is
-	// true.  If Exec has been run against the controller and all its
-	// children without ever returning true for executed, it is
-	// assumed to be unexpected behavior, and an error will be shown.
-	Exec(interface{}) (executed, consume bool)
-}
-
-// A BeforeExecutor is an Executor which has tasks to run on the
-// Controller prior to running Exec.
-type BeforeExecutor interface {
-	BeforeExec(interface{})
+	CurrentEditor() input.Editor
+	Open(path string) (editor input.Editor, existed bool)
 }
 
 type Controller struct {
@@ -52,7 +29,7 @@ type Controller struct {
 	driver    gxui.Driver
 	font      gxui.Font
 	navigator Navigator
-	editor    Editor
+	editor    MultiEditor
 }
 
 func New(driver gxui.Driver, theme *basic.Theme) *Controller {
@@ -74,6 +51,13 @@ func (c *Controller) Navigator() Navigator {
 	return c.navigator
 }
 
+func (c *Controller) Elements() []interface{} {
+	return []interface{}{
+		c.navigator,
+		c.editor,
+	}
+}
+
 // SetNavigator sets c's Navigator instance.
 func (c *Controller) SetNavigator(navigator Navigator) {
 	if c.navigator != nil {
@@ -89,12 +73,12 @@ func (c *Controller) SetNavigator(navigator Navigator) {
 }
 
 // Editor returns c's Editor instance.
-func (c *Controller) Editor() Editor {
+func (c *Controller) Editor() MultiEditor {
 	return c.editor
 }
 
 // SetEditor sets c's Editor instance.
-func (c *Controller) SetEditor(editor Editor) {
+func (c *Controller) SetEditor(editor MultiEditor) {
 	if c.editor != nil {
 		c.RemoveChild(c.editor)
 	}
@@ -102,43 +86,4 @@ func (c *Controller) SetEditor(editor Editor) {
 	if c.editor != nil {
 		c.AddChild(c.editor)
 	}
-}
-
-// Execute implements "../commander".Controller.
-func (c *Controller) Execute(executor Executor) {
-	if before, ok := executor.(BeforeExecutor); ok {
-		before.BeforeExec(c)
-	}
-	executed, _ := execRecursively(executor, c)
-	if !executed {
-		log.Printf("Warning: Executor of type %T ran without executing", executor)
-	}
-}
-
-func execRecursively(executor Executor, element interface{}) (executed, consume bool) {
-	executed, consume = executor.Exec(element)
-	if consume {
-		return executed, consume
-	}
-	var childExecuted bool
-	if elementer, ok := element.(Elementer); ok {
-		for _, element := range elementer.Elements() {
-			childExecuted, consume = execRecursively(executor, element)
-			executed = executed || childExecuted
-			if consume {
-				break
-			}
-		}
-		return executed, consume
-	}
-	if parent, ok := element.(gxui.Parent); ok {
-		for _, child := range parent.Children() {
-			childExecuted, consume = execRecursively(executor, child.Control)
-			executed = executed || childExecuted
-			if consume {
-				break
-			}
-		}
-	}
-	return executed, consume
 }
