@@ -2,9 +2,9 @@
 
 <!-- Please check mark (change [ ] to [x]) any of the following that apply to your PR. -->
 
-[ ] Bug Fix
-[ ] New Feature
-[ ] Quality of Life Improvement
+* [ ] Bug Fix
+* [ ] New Feature
+* [ ] Quality of Life Improvement
 
 ### Tests
 
