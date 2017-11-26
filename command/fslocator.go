@@ -277,12 +277,12 @@ func (f *FSLocator) addCompletions(completions []gxui.Label) {
 func (f *FSLocator) loadDirContents() {
 	defer f.updateCompletions()
 
+	f.files = nil
 	dir := f.dir.Text()
 	if dir == "" {
-		log.Printf("This is odd: we have an empty directory")
+		// Should be Windows-only.  The drive hasn't been chosen yet.
 		return
 	}
-	f.files = nil
 	contents, err := ioutil.ReadDir(dir)
 	if os.IsNotExist(err) {
 		return
@@ -325,8 +325,12 @@ func (l *dirLabel) SetText(dir string) {
 
 func (l *dirLabel) Text() string {
 	text := l.Label.Text()
-	if len(text) == 0 || text == "/" {
-		return "/"
+	if root, ok := fsroot(text); ok {
+		return root
+	}
+	if text == "" {
+		log.Printf("This is odd.  We have an empty root that isn't considered a drive root.")
+		return ""
 	}
 	if text[len(text)-1] == filepath.Separator {
 		text = text[:len(text)-1]
