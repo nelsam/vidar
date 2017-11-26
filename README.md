@@ -2,8 +2,9 @@
 
 [![Build Status](https://travis-ci.org/nelsam/vidar.svg?branch=master)](https://travis-ci.org/nelsam/vidar)
 [![Join the chat at https://gitter.im/nelsam/vidar](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nelsam/vidar?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Issues Ready](https://badge.waffle.io/nelsam/vidar.svg?label=ready&title=Ready)](http://waffle.io/nelsam/vidar)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nelsam/vidar)](https://goreportcard.com/report/github.com/nelsam/vidar)
+
+[![Waffle.io - Issues](https://badge.waffle.io/nelsam/vidar.svg?columns=all)](http://waffle.io/nelsam/vidar)
 
 Vidar is the Norse god of silence, patience, and revenge.  Sounds perfect for an editor, right?
 
