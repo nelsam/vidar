@@ -98,6 +98,11 @@ func (e *TabbedEditor) Add(name string, editor input.Editor) {
 	gxui.SetFocus(editor.(gxui.Focusable))
 }
 
+func (e *TabbedEditor) AddPanelAt(c gxui.Control, n string, i int) {
+	e.PanelHolder.AddPanelAt(c, n, i)
+	e.editors[n] = c.(input.Editor)
+}
+
 func (e *TabbedEditor) Files() []string {
 	files := make([]string, 0, len(e.editors))
 	for file := range e.editors {
