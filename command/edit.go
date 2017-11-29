@@ -31,6 +31,7 @@ func (h EditHook) FileBindables(string) []bind.Bindable {
 		NewSelectAll(),
 		NewFind(h.Driver, h.Theme),
 		NewRegexFind(h.Driver, h.Theme),
+		NewReplace(h.Driver, h.Theme),
 		NewCopy(h.Driver),
 		NewCut(h.Driver),
 		NewPaste(h.Driver, h.Theme),
