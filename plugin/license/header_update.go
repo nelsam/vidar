@@ -76,6 +76,13 @@ func (u *HeaderUpdate) Store(target interface{}) bind.Status {
 	return bind.Waiting
 }
 
+func (u *HeaderUpdate) Reset() {
+	u.projecter = nil
+	u.applier = nil
+	u.editor = nil
+	u.ctrl = nil
+}
+
 func (u *HeaderUpdate) Exec() error {
 	edit := u.LicenseEdit()
 	if edit == nil {

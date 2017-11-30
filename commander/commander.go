@@ -336,6 +336,7 @@ func (c *Commander) Execute(e bind.Bindable) {
 			log.Printf("Error executing multi-executor: %s", err)
 		}
 	default:
+		log.Printf("Warning: Commander.Execute called against type %T, but it is not a type that can execute.", e)
 		return
 	}
 	if status&bind.Executed == 0 {
