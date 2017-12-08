@@ -13,12 +13,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/fsw"
 	"github.com/nelsam/vidar/setting"
 )
 
@@ -76,7 +76,7 @@ type ProjectTree struct {
 	toc     *TOC
 	tocLock sync.RWMutex
 
-	watcher    *fsnotify.Watcher
+	watcher    fsw.Watcher
 	reloadLock chan struct{}
 
 	layout *splitterLayout
@@ -125,7 +125,7 @@ func (p *ProjectTree) SetRoot(path string) {
 	if p.watcher != nil {
 		p.watcher.Close()
 	}
-	watcher, err := fsnotify.NewWatcher()
+	watcher, err := fsw.New()
 	if err != nil {
 		log.Printf("Error creating project tree watcher: %s", err)
 	}
@@ -177,13 +177,6 @@ func (p *ProjectTree) startWatch(root string) {
 		return
 	}
 	go p.watch()
-	go p.watchErrs()
-}
-
-func (p *ProjectTree) watchErrs() {
-	for err := range p.watcher.Errors {
-		log.Printf("Watcher received error %s", err)
-	}
 }
 
 // watch waits for events from p.watcher.  For each event, the tree will
@@ -194,10 +187,14 @@ func (p *ProjectTree) watchErrs() {
 // touches many, many files and directories.  It doesn't completely
 // prevent UI lock up, but it mitigates it some.
 func (p *ProjectTree) watch() {
-	for e := range p.watcher.Events {
+	for {
+		e, err := p.watcher.Next()
+		if err != nil {
+			log.Printf("ProjectTree: Error from watcher: %s", err)
+		}
 		switch e.Op {
-		case fsnotify.Write, fsnotify.Create, fsnotify.Remove, fsnotify.Rename:
-			go p.update(e.Name)
+		case fsw.Write, fsw.Create, fsw.Remove, fsw.Rename:
+			go p.update(e.Path)
 		}
 	}
 }
@@ -213,7 +210,7 @@ func (p *ProjectTree) watch() {
 // when the current state of the filesystem has already been processed,
 // but before the lock has been released.
 //
-// So far, though, I haven't seen a situation where fsnotify overwhelms
+// So far, though, I haven't seen a situation where fs events overwhelm
 // this logic to the point that the UI displays incorrect data, so maybe
 // it's good enough?  I'll be keeping my eye out for the UI getting in
 // to a bad state, but I'm not going to solve the issue until I know
