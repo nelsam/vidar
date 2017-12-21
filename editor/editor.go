@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/fsw"
 	"github.com/nelsam/vidar/theme"
 )
 
@@ -34,7 +34,7 @@ type CodeEditor struct {
 	hasChanges   bool
 	filepath     string
 
-	watcher *fsnotify.Watcher
+	watcher fsw.Watcher
 
 	selections      gxui.TextSelectionList
 	scrollPositions math.Point
@@ -104,9 +104,9 @@ func (e *CodeEditor) open(headerText string) {
 
 func (e *CodeEditor) watcherSetup() {
 	var err error
-	e.watcher, err = fsnotify.NewWatcher()
+	e.watcher, err = fsw.New()
 	if err != nil {
-		log.Printf("Error creating new fsnotify watcher: %s", err)
+		log.Printf("Error creating new watcher: %s", err)
 	}
 }
 
@@ -139,30 +139,30 @@ func (e *CodeEditor) watch() {
 		return
 	}
 	defer e.watcher.Remove(fileDir)
-	err = e.inotifyWait(func(event fsnotify.Event) bool {
-		if event.Name != e.filepath {
-			if e.renamed && event.Op == fsnotify.Create {
-				e.filepath = event.Name
-				e.onRename(e.filepath)
-				e.open("")
-				return true
+	for {
+		ev, err := e.watcher.Next()
+		if err != nil {
+			log.Printf("Error from watcher: %s", err)
+			return
+		}
+		if ev.Path != e.filepath {
+			if !e.renamed || ev.Op != fsw.Create {
+				continue
 			}
-			return false
-		}
-		switch event.Op {
-		case fsnotify.Write:
-			e.load("")
-		case fsnotify.Rename:
-			e.renamed = true
-		case fsnotify.Remove:
+			e.filepath = ev.Path
+			e.onRename(e.filepath)
 			e.open("")
-			return true
+			return
 		}
-		return false
-	})
-	if err != nil {
-		log.Printf("Failed to wait on events for %s: %s", e.filepath, err)
-		return
+		switch ev.Op {
+		case fsw.Write:
+			e.load("")
+		case fsw.Rename:
+			e.renamed = true
+		case fsw.Remove:
+			e.open("")
+			return
+		}
 	}
 }
 
@@ -176,20 +176,13 @@ func (e *CodeEditor) waitForFileCreate() error {
 	}
 	defer e.watcher.Remove(dir)
 
-	return e.inotifyWait(func(event fsnotify.Event) bool {
-		return event.Name == e.filepath && event.Op&fsnotify.Create == fsnotify.Create
-	})
-}
-
-func (e *CodeEditor) inotifyWait(eventFunc func(fsnotify.Event) (done bool)) error {
 	for {
-		select {
-		case event := <-e.watcher.Events:
-			if eventFunc(event) {
-				return nil
-			}
-		case err := <-e.watcher.Errors:
+		ev, err := e.watcher.Next()
+		if err != nil {
 			return err
+		}
+		if ev.Path == e.filepath && ev.Op&fsw.Create == fsw.Create {
+			return nil
 		}
 	}
 }

@@ -34,9 +34,8 @@ import (
 var (
 	background = gxui.Gray10
 
-	workingDir string
-	cmd        *cobra.Command
-	files      []string
+	cmd   *cobra.Command
+	files []string
 )
 
 func init() {
