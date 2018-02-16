@@ -94,10 +94,10 @@ func (f *Replace) Start(control gxui.Control) gxui.Control {
 
 			for i := selections.Len(); i != 0; i-- {
 				begin, end := selections.Interval(i - 1)
-				str := f.editor.Text()[begin:end]
+				str := []rune(f.editor.Text())[begin:end]
 				f.edits = append(f.edits, input.Edit{
 					At:  int(begin),
-					Old: []rune(str),
+					Old: str,
 					New: []rune(f.replace.Text()),
 				})
 			}
