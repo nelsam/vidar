@@ -269,6 +269,13 @@ func (c *Commander) Bindable(name string) bind.Bindable {
 
 // KeyPress handles key bindings for c.
 func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			// TODO: display this in the UI
+			log.Printf("ERR: panic while handling key event: %v", r)
+			log.Printf("Stack trace:\n%s", debug.Stack())
+		}
+	}()
 	editor := c.controller.Editor()
 	if event.Modifier == 0 && event.Key == gxui.KeyEscape {
 		c.box.Clear()
@@ -300,6 +307,13 @@ func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
 }
 
 func (c *Commander) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			// TODO: display this in the UI
+			log.Printf("ERR: panic while handling key stroke: %v", r)
+			log.Printf("Stack trace:\n%s", debug.Stack())
+		}
+	}()
 	if event.Modifier&^gxui.ModShift != 0 {
 		return false
 	}
