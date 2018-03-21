@@ -27,6 +27,10 @@ type SaveEditor interface {
 	LastKnownMTime() time.Time
 }
 
+type Projecter interface {
+	Project() setting.Project
+}
+
 type BeforeSaver interface {
 	Name() string
 	BeforeSave(proj setting.Project, path, contents string) (newContents string, err error)

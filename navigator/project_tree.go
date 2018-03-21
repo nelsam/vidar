@@ -236,6 +236,14 @@ func (p *ProjectTree) update(path string) {
 
 func (p *ProjectTree) SetProject(project setting.Project) {
 	p.SetRoot(project.Path)
+
+	// For now, for some visual indication that the project has changed, we
+	// force open the project pane here.
+	if !p.layout.Attached() {
+		p.button.Click(gxui.MouseEvent{
+			Button: gxui.MouseButtonLeft,
+		})
+	}
 }
 
 func (p *ProjectTree) Open(path string, pos token.Position) {

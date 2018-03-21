@@ -4,7 +4,7 @@
 
 // +build windows
 
-package command
+package fs
 
 import (
 	"fmt"

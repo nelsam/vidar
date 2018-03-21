@@ -6,14 +6,13 @@ package navigator
 
 import (
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/command/project"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/setting"
 )
 
-type ProjectSetter interface {
-	bind.Bindable
-
-	SetProject(setting.Project)
+type ProjectChanger interface {
+	For(...project.Opt) bind.Bindable
 }
 
 type Projects struct {
@@ -39,9 +38,8 @@ func NewProjectsPane(cmdr Commander, driver gxui.Driver, theme gxui.Theme, projF
 	pane.projectsAdapter.SetItems(setting.Projects())
 	pane.projects.SetAdapter(pane.projectsAdapter)
 	pane.projects.OnSelectionChanged(func(selected gxui.AdapterItem) {
-		opener := pane.cmdr.Bindable("open-project").(ProjectSetter)
-		opener.SetProject(selected.(setting.Project))
-		pane.cmdr.Execute(opener)
+		opener := pane.cmdr.Bindable("project-change").(ProjectChanger)
+		pane.cmdr.Execute(opener.For(project.Project(selected.(setting.Project))))
 	})
 	return pane
 }

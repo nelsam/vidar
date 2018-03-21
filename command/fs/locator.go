@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package command
+package fs
 
 import (
 	"io/ioutil"
@@ -41,19 +41,23 @@ var (
 	}
 )
 
+// FileGetter is used to get the currently open file.
+//
+// TODO: replace this with hooks on opening a file.
 type FileGetter interface {
 	CurrentFile() string
 }
 
-type Elementer interface {
-	Elements() []interface{}
-}
-
+// Projecter is used to get the currently open project.
+//
+// TODO: replace this with hooks on opening a project.
 type Projecter interface {
 	Project() setting.Project
 }
 
-type FSLocator struct {
+// Locator is a type of UI element which prompts the user for a file path.  It has
+// completion features to help with locating existing files and folders.
+type Locator struct {
 	mixins.LinearLayout
 
 	lock sync.RWMutex
@@ -66,13 +70,13 @@ type FSLocator struct {
 	files       []string
 }
 
-func NewFSLocator(driver gxui.Driver, theme *basic.Theme) *FSLocator {
-	f := &FSLocator{}
+func NewLocator(driver gxui.Driver, theme *basic.Theme) *Locator {
+	f := &Locator{}
 	f.Init(driver, theme)
 	return f
 }
 
-func (f *FSLocator) Init(driver gxui.Driver, theme *basic.Theme) {
+func (f *Locator) Init(driver gxui.Driver, theme *basic.Theme) {
 	f.LinearLayout.Init(f, theme)
 	f.theme = theme
 	f.driver = driver
@@ -85,7 +89,7 @@ func (f *FSLocator) Init(driver gxui.Driver, theme *basic.Theme) {
 	f.loadDirContents()
 }
 
-func (f *FSLocator) LoadDir(control gxui.Control) {
+func (f *Locator) LoadDir(control gxui.Control) {
 	startingPath := findStart(control)
 
 	f.driver.Call(func() {
@@ -95,11 +99,11 @@ func (f *FSLocator) LoadDir(control gxui.Control) {
 	})
 }
 
-func (f *FSLocator) Path() string {
+func (f *Locator) Path() string {
 	return filepath.Join(f.dir.Text(), f.file.Text())
 }
 
-func (f *FSLocator) SetPath(filePath string) {
+func (f *Locator) SetPath(filePath string) {
 	defer f.loadDirContents()
 	dir, file := filepath.Split(filePath)
 
@@ -107,7 +111,7 @@ func (f *FSLocator) SetPath(filePath string) {
 	f.file.SetText(file)
 }
 
-func (f *FSLocator) KeyPress(event gxui.KeyboardEvent) bool {
+func (f *Locator) KeyPress(event gxui.KeyboardEvent) bool {
 	if event.Modifier == 0 {
 		f.lock.RLock()
 		defer f.lock.RUnlock()
@@ -177,15 +181,15 @@ func (f *FSLocator) KeyPress(event gxui.KeyboardEvent) bool {
 	return f.file.KeyPress(event)
 }
 
-func (f *FSLocator) KeyDown(event gxui.KeyboardEvent) {
+func (f *Locator) KeyDown(event gxui.KeyboardEvent) {
 	f.file.KeyDown(event)
 }
 
-func (f *FSLocator) KeyUp(event gxui.KeyboardEvent) {
+func (f *Locator) KeyUp(event gxui.KeyboardEvent) {
 	f.file.KeyUp(event)
 }
 
-func (f *FSLocator) KeyStroke(event gxui.KeyStrokeEvent) bool {
+func (f *Locator) KeyStroke(event gxui.KeyStrokeEvent) bool {
 	defer f.updateCompletions()
 	if event.Character == filepath.Separator {
 		return false
@@ -193,11 +197,11 @@ func (f *FSLocator) KeyStroke(event gxui.KeyStrokeEvent) bool {
 	return f.file.KeyStroke(event)
 }
 
-func (f *FSLocator) KeyRepeat(event gxui.KeyboardEvent) {
+func (f *Locator) KeyRepeat(event gxui.KeyboardEvent) {
 	f.file.KeyRepeat(event)
 }
 
-func (f *FSLocator) Paint(c gxui.Canvas) {
+func (f *Locator) Paint(c gxui.Canvas) {
 	f.LinearLayout.Paint(c)
 
 	if f.HasFocus() {
@@ -207,31 +211,31 @@ func (f *FSLocator) Paint(c gxui.Canvas) {
 	}
 }
 
-func (f *FSLocator) IsFocusable() bool {
+func (f *Locator) IsFocusable() bool {
 	return f.file.IsFocusable()
 }
 
-func (f *FSLocator) HasFocus() bool {
+func (f *Locator) HasFocus() bool {
 	return f.file.HasFocus()
 }
 
-func (f *FSLocator) GainedFocus() {
+func (f *Locator) GainedFocus() {
 	f.file.GainedFocus()
 }
 
-func (f *FSLocator) LostFocus() {
+func (f *Locator) LostFocus() {
 	f.file.LostFocus()
 }
 
-func (f *FSLocator) OnGainedFocus(callback func()) gxui.EventSubscription {
+func (f *Locator) OnGainedFocus(callback func()) gxui.EventSubscription {
 	return f.file.OnGainedFocus(callback)
 }
 
-func (f *FSLocator) OnLostFocus(callback func()) gxui.EventSubscription {
+func (f *Locator) OnLostFocus(callback func()) gxui.EventSubscription {
 	return f.file.OnLostFocus(callback)
 }
 
-func (f *FSLocator) updateCompletions() {
+func (f *Locator) updateCompletions() {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 
@@ -253,7 +257,7 @@ func (f *FSLocator) updateCompletions() {
 	f.addCompletions(f.completions)
 }
 
-func (f *FSLocator) clearCompletions(completions []gxui.Label) {
+func (f *Locator) clearCompletions(completions []gxui.Label) {
 	cloned := make([]gxui.Label, 0, len(completions))
 	cloned = append(cloned, completions...)
 	f.driver.Call(func() {
@@ -263,7 +267,7 @@ func (f *FSLocator) clearCompletions(completions []gxui.Label) {
 	})
 }
 
-func (f *FSLocator) addCompletions(completions []gxui.Label) {
+func (f *Locator) addCompletions(completions []gxui.Label) {
 	cloned := make([]gxui.Label, 0, len(completions))
 	cloned = append(cloned, completions...)
 	f.driver.Call(func() {
@@ -274,7 +278,7 @@ func (f *FSLocator) addCompletions(completions []gxui.Label) {
 	})
 }
 
-func (f *FSLocator) loadDirContents() {
+func (f *Locator) loadDirContents() {
 	defer f.updateCompletions()
 
 	f.files = nil
@@ -421,6 +425,11 @@ func (l *completionLabel) Paint(c gxui.Canvas) {
 	l.Label.Paint(c)
 	r := l.Size().Rect()
 	c.DrawRoundedRect(r, 3, 3, 3, 3, gxui.TransparentPen, gxui.CreateBrush(completionBG))
+}
+
+// Elementer is used to find child elements of an element.
+type Elementer interface {
+	Elements() []interface{}
 }
 
 func findStart(control gxui.Control) string {
