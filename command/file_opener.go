@@ -11,6 +11,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/command/focus"
+	"github.com/nelsam/vidar/command/fs"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/status"
 )
@@ -25,7 +26,7 @@ type FileOpener struct {
 	driver gxui.Driver
 	theme  *basic.Theme
 
-	file  *FSLocator
+	file  *fs.Locator
 	input <-chan gxui.Focusable
 
 	focuser Focuser
@@ -37,7 +38,7 @@ func NewFileOpener(driver gxui.Driver, theme *basic.Theme) *FileOpener {
 		driver: driver,
 		theme:  theme,
 	}
-	o.file = NewFSLocator(driver, theme)
+	o.file = fs.NewLocator(driver, theme)
 	return o
 }
 

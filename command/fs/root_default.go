@@ -4,11 +4,13 @@
 
 // +build !windows
 
-package command
+package fs
 
-import "os"
-
-var (
-	userHome   = os.Getenv("HOME")
-	systemRoot = "/"
-)
+func fsroot(path string) (string, bool) {
+	switch path {
+	case "", "/":
+		return "/", true
+	default:
+		return "", false
+	}
+}

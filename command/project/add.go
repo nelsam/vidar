@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package command
+package project
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/command/fs"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/setting"
@@ -18,52 +19,57 @@ import (
 
 const srcDir = string(filepath.Separator) + "src" + string(filepath.Separator)
 
-type projectPane interface {
+type Adder interface {
 	Add(setting.Project)
 }
 
-type ProjectAdder struct {
+type Add struct {
 	status.General
 
 	status gxui.Label
 
-	path   *FSLocator
+	path   *fs.Locator
 	name   gxui.TextBox
-	gopath *FSLocator
+	gopath *fs.Locator
 	input  <-chan gxui.Focusable
+
+	exec   Executor
+	open   *Open
+	adders []Adder
 }
 
-func NewProjectAdder(driver gxui.Driver, theme *basic.Theme) *ProjectAdder {
-	projectAdder := &ProjectAdder{}
-	projectAdder.Init(driver, theme)
-	return projectAdder
+func NewAdd(driver gxui.Driver, theme *basic.Theme) *Add {
+	add := &Add{}
+	add.Init(driver, theme)
+	return add
 }
 
-func (p *ProjectAdder) Init(driver gxui.Driver, theme *basic.Theme) {
+func (p *Add) Init(driver gxui.Driver, theme *basic.Theme) {
 	p.Theme = theme
 	p.status = theme.CreateLabel()
-	p.path = NewFSLocator(driver, theme)
+	p.path = fs.NewLocator(driver, theme)
 	p.name = theme.CreateTextBox()
-	p.gopath = NewFSLocator(driver, theme)
+	p.gopath = fs.NewLocator(driver, theme)
 }
 
-func (p *ProjectAdder) Name() string {
+func (p *Add) Name() string {
 	return "add-project"
 }
 
-func (p *ProjectAdder) Menu() string {
+func (p *Add) Menu() string {
 	return "File"
 }
 
-func (p *ProjectAdder) Defaults() []fmt.Stringer {
+func (p *Add) Defaults() []fmt.Stringer {
 	return []fmt.Stringer{gxui.KeyboardEvent{
 		Modifier: gxui.ModControl | gxui.ModShift,
 		Key:      gxui.KeyN,
 	}}
 }
 
-func (p *ProjectAdder) Start(control gxui.Control) gxui.Control {
+func (p *Add) Start(control gxui.Control) gxui.Control {
 	p.path.LoadDir(control)
+	p.name.SetText("")
 
 	input := make(chan gxui.Focusable, 3)
 	p.input = input
@@ -75,13 +81,13 @@ func (p *ProjectAdder) Start(control gxui.Control) gxui.Control {
 	return p.status
 }
 
-func (p *ProjectAdder) Next() gxui.Focusable {
+func (p *Add) Next() gxui.Focusable {
 	next := <-p.input
 	switch next {
 	case p.path:
 		p.status.SetText("Project Path:")
 	case p.name:
-		p.status.SetText(fmt.Sprintf("Name for %s", p.path.Path()))
+		p.status.SetText(fmt.Sprintf("Name for %s:", p.path.Path()))
 	case p.gopath:
 		startPath := p.path.Path()
 		lastSrc := strings.LastIndex(startPath, srcDir)
@@ -89,12 +95,12 @@ func (p *ProjectAdder) Next() gxui.Focusable {
 			startPath = startPath[:lastSrc] + string(filepath.Separator)
 		}
 		p.gopath.SetPath(startPath)
-		p.status.SetText(fmt.Sprintf("GOPATH for %s", p.name.Text()))
+		p.status.SetText(fmt.Sprintf("GOPATH for %s:", p.name.Text()))
 	}
 	return next
 }
 
-func (p *ProjectAdder) Project() setting.Project {
+func (p *Add) Project() setting.Project {
 	return setting.Project{
 		Name:   p.name.Text(),
 		Path:   p.path.Path(),
@@ -102,20 +108,39 @@ func (p *ProjectAdder) Project() setting.Project {
 	}
 }
 
-func (p *ProjectAdder) Exec(element interface{}) bind.Status {
-	projects, ok := element.(projectPane)
-	if !ok {
-		return bind.Waiting
+func (p *Add) Reset() {
+	p.open = nil
+	p.exec = nil
+	p.adders = nil
+}
+
+func (p *Add) Store(e interface{}) bind.Status {
+	switch src := e.(type) {
+	case *Open:
+		p.open = src
+	case Executor:
+		p.exec = src
+	case Adder:
+		p.adders = append(p.adders, src)
 	}
-	project := p.Project()
+	if p.open != nil && p.exec != nil && len(p.adders) > 0 {
+		return bind.Executing
+	}
+	return bind.Waiting
+}
+
+func (p *Add) Exec() error {
+	proj := p.Project()
 	for _, prevProject := range setting.Projects() {
-		if prevProject.Name == project.Name {
+		if prevProject.Name == proj.Name {
 			// TODO: Let the user choose a new name
-			p.Err = fmt.Sprintf("There is already a project named %s", project.Name)
-			return bind.Failed
+			return fmt.Errorf("There is already a project named %s", proj.Name)
 		}
 	}
-	setting.AddProject(project)
-	projects.Add(project)
-	return bind.Done
+	setting.AddProject(proj)
+	for _, adder := range p.adders {
+		adder.Add(proj)
+	}
+	p.exec.Execute(p.open.For(Project(proj)))
+	return nil
 }
