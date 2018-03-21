@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nelsam/gxui"
@@ -30,6 +31,7 @@ type CodeEditor struct {
 	syntaxTheme theme.Theme
 	driver      gxui.Driver
 
+	lock         sync.RWMutex
 	lastModified time.Time
 	hasChanges   bool
 	filepath     string
@@ -205,7 +207,7 @@ func (e *CodeEditor) load(headerText string) {
 		log.Printf("Error stating file %s: %s", e.filepath, err)
 		return
 	}
-	e.lastModified = finfo.ModTime()
+	e.setLastModified(finfo.ModTime())
 	b, err := ioutil.ReadAll(f)
 	if err != nil {
 		log.Printf("Error reading file %s: %s", e.filepath, err)
@@ -229,7 +231,15 @@ func (e *CodeEditor) HasChanges() bool {
 }
 
 func (e *CodeEditor) LastKnownMTime() time.Time {
+	e.lock.RLock()
+	defer e.lock.RUnlock()
 	return e.lastModified
+}
+
+func (e *CodeEditor) setLastModified(value time.Time) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+	e.lastModified = value
 }
 
 func (e *CodeEditor) Filepath() string {
@@ -238,7 +248,7 @@ func (e *CodeEditor) Filepath() string {
 
 func (e *CodeEditor) FlushedChanges() {
 	e.hasChanges = false
-	e.lastModified = time.Now()
+	e.setLastModified(time.Now())
 }
 
 func (e *CodeEditor) Elements() []interface{} {
