@@ -27,6 +27,10 @@ type LineStarter interface {
 	LineStart(int) int
 }
 
+type Scroller interface {
+	ScrollToRune(line int)
+}
+
 type Mover interface {
 	To(...int) bind.Bindable
 }
@@ -225,6 +229,9 @@ func (f *Location) moveCarets(l LineStarter) {
 		offset += *f.col
 	}
 	f.binder.Execute(f.mover.To(offset))
+	if s, ok := l.(Scroller); ok {
+		s.ScrollToRune(offset)
+	}
 }
 
 func (f *Location) Bind(h bind.Bindable) (bind.HookedMultiOp, error) {
