@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-// +build linux,go1.8
+// +build linux,go1.8 darwin,go1.10
 
 // Package plugin contains logic for registering and binding plugins
 // with vidar.  While designing plugins, we noticed that any change

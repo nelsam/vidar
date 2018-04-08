@@ -6,6 +6,15 @@ define depsfiles =
 	$(foreach p,$(call depslist,$(1)),$(wildcard $(GOPATH)/src/$(p)/*.go))
 endef
 
+all: vidar plugins
+.PHONY: all
+
+install: plugins-install
+	go install
+
+vidar:
+	go build
+
 # Create the build directory.
 build:
 	mkdir build

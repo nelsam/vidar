@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-// +build !linux !go1.8
+// +build !linux,!darwin linux,!go1.8 darwin,!go1.10
 
 package plugin
 
