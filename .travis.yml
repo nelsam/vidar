@@ -5,7 +5,8 @@ os:
 - osx
 
 go:
-- 1.9
+- "1.9"
+- "1.10.1"
 - tip
 
 matrix:
@@ -15,5 +16,7 @@ matrix:
 install:
 - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq update; sudo apt-get install libxi-dev libxcursor-dev libxrandr-dev libxinerama-dev mesa-common-dev libgl1-mesa-dev libxxf86vm-dev; fi
 - go get -t -v -d ./...
+
+script:
 - go test -v -race $(find . -type d -not \( -path ./plugin -prune -o -path ./.git -prune \))
-- go install
+- make

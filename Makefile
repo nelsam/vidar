@@ -1,3 +1,8 @@
+all: vidar plugins
+.PHONY: all
+
+vidar:
+	go build
 
 # Create the build directory.
 build:
