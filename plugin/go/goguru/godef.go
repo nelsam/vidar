@@ -2,13 +2,14 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-// Package godef contains logc for interacting with the godef
+// Package goguru contains logic for interacting with the guru
 // command line tool.  It can be imported directly or used as a
-// plugn.
-package godef
+// plugin.
+package goguru
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -21,6 +22,10 @@ import (
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/setting"
 )
+
+// zeroIndexOffset represents how far off of a zero-index guru's
+// indexes are.
+const zeroIndexOffset = 1
 
 type Projecter interface {
 	Project() setting.Project
@@ -42,6 +47,52 @@ type Editor interface {
 
 type CursorController interface {
 	LastCaret() int
+}
+
+type ObjectPos struct {
+	Path string
+	Line int
+	Col  int
+}
+
+func jsonStrVal(v []byte) []byte {
+	if len(v) == 0 || v[0] != '"' {
+		return nil
+	}
+	return v[1 : len(v)-1]
+}
+
+func (p *ObjectPos) UnmarshalJSON(v []byte) error {
+	v = jsonStrVal(v)
+	pathEnd := bytes.IndexRune(v, ':')
+	lineStart := pathEnd + 1
+	if lineStart <= 0 || lineStart >= len(v) {
+		return fmt.Errorf(`cannot parse %s as "file:line:col"`, v)
+	}
+	lineEnd := lineStart + bytes.IndexRune(v[lineStart:], ':')
+	colStart := lineEnd + 1
+	if colStart <= 0 || colStart >= len(v) {
+		return fmt.Errorf(`cannot parse %s as "file:line:col"`, v)
+	}
+	p.Path = string(v[:pathEnd])
+	lineStr := string(v[lineStart:lineEnd])
+	line, err := strconv.Atoi(lineStr)
+	if err != nil {
+		return fmt.Errorf(`failed to parse line number %s: %s`, lineStr, err)
+	}
+	p.Line = line - zeroIndexOffset
+	colStr := string(v[colStart:])
+	col, err := strconv.Atoi(colStr)
+	if err != nil {
+		return fmt.Errorf(`failed to parse column number %s: %s`, colStr, err)
+	}
+	p.Col = col - zeroIndexOffset
+	return nil
+}
+
+// Def represents a result from `guru definition`.
+type Def struct {
+	Pos ObjectPos `json:"objpos"`
 }
 
 type Godef struct {
@@ -96,6 +147,7 @@ func (g *Godef) Store(target interface{}) bind.Status {
 	case Opener:
 		g.opener = src
 	}
+	// TODO: get all modified files to pass to guru
 	if g.proj != nil && g.cmdr != nil && g.opener != nil && g.ctrl != nil && g.editor != nil {
 		return bind.Done
 	}
@@ -105,7 +157,9 @@ func (g *Godef) Store(target interface{}) bind.Status {
 func (g *Godef) Exec() error {
 	proj := g.proj.Project()
 	lastCaret := g.ctrl.LastCaret()
-	cmd := exec.Command("godef", "-f", g.editor.Filepath(), "-o", strconv.Itoa(lastCaret), "-i")
+	// TODO: allow querying with specific build tags.
+	// TODO: pass in modified files.
+	cmd := exec.Command("guru", "-json", "definition", g.editor.Filepath()+":#"+strconv.Itoa(lastCaret))
 	cmd.Stdin = bytes.NewBufferString(g.editor.Text())
 	errBuffer := &bytes.Buffer{}
 	cmd.Stderr = errBuffer
@@ -116,31 +170,14 @@ func (g *Godef) Exec() error {
 	}
 	output, err := cmd.Output()
 	if err != nil {
-		g.Err = fmt.Sprintf("godef error: %s", string(output))
+		g.Err = fmt.Sprintf("guru error: %s", output)
 		return err
 	}
-	path, line, col, err := parseGodef(output)
-	if err != nil {
-		g.Err = err.Error()
+	var def Def
+	if err := json.Unmarshal(output, &def); err != nil {
+		g.Err = fmt.Sprintf("failed to parse guru output %s: %s", output, err)
 		return err
 	}
-	g.cmdr.Execute(g.opener.For(focus.Path(path), focus.Line(line), focus.Column(col)))
+	g.cmdr.Execute(g.opener.For(focus.Path(def.Pos.Path), focus.Line(def.Pos.Line), focus.Column(def.Pos.Col)))
 	return nil
-}
-
-func parseGodef(output []byte) (path string, line, column int, err error) {
-	values := bytes.Split(bytes.TrimSpace(output), []byte{':'})
-	if len(values) != 3 {
-		return "", 0, 0, fmt.Errorf("godef output %s not understood", string(output))
-	}
-	pathBytes, lineBytes, colBytes := values[0], values[1], values[2]
-	line, err = strconv.Atoi(string(lineBytes))
-	if err != nil {
-		return "", 0, 0, fmt.Errorf("godef output: %s is not a line number", string(lineBytes))
-	}
-	col, err := strconv.Atoi(string(colBytes))
-	if err != nil {
-		return "", 0, 0, fmt.Errorf("godef output: %s is not a column number", string(colBytes))
-	}
-	return string(pathBytes), line - 1, col - 1, nil
 }

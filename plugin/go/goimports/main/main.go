@@ -10,10 +10,11 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/command"
-	"github.com/nelsam/vidar/plugin/gosyntax"
+	"github.com/nelsam/vidar/plugin/go/goimports"
 )
 
 type GolangHook struct {
+	Theme gxui.Theme
 }
 
 func (h GolangHook) Name() string {
@@ -29,13 +30,14 @@ func (h GolangHook) FileBindables(path string) []bind.Bindable {
 		return nil
 	}
 	return []bind.Bindable{
-		gosyntax.New(),
+		goimports.New(h.Theme),
+		goimports.OnSave{},
 	}
 }
 
 // Bindables is the main entry point to the command.
 func Bindables(cmdr command.Commander, driver gxui.Driver, theme gxui.Theme) []bind.Bindable {
 	return []bind.Bindable{
-		GolangHook{},
+		GolangHook{Theme: theme},
 	}
 }

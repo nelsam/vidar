@@ -8,13 +8,15 @@ import (
 	"strings"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/command"
-	"github.com/nelsam/vidar/plugin/license"
+	"github.com/nelsam/vidar/plugin/go/gocode"
 )
 
 type GolangHook struct {
-	Theme gxui.Theme
+	Theme  *basic.Theme
+	Driver gxui.Driver
 }
 
 func (h GolangHook) Name() string {
@@ -29,14 +31,19 @@ func (h GolangHook) FileBindables(path string) []bind.Bindable {
 	if !strings.HasSuffix(path, ".go") {
 		return nil
 	}
+	completions, gocode := gocode.New(h.Theme, h.Driver)
 	return []bind.Bindable{
-		license.NewHeaderUpdate(h.Theme),
+		completions,
+		gocode,
 	}
 }
 
 // Bindables is the main entry point to the command.
 func Bindables(cmdr command.Commander, driver gxui.Driver, theme gxui.Theme) []bind.Bindable {
 	return []bind.Bindable{
-		GolangHook{Theme: theme},
+		GolangHook{
+			Theme:  theme.(*basic.Theme),
+			Driver: driver,
+		},
 	}
 }

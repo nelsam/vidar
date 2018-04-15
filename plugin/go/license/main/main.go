@@ -10,7 +10,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/command"
-	"github.com/nelsam/vidar/plugin/goimports"
+	"github.com/nelsam/vidar/plugin/go/license"
 )
 
 type GolangHook struct {
@@ -30,8 +30,7 @@ func (h GolangHook) FileBindables(path string) []bind.Bindable {
 		return nil
 	}
 	return []bind.Bindable{
-		goimports.New(h.Theme),
-		goimports.OnSave{},
+		license.NewHeaderUpdate(h.Theme),
 	}
 }
 

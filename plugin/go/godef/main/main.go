@@ -10,7 +10,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/command"
-	"github.com/nelsam/vidar/plugin/godef"
+	"github.com/nelsam/vidar/plugin/go/godef"
 )
 
 type GolangHook struct {
