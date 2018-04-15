@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"os"
 	"path/filepath"
 
 	"github.com/nelsam/gxui"
@@ -103,12 +102,13 @@ func uiMain(driver gxui.Driver) {
 	gTheme.WindowBackground = background
 
 	// TODO: figure out a better way to get this resolution
-	window := gTheme.CreateWindow(1600, 800, "Vidar - GXUI Go Editor")
+	window := newWindow(gTheme)
 	controller := controller.New(driver, gTheme)
 
 	// Bindings should be added immediately after creating the commander,
 	// since other types rely on the bindings having been bound.
-	cmdr := commander.New(driver, gTheme, controller)
+	cmdr := commander.New(driver, gTheme, window, controller)
+	window.child = cmdr
 	bindings := []bind.Bindable{input.New(driver, cmdr)}
 	bindings = append(bindings, command.Bindables(cmdr, driver, gTheme)...)
 	bindings = append(bindings, plugin.Bindables(cmdr, driver, gTheme)...)
@@ -137,12 +137,6 @@ func uiMain(driver gxui.Driver) {
 	window.AddChild(cmdr)
 
 	window.OnKeyDown(func(event gxui.KeyboardEvent) {
-		if (event.Modifier.Control() || event.Modifier.Super()) && event.Key == gxui.KeyQ {
-			os.Exit(0)
-		}
-		if event.Modifier == 0 && event.Key == gxui.KeyF11 {
-			window.SetFullscreen(!window.Fullscreen())
-		}
 		if window.Focus() == nil {
 			cmdr.KeyDown(event)
 		}

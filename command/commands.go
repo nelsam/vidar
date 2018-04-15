@@ -21,6 +21,8 @@ func Bindables(cmdr command.Commander, driver gxui.Driver, theme *basic.Theme) [
 	b = append(b, project.Bindables(driver, theme)...)
 	b = append(b,
 		NewFileOpener(driver, theme),
+		Quit{},
+		Fullscreen{},
 		&caret.Mover{},
 		focus.NewLocation(driver),
 		FileHook{Theme: theme},
