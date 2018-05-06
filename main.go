@@ -47,7 +47,7 @@ func init() {
 			"unsaved work.",
 		Run: func(cmd *cobra.Command, args []string) {
 			files = args
-			gl.StartDriver(uiMain)
+			gl.StartDriver(uiMain, gl.Debug())
 		},
 	}
 }

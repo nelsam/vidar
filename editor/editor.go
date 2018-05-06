@@ -38,7 +38,7 @@ type CodeEditor struct {
 
 	watcher fsw.Watcher
 
-	selections      gxui.TextSelectionList
+	selections      []gxui.TextSelection
 	scrollPositions math.Point
 	layers          []input.SyntaxLayer
 
@@ -88,10 +88,11 @@ func (e *CodeEditor) SetCarets(carets ...int) {
 			e.Controller().ClearSelections()
 			return
 		}
-		e.Controller().SetCaret(carets[0])
-		for _, c := range carets[1:] {
-			e.Controller().AddCaret(c)
+		var sel []gxui.TextSelection
+		for _, c := range carets {
+			sel = append(sel, gxui.CreateTextSelection(c, c, true))
 		}
+		e.Controller().SetSelections(sel)
 	})
 }
 
@@ -222,7 +223,9 @@ func (e *CodeEditor) load(headerText string) {
 			return
 		}
 		e.SetText(newText)
-		e.restorePositions()
+		if len(e.selections) > 0 {
+			e.restorePositions()
+		}
 	})
 }
 

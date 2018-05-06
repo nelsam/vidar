@@ -20,7 +20,7 @@ import (
 type SelectionEditor interface {
 	input.Editor
 	Controller() *gxui.TextBoxController
-	Select(gxui.TextSelectionList)
+	Select([]gxui.TextSelection)
 }
 
 type Find struct {
@@ -62,7 +62,7 @@ func (f *Find) Start(control gxui.Control) gxui.Control {
 		}
 		haystack := f.editor.Text()
 		start := 0
-		var selections gxui.TextSelectionList
+		var selections []gxui.TextSelection
 
 		count := utf8.RuneCountInString(needle)
 		length := len(needle)

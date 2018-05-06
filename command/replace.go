@@ -61,7 +61,7 @@ func (f *Replace) Start(control gxui.Control) gxui.Control {
 		}
 		haystack := f.editor.Text()
 		start := 0
-		var selections gxui.TextSelectionList
+		var selections []gxui.TextSelection
 
 		count := utf8.RuneCountInString(needle)
 		length := len(needle)
@@ -92,8 +92,8 @@ func (f *Replace) Start(control gxui.Control) gxui.Control {
 			f.edits = []input.Edit{}
 			selections := f.editor.Controller().Selections()
 
-			for i := selections.Len(); i != 0; i-- {
-				begin, end := selections.Interval(i - 1)
+			for i := len(selections) - 1; i >= 0; i-- {
+				begin, end := selections[i].Start(), selections[i].End()
 				str := []rune(f.editor.Text())[begin:end]
 				f.edits = append(f.edits, input.Edit{
 					At:  int(begin),
