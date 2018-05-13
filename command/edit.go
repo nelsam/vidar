@@ -7,7 +7,6 @@ package command
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/command/history"
 	"github.com/nelsam/vidar/commander/bind"
 )
 
@@ -25,9 +24,7 @@ func (h EditHook) OpName() string {
 }
 
 func (h EditHook) FileBindables(string) []bind.Bindable {
-	history, undo, redo := history.New(h.Theme)
 	return []bind.Bindable{
-		history, undo, redo,
 		NewSelectAll(),
 		NewFind(h.Driver, h.Theme),
 		NewRegexFind(h.Driver, h.Theme),

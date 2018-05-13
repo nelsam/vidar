@@ -6,17 +6,11 @@ package history
 
 import (
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/plugin/command"
 )
-
-func New(theme gxui.Theme) (*History, *Undo, *Redo) {
-	h := History{current: &node{}}
-	u := Undo{history: &h}
-	u.Theme = theme
-	r := Redo{history: &h}
-	r.Theme = theme
-	return &h, &u, &r
-}
 
 type node struct {
 	edit   input.Edit
@@ -30,20 +24,30 @@ func (n *node) push(e input.Edit) *node {
 	return next
 }
 
+func Bindables(_ command.Commander, _ gxui.Driver, theme *basic.Theme) []bind.Bindable {
+	h := History{current: &node{}, all: make(map[string]*node)}
+	onOpen := OnOpen{theme: theme}
+	return []bind.Bindable{&h, &onOpen}
+}
+
 type History struct {
-	current *node
-	skip    []input.Edit
+	current     *node
+	currentPath string
+	skip        []input.Edit
+
+	all map[string]*node
 }
 
 func (h *History) Name() string {
 	return "history"
 }
 
-func (h *History) OpName() string {
-	return "input-handler"
+func (h *History) OpNames() []string {
+	return []string{"input-handler", "focus-location"}
 }
 
-func (h *History) Init(input.Editor, []rune) {}
+func (h *History) Init(e input.Editor, _ []rune) {
+}
 
 func (h *History) shouldSkip(e input.Edit) bool {
 	if len(h.skip) == 0 {
@@ -101,3 +105,16 @@ func (h *History) FastForward(branch uint) input.Edit {
 }
 
 func (h *History) Apply(input.Editor) error { return nil }
+
+// FileBindables is here to trigger when the file path changes,
+// like when a new file is opened or a tab is switched.
+func (h *History) FileBindables(path string) []bind.Bindable {
+	h.all[h.currentPath] = h.current
+	h.currentPath = path
+	h.current = &node{}
+	if n, ok := h.all[h.currentPath]; ok {
+		h.current = n
+	}
+	h.skip = nil
+	return nil
+}
