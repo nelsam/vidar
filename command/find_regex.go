@@ -65,7 +65,7 @@ func (f *RegexFind) Start(control gxui.Control) gxui.Control {
 
 			}
 		}
-		f.editor.Select(selections)
+		f.editor.SelectSlice(selections)
 		f.display.SetText(fmt.Sprintf("%s: %d results found", needle, len(selections)))
 	})
 	return f.display

@@ -73,7 +73,7 @@ func (f *Replace) Start(control gxui.Control) gxui.Control {
 			pos += count
 			start += (next + length)
 		}
-		f.editor.Select(selections)
+		f.editor.SelectSlice(selections)
 		f.status.SetText(fmt.Sprintf("%s: %d results found", needle, len(selections)))
 	})
 	f.find.OnKeyPress(func(ev gxui.KeyboardEvent) {
@@ -90,7 +90,7 @@ func (f *Replace) Start(control gxui.Control) gxui.Control {
 		switch ev.Key {
 		case gxui.KeyEnter:
 			f.edits = []input.Edit{}
-			selections := f.editor.Controller().Selections()
+			selections := f.editor.Controller().SelectionSlice()
 
 			for i := len(selections) - 1; i >= 0; i-- {
 				begin, end := selections[i].Start(), selections[i].End()

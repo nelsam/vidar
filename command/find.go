@@ -20,7 +20,7 @@ import (
 type SelectionEditor interface {
 	input.Editor
 	Controller() *gxui.TextBoxController
-	Select([]gxui.TextSelection)
+	SelectSlice([]gxui.TextSelection)
 }
 
 type Find struct {
@@ -74,7 +74,7 @@ func (f *Find) Start(control gxui.Control) gxui.Control {
 			pos += count
 			start += (next + length)
 		}
-		f.editor.Select(selections)
+		f.editor.SelectSlice(selections)
 		f.display.SetText(fmt.Sprintf("%s: %d results found", needle, len(selections)))
 	})
 	return f.display

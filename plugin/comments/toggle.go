@@ -22,7 +22,7 @@ type Editor interface {
 }
 
 type Selecter interface {
-	Selections() []gxui.TextSelection
+	SelectionSlice() []gxui.TextSelection
 }
 
 type Toggle struct {
@@ -72,7 +72,7 @@ func (t *Toggle) Store(target interface{}) bind.Status {
 }
 
 func (t *Toggle) Exec() error {
-	selections := t.selecter.Selections()
+	selections := t.selecter.SelectionSlice()
 
 	var edits []input.Edit
 	for i := len(selections) - 1; i >= 0; i-- {

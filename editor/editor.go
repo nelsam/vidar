@@ -290,7 +290,7 @@ func (e *CodeEditor) Paint(c gxui.Canvas) {
 }
 
 func (e *CodeEditor) storePositions() {
-	e.selections = e.Controller().Selections()
+	e.selections = e.Controller().SelectionSlice()
 	e.scrollPositions = math.Point{
 		X: e.HorizOffset(),
 		Y: e.ScrollOffset(),
