@@ -51,7 +51,7 @@ func (c *Copy) Exec(target interface{}) bind.Status {
 		return bind.Waiting
 	}
 
-	selections := editor.Controller().Selections()
+	selections := editor.Controller().SelectionSlice()
 	var buffer bytes.Buffer
 	for i := 0; i < len(selections); i++ {
 		buffer.WriteString(editor.Controller().SelectionText(i))
@@ -114,7 +114,7 @@ func (c *Cut) Exec() error {
 func (c *Cut) removeSelections() {
 	text := c.editor.Controller().TextRunes()
 	var edits []input.Edit
-	for _, s := range c.editor.Controller().Selections() {
+	for _, s := range c.editor.Controller().SelectionSlice() {
 		old := text[s.Start():s.End()]
 		edits = append(edits, input.Edit{
 			At:  s.Start(),
@@ -186,7 +186,7 @@ func (p *Paste) replaceSelections() {
 		return
 	}
 	replacement := []rune(contents)
-	for _, s := range p.editor.Controller().Selections() {
+	for _, s := range p.editor.Controller().SelectionSlice() {
 		old := text[s.Start():s.End()]
 		edits = append(edits, input.Edit{
 			At:  s.Start(),
