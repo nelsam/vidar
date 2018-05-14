@@ -7,6 +7,7 @@ package navigator
 import (
 	"fmt"
 	"go/token"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -189,6 +190,9 @@ func (p *ProjectTree) startWatch(root string) {
 func (p *ProjectTree) watch() {
 	for {
 		e, err := p.watcher.Next()
+		if err == io.EOF {
+			return
+		}
 		if err != nil {
 			log.Printf("ProjectTree: Error from watcher: %s", err)
 		}
