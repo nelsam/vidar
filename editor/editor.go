@@ -38,7 +38,7 @@ type CodeEditor struct {
 
 	watcher fsw.Watcher
 
-	selections      gxui.TextSelectionList
+	selections      []gxui.TextSelection
 	scrollPositions math.Point
 	layers          []input.SyntaxLayer
 
@@ -78,21 +78,15 @@ func (e *CodeEditor) Carets() []int {
 }
 
 func (e *CodeEditor) SetCarets(carets ...int) {
-	// The following is added to the UI call stack because *some* calls to
-	// SetCarets will happen in a UI call while there are still SetCarets
-	// calls in the UI stack.  This happens especially in the case where
-	// a new file has been opened, which adds SetCarets([0]) as a call in
-	// the UI call stack.
-	e.driver.Call(func() {
-		if len(carets) == 0 {
-			e.Controller().ClearSelections()
-			return
-		}
-		e.Controller().SetCaret(carets[0])
-		for _, c := range carets[1:] {
-			e.Controller().AddCaret(c)
-		}
-	})
+	if len(carets) == 0 {
+		e.Controller().ClearSelections()
+		return
+	}
+	var sel []gxui.TextSelection
+	for _, c := range carets {
+		sel = append(sel, gxui.CreateTextSelection(c, c, true))
+	}
+	e.Controller().SetSelections(sel)
 }
 
 func (e *CodeEditor) OnRename(callback func(newPath string)) {
@@ -222,7 +216,9 @@ func (e *CodeEditor) load(headerText string) {
 			return
 		}
 		e.SetText(newText)
-		e.restorePositions()
+		if len(e.selections) > 0 {
+			e.restorePositions()
+		}
 	})
 }
 
@@ -294,7 +290,7 @@ func (e *CodeEditor) Paint(c gxui.Canvas) {
 }
 
 func (e *CodeEditor) storePositions() {
-	e.selections = e.Controller().Selections()
+	e.selections = e.Controller().SelectionSlice()
 	e.scrollPositions = math.Point{
 		X: e.HorizOffset(),
 		Y: e.ScrollOffset(),

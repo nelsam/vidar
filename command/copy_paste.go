@@ -53,7 +53,7 @@ func (c *Copy) Exec(target interface{}) bind.Status {
 
 	selections := editor.Controller().Selections()
 	var buffer bytes.Buffer
-	for i := 0; i < selections.Len(); i++ {
+	for i := 0; i < len(selections); i++ {
 		buffer.WriteString(editor.Controller().SelectionText(i))
 	}
 
