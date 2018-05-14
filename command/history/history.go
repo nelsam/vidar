@@ -24,30 +24,35 @@ func (n *node) push(e input.Edit) *node {
 	return next
 }
 
+// Bindables returns the slice of bind.Bindable types that is implemented
+// by this package.
 func Bindables(_ command.Commander, _ gxui.Driver, theme *basic.Theme) []bind.Bindable {
 	h := History{current: &node{}, all: make(map[string]*node)}
 	onOpen := OnOpen{theme: theme}
 	return []bind.Bindable{&h, &onOpen}
 }
 
+// History keeps track of change history for a file.
 type History struct {
-	current     *node
-	currentPath string
-	skip        []input.Edit
+	current *node
+	skip    []input.Edit
 
 	all map[string]*node
 }
 
+// Name returns the name of h
 func (h *History) Name() string {
 	return "history"
 }
 
+// OpNames returns the name of bind.Op types that
+// h needs to bind to.
 func (h *History) OpNames() []string {
 	return []string{"input-handler", "focus-location"}
 }
 
-func (h *History) Init(e input.Editor, _ []rune) {
-}
+// Init implements input.ChangeHook
+func (h *History) Init(input.Editor, []rune) {}
 
 func (h *History) shouldSkip(e input.Edit) bool {
 	if len(h.skip) == 0 {
@@ -104,17 +109,19 @@ func (h *History) FastForward(branch uint) input.Edit {
 	return h.current.edit
 }
 
+// Apply is unused on history - recording the changes is all
+// that is needed.
 func (h *History) Apply(input.Editor) error { return nil }
 
-// FileBindables is here to trigger when the file path changes,
-// like when a new file is opened or a tab is switched.
-func (h *History) FileBindables(path string) []bind.Bindable {
-	h.all[h.currentPath] = h.current
-	h.currentPath = path
+// FileChanged updates the current history when the focused
+// file is changed.
+func (h *History) FileChanged(oldPath, newPath string) {
+	if oldPath != "" {
+		h.all[oldPath] = h.current
+	}
 	h.current = &node{}
-	if n, ok := h.all[h.currentPath]; ok {
+	if n, ok := h.all[newPath]; ok {
 		h.current = n
 	}
 	h.skip = nil
-	return nil
 }
