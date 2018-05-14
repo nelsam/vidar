@@ -6,17 +6,11 @@ package history
 
 import (
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/plugin/command"
 )
-
-func New(theme gxui.Theme) (*History, *Undo, *Redo) {
-	h := History{current: &node{}}
-	u := Undo{history: &h}
-	u.Theme = theme
-	r := Redo{history: &h}
-	r.Theme = theme
-	return &h, &u, &r
-}
 
 type node struct {
 	edit   input.Edit
@@ -30,19 +24,34 @@ func (n *node) push(e input.Edit) *node {
 	return next
 }
 
+// Bindables returns the slice of bind.Bindable types that is implemented
+// by this package.
+func Bindables(_ command.Commander, _ gxui.Driver, theme *basic.Theme) []bind.Bindable {
+	h := History{current: &node{}, all: make(map[string]*node)}
+	onOpen := OnOpen{theme: theme}
+	return []bind.Bindable{&h, &onOpen}
+}
+
+// History keeps track of change history for a file.
 type History struct {
 	current *node
 	skip    []input.Edit
+
+	all map[string]*node
 }
 
+// Name returns the name of h
 func (h *History) Name() string {
 	return "history"
 }
 
-func (h *History) OpName() string {
-	return "input-handler"
+// OpNames returns the name of bind.Op types that
+// h needs to bind to.
+func (h *History) OpNames() []string {
+	return []string{"input-handler", "focus-location"}
 }
 
+// Init implements input.ChangeHook
 func (h *History) Init(input.Editor, []rune) {}
 
 func (h *History) shouldSkip(e input.Edit) bool {
@@ -100,4 +109,19 @@ func (h *History) FastForward(branch uint) input.Edit {
 	return h.current.edit
 }
 
+// Apply is unused on history - recording the changes is all
+// that is needed.
 func (h *History) Apply(input.Editor) error { return nil }
+
+// FileChanged updates the current history when the focused
+// file is changed.
+func (h *History) FileChanged(oldPath, newPath string) {
+	if oldPath != "" {
+		h.all[oldPath] = h.current
+	}
+	h.current = &node{}
+	if n, ok := h.all[newPath]; ok {
+		h.current = n
+	}
+	h.skip = nil
+}

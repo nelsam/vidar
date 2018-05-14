@@ -9,6 +9,7 @@ import (
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/command/caret"
 	"github.com/nelsam/vidar/command/focus"
+	"github.com/nelsam/vidar/command/history"
 	"github.com/nelsam/vidar/command/project"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/command"
@@ -30,5 +31,6 @@ func Bindables(cmdr command.Commander, driver gxui.Driver, theme *basic.Theme) [
 		ViewHook{},
 		NavHook{Commander: cmdr},
 	)
+	b = append(b, history.Bindables(cmdr, driver, theme)...)
 	return b
 }
