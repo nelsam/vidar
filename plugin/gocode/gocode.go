@@ -106,36 +106,42 @@ func (g *GoCode) set(e Editor, l *suggestionList, pos int) {
 	go g.show(ctx, l, pos)
 }
 
-func (g *GoCode) Moving(ie input.Editor, d caret.Direction, carets []int) caret.Direction {
+func (g *GoCode) Moving(ie input.Editor, d caret.Direction, m caret.Mod, carets []int) (caret.Direction, caret.Mod, []int) {
 	e := ie.(Editor)
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	l, ok := g.lists[e]
 	if !ok {
-		return d
+		return d, m, carets
 	}
 	if !l.Attached() {
 		if cancel, ok := g.cancels[e]; ok {
 			cancel()
 		}
-		return d
+		return d, m, carets
 	}
-	if len(carets) != 1 {
+	if len(e.Carets()) != 1 {
 		g.stop(e)
-		return d
+		return d, m, carets
+	}
+	if m != caret.NoMod {
+		g.stop(e)
+		return d, m, carets
 	}
 	switch d {
 	case caret.Up:
 		l.SelectPrevious()
 	case caret.Down:
 		l.SelectNext()
+	case caret.NoDirection:
+		g.stop(e)
 	default:
-		return d
+		return d, m, carets
 	}
-	return caret.NoDirection
+	return caret.NoDirection, caret.NoMod, nil
 }
 
-func (g *GoCode) Moved(ie input.Editor, d caret.Direction, carets []int) {
+func (g *GoCode) Moved(ie input.Editor, carets []int) {
 	e := ie.(Editor)
 	g.mu.RLock()
 	defer g.mu.RUnlock()
