@@ -160,7 +160,7 @@ func (e *Handler) HandleEvent(focused input.Editor, ev gxui.KeyboardEvent) {
 			}
 		}
 		var edits []input.Edit
-		for _, s := range editor.Controller().Selections() {
+		for _, s := range editor.Controller().SelectionSlice() {
 			if s.Start() < 0 {
 				continue
 			}
