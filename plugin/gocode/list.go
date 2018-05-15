@@ -22,6 +22,7 @@ type Editor interface {
 	input.Editor
 	gxui.Parent
 
+	Carets() []int
 	Size() math.Size
 	Padding() math.Spacing
 	LineIndex(caret int) int
