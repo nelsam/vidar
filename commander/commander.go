@@ -40,6 +40,7 @@ type Commander struct {
 
 	driver gxui.Driver
 	theme  *basic.Theme
+	root   gxui.Window
 
 	controller Controller
 	box        *commandBox
@@ -55,10 +56,11 @@ type Commander struct {
 }
 
 // New creates and initializes a *Commander, then returns it.
-func New(driver gxui.Driver, theme *basic.Theme, controller Controller) *Commander {
+func New(driver gxui.Driver, theme *basic.Theme, root gxui.Window, controller Controller) *Commander {
 	commander := &Commander{
 		driver: driver,
 		theme:  theme,
+		root:   root,
 	}
 	commander.Container.Init(commander, theme)
 	commander.BackgroundBorderPainter.Init(commander)
@@ -334,15 +336,15 @@ func (c *Commander) Execute(e bind.Bindable) {
 		}
 	}()
 	if before, ok := e.(BeforeExecutor); ok {
-		before.BeforeExec(c)
+		before.BeforeExec(c.root)
 	}
 	var status bind.Status
 	switch src := e.(type) {
 	case bind.Op:
-		status = execute(src.Exec, c)
+		status = execute(src.Exec, c.root)
 	case bind.MultiOp:
 		src.Reset()
-		status = execute(src.Store, c)
+		status = execute(src.Store, c.root)
 		if status&bind.Executed == 0 {
 			break
 		}

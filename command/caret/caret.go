@@ -36,12 +36,17 @@ type CaretHandler interface {
 	SetCarets(...int)
 }
 
+// MovingHook is a hook that needs to trigger when the caret is moving.
+// If d and/or carets need to be modified by the hook before carets
+// actually move, the MovingHook can return a different direction
+// and/or slice of carets.
 type MovingHook interface {
-	Moving(input.Editor, Direction, []int) Direction
+	Moving(e input.Editor, d Direction, m Mod, carets []int) (newD Direction, newM Mod, newCarets []int)
 }
 
+// MovedHook is a hook that needs to trigger after the carets have moved.
 type MovedHook interface {
-	Moved(input.Editor, Direction, []int)
+	Moved(e input.Editor, carets []int)
 }
 
 type Direction int
@@ -149,11 +154,17 @@ func (m *Mover) Store(elem interface{}) bind.Status {
 	return bind.Waiting
 }
 
+func (m *Mover) trigger(h MovingHook, d Direction, mod Mod, carets []int) bind.Bindable {
+	newDir, newMod, newCarets := h.Moving(m.editor, d, mod, carets)
+	if newDir == NoDirection {
+		return m.To(newCarets...)
+	}
+	return m.For(newDir, newMod)
+}
+
 func (m *Mover) Exec() error {
-	if m.direction != NoDirection {
-		for _, h := range m.moving {
-			m = m.For(h.Moving(m.editor, m.direction, m.ctrl.Carets()), m.mod).(*Mover)
-		}
+	for _, h := range m.moving {
+		m = m.trigger(h, m.direction, m.mod, m.carets).(*Mover)
 	}
 	// TODO: a lot of this is workaround BS.  This should be cleaned up soon.
 	switch m.direction {
@@ -209,7 +220,7 @@ func (m *Mover) Exec() error {
 		}
 	}
 	for _, h := range m.moved {
-		h.Moved(m.editor, m.direction, m.ctrl.Carets())
+		h.Moved(m.editor, m.ctrl.Carets())
 	}
 	return nil
 }

@@ -39,6 +39,14 @@ type FileBinder interface {
 	FileBindables(path string) []bind.Bindable
 }
 
+// A FileChanger is a type that just needs to be called when
+// the open file changes.
+type FileChanger interface {
+	// FileChanged will be called when the currently focused
+	// file changes.
+	FileChanged(oldPath, newPath string)
+}
+
 // A Binder is a type which can bind bindables
 type Binder interface {
 	Push(...bind.Bindable)
@@ -114,7 +122,8 @@ type Location struct {
 	opener  EditorOpener
 	openers []Opener
 
-	hooks []FileBinder
+	binders  []FileBinder
+	changers []FileChanger
 }
 
 func NewLocation(driver gxui.Driver) *Location {
@@ -130,7 +139,8 @@ func (f *Location) For(opts ...Opt) bind.Bindable {
 		line:       cp(f.line),
 		col:        cp(f.col),
 	}
-	newF.hooks = append(newF.hooks, f.hooks...)
+	newF.binders = append(newF.binders, f.binders...)
+	newF.changers = append(newF.changers, f.changers...)
 	for _, o := range opts {
 		if err := o(newF); err != nil {
 			if len(newF.Warn) != 0 {
@@ -160,6 +170,7 @@ func (f *Location) Store(elem interface{}) bind.Status {
 	case EditorOpener:
 		f.opener = src
 	case Opener:
+		// TODO: scrap this and use hooks instead.
 		f.openers = append(f.openers, src)
 	case Binder:
 		f.binder = src
@@ -180,8 +191,10 @@ func (f *Location) moverReady() bool {
 }
 
 func (f *Location) Exec() error {
+	var oldPath string
 	e := f.opener.CurrentEditor()
 	if !f.skipUnbind && e != nil {
+		oldPath = e.Filepath()
 		f.binder.Pop()
 	}
 	path := f.path
@@ -195,9 +208,14 @@ func (f *Location) Exec() error {
 	for _, o := range f.openers {
 		o.Open(path)
 	}
+	if oldPath != path {
+		for _, c := range f.changers {
+			c.FileChanged(oldPath, path)
+		}
+	}
 	var b []bind.Bindable
-	for _, h := range f.hooks {
-		b = append(b, h.FileBindables(path)...)
+	for _, binder := range f.binders {
+		b = append(b, binder.FileBindables(path)...)
 	}
 	f.binder.Push(b...)
 
@@ -228,11 +246,14 @@ func (f *Location) moveCarets(l LineStarter) {
 }
 
 func (f *Location) Bind(h bind.Bindable) (bind.HookedMultiOp, error) {
-	bndr, ok := h.(FileBinder)
-	if !ok {
-		return nil, fmt.Errorf("expected hook to be FileBinder, was %T", h)
-	}
 	newF := f.For().(*Location)
-	newF.hooks = append(newF.hooks, bndr)
+	switch src := h.(type) {
+	case FileBinder:
+		newF.binders = append(newF.binders, src)
+	case FileChanger:
+		newF.changers = append(newF.changers, src)
+	default:
+		return nil, fmt.Errorf("expected hook to be FileBinder or FileChanger, was %T", h)
+	}
 	return newF, nil
 }
