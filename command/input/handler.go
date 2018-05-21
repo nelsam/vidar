@@ -160,7 +160,7 @@ func (e *Handler) HandleEvent(focused input.Editor, ev gxui.KeyboardEvent) {
 			}
 		}
 		var edits []input.Edit
-		for _, s := range editor.Controller().Selections() {
+		for _, s := range editor.Controller().SelectionSlice() {
 			if s.Start() < 0 {
 				continue
 			}
@@ -186,7 +186,7 @@ func (e *Handler) HandleEvent(focused input.Editor, ev gxui.KeyboardEvent) {
 		}
 	case gxui.KeyBackspace, gxui.KeyDelete:
 		var edits []input.Edit
-		for _, s := range editor.Controller().Selections() {
+		for _, s := range editor.Controller().SelectionSlice() {
 			if s.Start() < 0 {
 				continue
 			}
@@ -216,7 +216,7 @@ func (e *Handler) HandleInput(focused input.Editor, ev gxui.KeyStrokeEvent) {
 	editor := focused.(*editor.CodeEditor)
 	ctrl := editor.Controller()
 	var edits []input.Edit
-	for _, s := range editor.Controller().Selections() {
+	for _, s := range editor.Controller().SelectionSlice() {
 		edits = append(edits, input.Edit{
 			At:  s.Start(),
 			Old: ctrl.TextRunes()[s.Start():s.End()],

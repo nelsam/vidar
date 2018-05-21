@@ -61,7 +61,7 @@ func (f *Replace) Start(control gxui.Control) gxui.Control {
 		}
 		haystack := f.editor.Text()
 		start := 0
-		var selections gxui.TextSelectionList
+		var selections []gxui.TextSelection
 
 		count := utf8.RuneCountInString(needle)
 		length := len(needle)
@@ -73,7 +73,7 @@ func (f *Replace) Start(control gxui.Control) gxui.Control {
 			pos += count
 			start += (next + length)
 		}
-		f.editor.Select(selections)
+		f.editor.SelectSlice(selections)
 		f.status.SetText(fmt.Sprintf("%s: %d results found", needle, len(selections)))
 	})
 	f.find.OnKeyPress(func(ev gxui.KeyboardEvent) {
@@ -90,10 +90,10 @@ func (f *Replace) Start(control gxui.Control) gxui.Control {
 		switch ev.Key {
 		case gxui.KeyEnter:
 			f.edits = []input.Edit{}
-			selections := f.editor.Controller().Selections()
+			selections := f.editor.Controller().SelectionSlice()
 
-			for i := selections.Len(); i != 0; i-- {
-				begin, end := selections.Interval(i - 1)
+			for i := len(selections) - 1; i >= 0; i-- {
+				begin, end := selections[i].Start(), selections[i].End()
 				str := []rune(f.editor.Text())[begin:end]
 				f.edits = append(f.edits, input.Edit{
 					At:  int(begin),

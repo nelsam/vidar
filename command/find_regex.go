@@ -54,7 +54,7 @@ func (f *RegexFind) Start(control gxui.Control) gxui.Control {
 			return
 		}
 
-		var selections gxui.TextSelectionList
+		var selections []gxui.TextSelection
 
 		for _, indexes := range arr {
 			for i := 0; i < len(indexes); i += 2 {
@@ -65,7 +65,7 @@ func (f *RegexFind) Start(control gxui.Control) gxui.Control {
 
 			}
 		}
-		f.editor.Select(selections)
+		f.editor.SelectSlice(selections)
 		f.display.SetText(fmt.Sprintf("%s: %d results found", needle, len(selections)))
 	})
 	return f.display
