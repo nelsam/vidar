@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+message Connect {
+	string session = 1;
+}
+
+message Project {
+	message Directory {
+		string path = 1;
+		repeated Directory children = 2;
+	}
+	Directory root = 1;
+}
+
+message TableOfContents {
+	message Node {
+		string name = 1;
+
+		// color is encoded as four 8 bit values (RGBA) in a 64-bit integer.
+		int64 color = 2;
+
+		string filename = 3;
+		int32 offset = 4;
+
+		repeated Node children = 5;
+	}
+	repeated Node nodes = 1;
+}
+
+message WindowSize {
+	uint32 x = 1;
+	uint32 y = 2;
+}
+
+message Tabs {
+	repeated string open_tabs = 1;
+}
+
+message Splits {
+	enum Direction {
+		Horizontal = 0;
+		Vertical = 1;
+	}
+	Direction direction = 1;
+	repeated Layout splits = 2;
+}
+
+message Layout {
+	oneof children {
+		Tabs tabs = 1;
+		Splits splits = 2;
+	}
+}
+
+message Selections {
+	message Selection {
+		uint32 start = 1;
+		uint32 end = 2;
+	}
+	repeated Selection positions = 1;
+}
+
+message CursorPosition {
+	float x_percent = 1;
+	float y_percent = 2;
+}
+
+message Request {
+	oneof type {
+		Project project = 1;
+		TableOfContents toc = 2;
+		WindowSize windowSize = 3;
+		CursorPosition cursor = 4;
+		Selections selections = 6;
+		Layout layout = 7;
+	}
+}
+
+message TextEdit {
+	uint32 offset = 1;
+	string old = 2;
+	string new = 3;
+}
+
+message FileEvent {
+	string path = 1;
+	enum Op {
+		Create = 0;
+		Write = 1;
+		Remove = 2;
+		Rename = 3;
+		Chmod = 4;
+	}
+	Op op = 2;
+}
+
+message Event {
+	string focused_file = 1;
+	oneof event {
+		TextEdit text_edit = 2;
+		Selections selections_changed = 3;
+		CursorPosition cursor_moved = 4;
+		FileEvent file_event = 5;
+
+		// Numerical values 1-15 are reserved for events that happen
+		// frequently.  Everything below this line should happen less
+		// frequently, and therefor be 16+.
+
+		Connect connect = 18;
+		Request request = 19;
+		Project project = 16;
+		TableOfContents toc = 21;
+	}
+}
+
+service SharedSession {
+	rpc Start(stream Event) returns (stream Event) {}
+}
