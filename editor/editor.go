@@ -53,6 +53,7 @@ func (e *CodeEditor) Init(driver gxui.Driver, theme *basic.Theme, syntaxTheme th
 
 	e.CodeEditor.Init(e, driver, theme, font)
 	e.CodeEditor.SetScrollBarEnabled(true)
+	e.CodeEditor.SetScrollRound(true)
 	e.SetDesiredWidth(math.MaxSize.W)
 	e.watcherSetup()
 
