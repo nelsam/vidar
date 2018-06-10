@@ -9,10 +9,10 @@ import (
 	"fmt"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/bind"
 	"github.com/nelsam/vidar/command/focus"
-	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
-	"github.com/nelsam/vidar/editor"
+	"github.com/nelsam/vidar/input"
+	"github.com/nelsam/vidar/internal/editor"
 )
 
 type BindManager interface {

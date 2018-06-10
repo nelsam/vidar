@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/bind"
+	"github.com/nelsam/vidar/input"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/setting"
 )

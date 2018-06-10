@@ -8,9 +8,9 @@ import (
 	"fmt"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/bind"
 	"github.com/nelsam/vidar/command/caret"
 	"github.com/nelsam/vidar/command/scroll"
-	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/command"
 )
 

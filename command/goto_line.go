@@ -12,7 +12,7 @@ import (
 	"unicode"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/bind"
 	"github.com/nelsam/vidar/plugin/status"
 )
 

@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/input"
 )
 
 // ContextChangeHook is similar to a ChangeHook, but takes a

@@ -13,7 +13,7 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/command/caret"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/input"
 	"github.com/nelsam/vidar/setting"
 )
 

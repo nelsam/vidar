@@ -9,7 +9,7 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/bind"
 	"github.com/nelsam/vidar/plugin/command"
 	"github.com/nelsam/vidar/plugin/gocode"
 )

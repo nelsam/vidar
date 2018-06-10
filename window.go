@@ -10,7 +10,7 @@ import (
 	"image"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/asset"
+	"github.com/nelsam/vidar/internal/asset"
 )
 
 // icon returns the image.Image to be used as vidar's icon.

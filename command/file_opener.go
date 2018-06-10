@@ -10,9 +10,9 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/bind"
 	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/command/fs"
-	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/status"
 )
 

@@ -4,7 +4,7 @@
 
 package command
 
-import "github.com/nelsam/vidar/commander/bind"
+import "github.com/nelsam/vidar/bind"
 
 type ViewHook struct{}
 

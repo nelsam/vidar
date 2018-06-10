@@ -11,7 +11,7 @@ import (
 	"unsafe"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/input"
 )
 
 // ChangeHook is a hook that triggers events on text changing.

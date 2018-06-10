@@ -4,7 +4,7 @@
 
 package input
 
-import "github.com/nelsam/vidar/commander/input"
+import "github.com/nelsam/vidar/input"
 
 // Canceler is a type that needs to know when it's being cancelled.
 // This could be anything from a long-running process that can't

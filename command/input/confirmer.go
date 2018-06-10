@@ -4,7 +4,7 @@
 
 package input
 
-import "github.com/nelsam/vidar/commander/input"
+import "github.com/nelsam/vidar/input"
 
 // Confirmer is a type that needs to know when a user is confirming
 // an action.  It is typically a type that adds itself to the UI

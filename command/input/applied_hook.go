@@ -4,7 +4,7 @@
 
 package input
 
-import "github.com/nelsam/vidar/commander/input"
+import "github.com/nelsam/vidar/input"
 
 // An AppliedChangeHook is a hook that needs to be informed about
 // edits immediately after they are applied, before the call to

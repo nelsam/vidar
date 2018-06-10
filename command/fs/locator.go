@@ -15,7 +15,7 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/scoring"
+	"github.com/nelsam/vidar/score"
 	"github.com/nelsam/vidar/setting"
 )
 
@@ -171,7 +171,7 @@ func (f *Locator) updateCompletions() {
 	f.clearCompletions(f.completions)
 
 	f.completions = nil
-	newCompletions := scoring.Sort(f.files, f.file.Text())
+	newCompletions := score.Sort(f.files, f.file.Text())
 
 	for _, comp := range newCompletions {
 		color := f.theme.LabelStyle.FontColor

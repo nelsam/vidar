@@ -10,8 +10,8 @@ import (
 	"github.com/apoydence/onpar"
 	"github.com/apoydence/onpar/expect"
 	"github.com/apoydence/onpar/matchers"
+	"github.com/nelsam/vidar/bind"
 	"github.com/nelsam/vidar/command/focus"
-	"github.com/nelsam/vidar/commander/bind"
 )
 
 func TestLocation(t *testing.T) {

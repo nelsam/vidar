@@ -4,9 +4,7 @@
 
 package command
 
-import (
-	"github.com/nelsam/vidar/commander/input"
-)
+import "github.com/nelsam/vidar/input"
 
 type RedrawableEditor interface {
 	input.Editor

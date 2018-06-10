@@ -5,7 +5,7 @@
 package command
 
 import (
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/input"
 	"github.com/nelsam/vidar/setting"
 )
 

@@ -13,8 +13,8 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commander"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/input"
+	"github.com/nelsam/vidar/internal/commander"
 )
 
 type SelectionEditor interface {

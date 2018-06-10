@@ -7,7 +7,7 @@ package project
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/bind"
 )
 
 // Bindables returns all bindables that relate to projects.

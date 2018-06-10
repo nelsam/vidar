@@ -8,8 +8,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/nelsam/vidar/commander/input"
-	"github.com/nelsam/vidar/syntax"
+	"github.com/nelsam/vidar/input"
+	"github.com/nelsam/vidar/plugin/gosyntax/syntax"
 )
 
 type Highlight struct {

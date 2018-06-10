@@ -10,7 +10,7 @@
 // For more information, see vidar's plugin package documentation.
 package command
 
-import "github.com/nelsam/vidar/commander/bind"
+import "github.com/nelsam/vidar/bind"
 
 // A Commander is a type that can look up bind.Bindables by name.
 type Commander interface {
