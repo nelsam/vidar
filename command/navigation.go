@@ -142,7 +142,7 @@ func (n NavHook) OpName() string {
 func (n NavHook) FileBindables(string) []bind.Bindable {
 	return []bind.Bindable{
 		&caret.OnEdit{Commander: n.Commander},
-		&scroll.OnEdit{Commander: n.Commander},
+		&scroll.OnMove{Commander: n.Commander},
 		NewPrevLine(),
 		NewSelectPrevLine(),
 		NewNextLine(),

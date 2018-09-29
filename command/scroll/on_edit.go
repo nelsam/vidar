@@ -14,21 +14,19 @@ type Commander interface {
 	Execute(bind.Bindable)
 }
 
-type OnEdit struct {
+type OnMove struct {
 	Commander Commander
 }
 
-func (o *OnEdit) Name() string {
-	return "scroll-movement-on-edit"
+func (o *OnMove) Name() string {
+	return "scroll-on-caret-movement"
 }
 
-func (o *OnEdit) OpName() string {
-	return "input-handler"
+func (o *OnMove) OpName() string {
+	return "caret-movement"
 }
 
-func (o *OnEdit) Applied(e input.Editor, edits []input.Edit) {
-	if len(edits) == 1 && len(edits[0].New) == 0 {
-		s := o.Commander.Bindable("scroll-setting").(*Scroller)
-		o.Commander.Execute(s.To(ToRune, edits[0].At))
-	}
+func (o *OnMove) Moved(e input.Editor, carets []int) {
+	s := o.Commander.Bindable("scroll").(*Scroller)
+	o.Commander.Execute(s.For(ToRune(carets[0])))
 }

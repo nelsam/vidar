@@ -5,89 +5,131 @@
 package scroll
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commander/input"
-	"github.com/nelsam/vidar/editor"
 )
 
+// Controller matches the type we need to control scrolling.
 type Controller interface {
 	ScrollToLine(int)
-	SetScrollOffset(int)
+	ScrollToRune(int)
 }
 
+// ScrolledHook is a hook that will trigger whenever the view has
+// scrolled.
 type ScrolledHook interface {
-	Scrolled(e input.Editor, d Direction, pos int)
+	Scrolled(e input.Editor, focus int)
 }
 
-type Direction int
+// Opt is an option function to be passed to Scroller.For
+type Opt func(*Scroller) *Scroller
 
-const (
-	ToLine Direction = iota
-	ToRune
-	SetOffset
-)
+// clone just creates a clone of s.
+func clone(s *Scroller) *Scroller {
+	clone := &Scroller{
+		pos:      s.pos,
+		line:     s.line,
+		scrolled: s.scrolled,
+		editor:   s.editor,
+		ctrl:     s.ctrl,
+	}
+	for _, h := range s.scrolled {
+		clone.scrolled = append(clone.scrolled, h)
+	}
+	return clone
+}
 
+// ToLine is an Opt that sets s to scroll vertically, focusing on line.
+// The horizontal position will not change.
+func ToLine(line int) Opt {
+	return func(s *Scroller) *Scroller {
+		newS := clone(s)
+		newS.line = line
+		newS.pos = -1
+		return newS
+	}
+}
+
+// ToRune is an Opt that sets s to scroll directly to a rune position.
+func ToRune(pos int) Opt {
+	return func(s *Scroller) *Scroller {
+		newS := clone(s)
+		newS.line = -1
+		newS.pos = pos
+		return newS
+	}
+}
+
+// Scroller is a bind.Op that is used to scroll the editor frame.
 type Scroller struct {
-	direction Direction
-	position  int
-	scrolled  ScrolledHook
+	pos      int
+	line     int
+	scrolled []ScrolledHook
 
 	editor input.Editor
 	ctrl   Controller
 }
 
+// Name returns Scroller's name.
 func (*Scroller) Name() string {
-	return "scroll-setting"
+	return "scroll"
 }
 
-func (m *Scroller) To(dir Direction, pos int) bind.Bindable {
-	return &Scroller{
-		position:  pos,
-		direction: dir,
-		scrolled:  m.scrolled,
-		editor:    m.editor,
-		ctrl:      m.ctrl,
+// For returns a copy of s (as a bind.Bindable for dependency reasons) which
+// has had the passed in opts applied.
+func (s *Scroller) For(opts ...Opt) bind.Bindable {
+	for _, o := range opts {
+		s = o(s)
 	}
+	return s
 }
 
-func (m *Scroller) Bind(b bind.Bindable) (bind.HookedMultiOp, error) {
-
-	newS := &Scroller{
-		direction: m.direction,
-	}
+// Bind clones s, binds b as a hook to the clone, and returns it.
+func (s *Scroller) Bind(b bind.Bindable) (bind.HookedMultiOp, error) {
+	newS := clone(s)
 
 	if h, ok := b.(ScrolledHook); ok {
-		newS.scrolled = h
+		newS.scrolled = append(newS.scrolled, h)
 		return newS, nil
 	}
-	return nil, fmt.Errorf("hook %s not implemented ScrolledHook", b.Name())
-
+	return nil, fmt.Errorf("hook %s does not implement ScrolledHook", b.Name())
 }
 
-func (m *Scroller) Reset() {
-	m.editor = nil
-	m.ctrl = nil
+// Reset resets the execution state of s.
+func (s *Scroller) Reset() {
+	s.editor = nil
+	s.ctrl = nil
 }
 
-func (m *Scroller) Store(elem interface{}) bind.Status {
-	switch src := elem.(type) {
-	case input.Editor:
-		m.editor = src
-	case Controller:
-		m.ctrl = src
+// Store checks elem for the necessary methods and stores it if it's needed.
+func (s *Scroller) Store(elem interface{}) bind.Status {
+	// We can't do a type switch here because with gxui, at least,
+	// the Controller is also the input.Editor.
+	if e, ok := elem.(input.Editor); ok {
+		s.editor = e
 	}
-	if m.editor != nil && m.ctrl != nil {
+	if c, ok := elem.(Controller); ok {
+		s.ctrl = c
+	}
+
+	if s.editor != nil && s.ctrl != nil {
 		return bind.Done
 	}
 	return bind.Waiting
 }
 
-func (m *Scroller) Exec() error {
-	editor := m.editor.(*editor.CodeEditor)
-	lineIndex := math.Max(editor.LineIndex(m.position)-3, 0)
-	editor.ScrollToLine(lineIndex)
+// Exec executes s after it has stored all the values it needs.
+func (s *Scroller) Exec() error {
+	switch {
+	case s.line >= 0:
+		s.ctrl.ScrollToLine(s.line)
+	case s.pos >= 0:
+		s.ctrl.ScrollToRune(s.pos)
+	default:
+		return errors.New("scroll executed without any position information set")
+	}
 	return nil
 }
