@@ -279,8 +279,12 @@ func (f *Locator) addCompletions(completions []gxui.Label) {
 }
 
 func (f *Locator) loadDirContents() {
-	defer f.updateCompletions()
 
+	f.lock.Lock()
+	defer func() {
+		f.lock.Unlock()
+		f.updateCompletions()
+	}()
 	f.files = nil
 	dir := f.dir.Text()
 	if dir == "" {

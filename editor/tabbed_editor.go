@@ -33,6 +33,7 @@ type TabbedEditor struct {
 	theme       *basic.Theme
 	syntaxTheme theme.Theme
 	font        gxui.Font
+	cur         string
 }
 
 func NewTabbedEditor(driver gxui.Driver, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *TabbedEditor {
@@ -117,9 +118,18 @@ func (e *TabbedEditor) Editors() uint {
 
 func (e *TabbedEditor) CreatePanelTab() mixins.PanelTab {
 	tab := basic.CreatePanelTab(e.theme)
+	tab.OnMouseDown(func(ev gxui.MouseEvent) {
+		if e.CurrentEditor() != nil {
+			e.cur = e.CurrentEditor().Filepath()
+		}
+	})
 	tab.OnMouseUp(func(gxui.MouseEvent) {
 		if e.CurrentEditor() == nil {
-			e.purgeSelf()
+			if len(e.editors) == 1 {
+				e.purgeSelf()
+			} else {
+				delete(e.editors, e.cur)
+			}
 			return
 		}
 		opener := e.cmdr.Bindable("focus-location").(Opener)
