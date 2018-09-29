@@ -14,19 +14,30 @@ import (
 	"github.com/nelsam/vidar/plugin/status"
 )
 
+// EditorOpener represents a type that can open a file, returning
+// an editor.
 type EditorOpener interface {
 	Open(string) (editor input.Editor, existed bool)
 	CurrentEditor() input.Editor
 }
 
+// Opener represents a type that can open a file, but doesn't
+// return anything.
+//
+// This is legacy code from before hooks existed and should be
+// removed when all places that currently use it are converted to
+// using hooks.
 type Opener interface {
 	Open(string)
 }
 
+// LineStarter represents a type that knows which position lines start
+// at.
 type LineStarter interface {
 	LineStart(int) int
 }
 
+// Mover represents a type that can move carets.
 type Mover interface {
 	To(...int) bind.Bindable
 }
@@ -54,8 +65,11 @@ type Binder interface {
 	Execute(bind.Bindable)
 }
 
+// Opt is an option function that will apply to *Location types.
 type Opt func(*Location) error
 
+// Path takes a file path and returns an Opt that will modify a
+// *Location to focus that file.
 func Path(path string) Opt {
 	return func(l *Location) error {
 		l.path = path
@@ -63,6 +77,8 @@ func Path(path string) Opt {
 	}
 }
 
+// Line takes a line number and returns an Opt that will modify a
+// *Location to move carets to that line.  Compatible with Column.
 func Line(line int) Opt {
 	return func(l *Location) error {
 		if l.offset != nil {
@@ -73,6 +89,8 @@ func Line(line int) Opt {
 	}
 }
 
+// Column takes a column number and returns an Opt that will modify
+// a *Location to move carets to that column.  Compatible with Line.
 func Column(col int) Opt {
 	return func(l *Location) error {
 		if l.offset != nil {
@@ -83,6 +101,8 @@ func Column(col int) Opt {
 	}
 }
 
+// Offset takes a character offset and returns an Opt that will
+// modify a *Location to move carets to that offset.
 func Offset(offset int) Opt {
 	return func(l *Location) error {
 		if l.col != nil || l.line != nil {
@@ -93,6 +113,10 @@ func Offset(offset int) Opt {
 	}
 }
 
+// SkipUnbind returns an Opt that modifies a *Location to skip the
+// process of unbinding previously-bound commands.  This is currently
+// used to work around an issue that would leave the editor with *no*
+// commands bound to it, as the final entry got popped ofl.
 func SkipUnbind() Opt {
 	return func(l *Location) error {
 		l.skipUnbind = true
@@ -108,6 +132,8 @@ func cp(ptr *int) *int {
 	return &i
 }
 
+// Location is a bind.MultiOp that knows how to focus locations in
+// the code.
 type Location struct {
 	status.General
 	driver gxui.Driver
@@ -126,127 +152,137 @@ type Location struct {
 	changers []FileChanger
 }
 
+// NewLocation returns a *Location bound to the passed in driver.
 func NewLocation(driver gxui.Driver) *Location {
 	return &Location{driver: driver}
 }
 
-func (f *Location) For(opts ...Opt) bind.Bindable {
-	newF := &Location{
-		driver:     f.driver,
-		path:       f.path,
-		skipUnbind: f.skipUnbind,
-		offset:     cp(f.offset),
-		line:       cp(f.line),
-		col:        cp(f.col),
+// For makes a clone of l, then applies opts to the copy before
+// returning it.
+func (l *Location) For(opts ...Opt) bind.Bindable {
+	newL := &Location{
+		driver:     l.driver,
+		path:       l.path,
+		skipUnbind: l.skipUnbind,
+		offset:     cp(l.offset),
+		line:       cp(l.line),
+		col:        cp(l.col),
 	}
-	newF.binders = append(newF.binders, f.binders...)
-	newF.changers = append(newF.changers, f.changers...)
+	newL.binders = append(newL.binders, l.binders...)
+	newL.changers = append(newL.changers, l.changers...)
 	for _, o := range opts {
-		if err := o(newF); err != nil {
-			if len(newF.Warn) != 0 {
-				newF.Warn += "; "
+		if err := o(newL); err != nil {
+			if len(newL.Warn) != 0 {
+				newL.Warn += "; "
 			}
-			newF.Warn += fmt.Sprintf("failed to apply option: %s", err)
+			newL.Warn += fmt.Sprintf("failed to apply option: %s", err)
 		}
 	}
-	return newF
+	return newL
 }
 
-func (f *Location) Name() string {
+// Name returns l's name.
+func (l *Location) Name() string {
 	return "focus-location"
 }
 
-func (f *Location) Reset() {
-	f.mover = nil
-	f.binder = nil
-	f.opener = nil
-	f.openers = nil
+// Reset resets l's execution state.
+func (l *Location) Reset() {
+	l.mover = nil
+	l.binder = nil
+	l.opener = nil
+	l.openers = nil
 }
 
-func (f *Location) Store(elem interface{}) bind.Status {
+// Store checks elem for an types that l needs to store in order to
+// execute.
+func (l *Location) Store(elem interface{}) bind.Status {
 	switch src := elem.(type) {
 	case Mover:
-		f.mover = src
+		l.mover = src
 	case EditorOpener:
-		f.opener = src
+		l.opener = src
 	case Opener:
 		// TODO: scrap this and use hooks instead.
-		f.openers = append(f.openers, src)
+		l.openers = append(l.openers, src)
 	case Binder:
-		f.binder = src
+		l.binder = src
 	}
 
-	if !f.moverReady() || f.opener == nil || f.binder == nil {
+	if !l.moverReady() || l.opener == nil || l.binder == nil {
 		return bind.Waiting
 	}
 	return bind.Executing
 }
 
-func (f *Location) moverReady() bool {
-	if f.line == nil && f.col == nil && f.offset == nil {
+func (l *Location) moverReady() bool {
+	if l.line == nil && l.col == nil && l.offset == nil {
 		// The mover is not needed.
 		return true
 	}
-	return f.mover != nil
+	return l.mover != nil
 }
 
-func (f *Location) Exec() error {
+// Exec executes l against the values it has stored, returning an
+// error if it encounters any problems.
+func (l *Location) Exec() error {
 	var oldPath string
-	e := f.opener.CurrentEditor()
-	if !f.skipUnbind && e != nil {
+	e := l.opener.CurrentEditor()
+	if !l.skipUnbind && e != nil {
 		oldPath = e.Filepath()
-		f.binder.Pop()
+		l.binder.Pop()
 	}
-	path := f.path
+	path := l.path
 	if path == "" && e != nil {
 		path = e.Filepath()
 	}
 	if path == "" {
 		return nil
 	}
-	e, _ = f.opener.Open(path)
-	for _, o := range f.openers {
+	e, _ = l.opener.Open(path)
+	for _, o := range l.openers {
 		o.Open(path)
 	}
 	if oldPath != path {
-		for _, c := range f.changers {
+		for _, c := range l.changers {
 			c.FileChanged(oldPath, path)
 		}
 	}
 	var b []bind.Bindable
-	for _, binder := range f.binders {
+	for _, binder := range l.binders {
 		b = append(b, binder.FileBindables(path)...)
 	}
-	f.binder.Push(b...)
+	l.binder.Push(b...)
 
 	// Let the editor finish loading its text before we try
 	// to load the start of a line.
-	f.driver.Call(func() {
-		f.moveCarets(e.(LineStarter))
+	l.driver.Call(func() {
+		l.moveCarets(e.(LineStarter))
 	})
 	return nil
 }
 
-func (f *Location) moveCarets(l LineStarter) {
-	if f.offset == nil && f.line == nil && f.col == nil {
+func (l *Location) moveCarets(s LineStarter) {
+	if l.offset == nil && l.line == nil && l.col == nil {
 		return
 	}
-	if f.offset != nil {
-		f.binder.Execute(f.mover.To(*f.offset))
+	if l.offset != nil {
+		l.binder.Execute(l.mover.To(*l.offset))
 		return
 	}
 	offset := 0
-	if f.line != nil {
-		offset = l.LineStart(*f.line)
+	if l.line != nil {
+		offset = s.LineStart(*l.line)
 	}
-	if f.col != nil {
-		offset += *f.col
+	if l.col != nil {
+		offset += *l.col
 	}
-	f.binder.Execute(f.mover.To(offset))
+	l.binder.Execute(l.mover.To(offset))
 }
 
-func (f *Location) Bind(h bind.Bindable) (bind.HookedMultiOp, error) {
-	newF := f.For().(*Location)
+// Bind binds hooks to l.
+func (l *Location) Bind(h bind.Bindable) (bind.HookedMultiOp, error) {
+	newF := l.For().(*Location)
 	switch src := h.(type) {
 	case FileBinder:
 		newF.binders = append(newF.binders, src)
