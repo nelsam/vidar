@@ -71,7 +71,8 @@ func (g *GoCode) cancel(e Editor) {
 func (g *GoCode) show(ctx context.Context, l *suggestionList, pos int) {
 	n := l.show(ctx, pos)
 	if n == 0 || ctxCancelled(ctx) {
-		log.Printf("gocode: context cancelled or %d == 0", n)
+		// TODO: Add this as a UI message.
+		log.Printf("gocode: found no results (or context cancelled)")
 		return
 	}
 
@@ -83,6 +84,7 @@ func (g *GoCode) show(ctx context.Context, l *suggestionList, pos int) {
 
 	g.driver.Call(func() {
 		if ctxCancelled(ctx) {
+			// TODO: Add this as a UI message.
 			log.Printf("cancelled")
 			return
 		}
@@ -120,11 +122,7 @@ func (g *GoCode) Moving(ie input.Editor, d caret.Direction, m caret.Mod, carets 
 		}
 		return d, m, carets
 	}
-	if len(e.Carets()) != 1 {
-		g.stop(e)
-		return d, m, carets
-	}
-	if m != caret.NoMod {
+	if len(e.Carets()) > 1 || m != caret.NoMod || l.adapter.Len() == 0 {
 		g.stop(e)
 		return d, m, carets
 	}
@@ -135,6 +133,7 @@ func (g *GoCode) Moving(ie input.Editor, d caret.Direction, m caret.Mod, carets 
 		l.SelectNext()
 	case caret.NoDirection:
 		g.stop(e)
+		return d, m, carets
 	default:
 		return d, m, carets
 	}
@@ -196,6 +195,9 @@ func (g *GoCode) Confirm(ie input.Editor) bool {
 		return false
 	}
 	g.stop(e)
+	if l.adapter.Len() == 0 {
+		return false
+	}
 	l.apply()
 	return true
 }
