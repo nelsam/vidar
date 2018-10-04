@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/nelsam/gxui/math"
+
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commander/input"
 )
@@ -16,6 +18,9 @@ import (
 type Controller interface {
 	ScrollToLine(int)
 	ScrollToRune(int)
+	SetScrollOffset(int)
+	StartOffset() int
+	LineIndex(int) int
 }
 
 // ScrolledHook is a hook that will trigger whenever the view has
@@ -23,6 +28,14 @@ type Controller interface {
 type ScrolledHook interface {
 	Scrolled(e input.Editor, focus int)
 }
+
+type Direction int
+
+const (
+	NoDirection Direction = iota
+
+	Up
+)
 
 // Opt is an option function to be passed to Scroller.For
 type Opt func(*Scroller) *Scroller
@@ -32,6 +45,8 @@ func clone(s *Scroller) *Scroller {
 	clone := &Scroller{
 		pos:      s.pos,
 		line:     s.line,
+		offset:   s.offset,
+		dir:      s.dir,
 		scrolled: s.scrolled,
 		editor:   s.editor,
 		ctrl:     s.ctrl,
@@ -49,16 +64,32 @@ func ToLine(line int) Opt {
 		newS := clone(s)
 		newS.line = line
 		newS.pos = -1
+		newS.offset = false
+		newS.dir = NoDirection
 		return newS
 	}
 }
 
 // ToRune is an Opt that sets s to scroll directly to a rune position.
-func ToRune(pos int) Opt {
+func ToRune(pos int, dir Direction) Opt {
 	return func(s *Scroller) *Scroller {
 		newS := clone(s)
 		newS.line = -1
 		newS.pos = pos
+		newS.offset = false
+		newS.dir = dir
+		return newS
+	}
+}
+
+// ToOldOffset is an Opt that sets scroll in the stored position
+func ToOldOffset() Opt {
+	return func(s *Scroller) *Scroller {
+		newS := clone(s)
+		newS.line = -1
+		newS.pos = -1
+		newS.offset = true
+		newS.dir = NoDirection
 		return newS
 	}
 }
@@ -67,6 +98,8 @@ func ToRune(pos int) Opt {
 type Scroller struct {
 	pos      int
 	line     int
+	offset   bool
+	dir      Direction
 	scrolled []ScrolledHook
 
 	editor input.Editor
@@ -114,7 +147,6 @@ func (s *Scroller) Store(elem interface{}) bind.Status {
 	if c, ok := elem.(Controller); ok {
 		s.ctrl = c
 	}
-
 	if s.editor != nil && s.ctrl != nil {
 		return bind.Done
 	}
@@ -127,7 +159,13 @@ func (s *Scroller) Exec() error {
 	case s.line >= 0:
 		s.ctrl.ScrollToLine(s.line)
 	case s.pos >= 0:
+		// TODO: to shift the horizontal scrolling if necessary
 		s.ctrl.ScrollToRune(s.pos)
+		if s.dir == Up {
+			s.ctrl.ScrollToLine(math.Max(s.ctrl.LineIndex(s.pos)-3, 0))
+		}
+	case s.offset:
+		s.ctrl.SetScrollOffset(s.ctrl.StartOffset())
 	default:
 		return errors.New("scroll executed without any position information set")
 	}
