@@ -84,7 +84,7 @@ func (f *Locator) Init(driver gxui.Driver, theme *basic.Theme) {
 	f.SetDirection(gxui.LeftToRight)
 	f.dir = newDirLabel(driver, theme)
 	f.AddChild(f.dir)
-	f.file = newFileBox(driver, theme)
+	f.file = newFileBox(driver, theme, f)
 	f.AddChild(f.file)
 	f.loadDirContents()
 }
@@ -112,72 +112,6 @@ func (f *Locator) SetPath(filePath string) {
 }
 
 func (f *Locator) KeyPress(event gxui.KeyboardEvent) bool {
-	if event.Modifier == 0 {
-		f.lock.RLock()
-		defer f.lock.RUnlock()
-
-		switch event.Key {
-		case gxui.KeyEscape:
-			if len(f.completions) > 0 {
-				f.clearCompletions(f.completions)
-				f.completions = nil
-				return true
-			}
-		case gxui.KeySlash:
-			fullPath := f.Path()
-			if len(f.completions) > 0 {
-				fullPath = filepath.Join(f.dir.Text(), f.completions[0].Text())
-			}
-			f.dir.SetText(fullPath)
-			f.file.setFile("")
-			go f.loadDirContents()
-			return true
-		case gxui.KeyEnter:
-			if len(f.completions) == 0 {
-				return false
-			}
-			fullPath := filepath.Join(f.dir.Text(), f.completions[0].Text())
-			finfo, err := os.Stat(fullPath)
-			if os.IsNotExist(err) {
-				return false
-			}
-			if err != nil {
-				return false
-			}
-			if !finfo.IsDir() {
-				f.file.setFile(finfo.Name())
-				return false
-			}
-			f.dir.SetText(fullPath)
-			f.file.setFile("")
-			go f.loadDirContents()
-			return true
-		case gxui.KeyRight:
-			f.clearCompletions(f.completions)
-			for i := 1; i < len(f.completions); i++ {
-				f.completions[i-1], f.completions[i] = f.completions[i], f.completions[i-1]
-			}
-			f.addCompletions(f.completions)
-			return true
-		case gxui.KeyLeft:
-			f.clearCompletions(f.completions)
-			for i := len(f.completions) - 1; i > 0; i-- {
-				f.completions[i-1], f.completions[i] = f.completions[i], f.completions[i-1]
-			}
-			f.addCompletions(f.completions)
-			return true
-		case gxui.KeyBackspace:
-			if len(f.file.Text()) == 0 {
-				newDir := filepath.Dir(f.dir.Text())
-				if newDir == f.dir.Text() {
-					newDir = systemRoot
-				}
-				f.dir.SetText(newDir)
-				go f.loadDirContents()
-				return true
-			}
-		}
-	}
 	return f.file.KeyPress(event)
 }
 
@@ -190,10 +124,6 @@ func (f *Locator) KeyUp(event gxui.KeyboardEvent) {
 }
 
 func (f *Locator) KeyStroke(event gxui.KeyStrokeEvent) bool {
-	defer f.updateCompletions()
-	if event.Character == filepath.Separator {
-		return false
-	}
 	return f.file.KeyStroke(event)
 }
 
@@ -279,7 +209,6 @@ func (f *Locator) addCompletions(completions []gxui.Label) {
 }
 
 func (f *Locator) loadDirContents() {
-
 	f.lock.Lock()
 	defer func() {
 		f.lock.Unlock()
@@ -349,12 +278,14 @@ func (l *dirLabel) Text() string {
 type fileBox struct {
 	mixins.TextBox
 
-	font gxui.Font
+	locator *Locator
+	font    gxui.Font
 }
 
-func newFileBox(driver gxui.Driver, theme *basic.Theme) *fileBox {
+func newFileBox(driver gxui.Driver, theme *basic.Theme, l *Locator) *fileBox {
 	file := &fileBox{
-		font: theme.DefaultMonospaceFont(),
+		locator: l,
+		font:    theme.DefaultMonospaceFont(),
 	}
 	file.TextBox.Init(file, driver, theme, theme.DefaultMonospaceFont())
 	file.SetTextColor(theme.TextBoxDefaultStyle.FontColor)
@@ -364,6 +295,85 @@ func newFileBox(driver gxui.Driver, theme *basic.Theme) *fileBox {
 	file.SetDesiredWidth(math.MaxSize.W)
 	file.SetMultiline(false)
 	return file
+}
+
+func (f *fileBox) KeyPress(event gxui.KeyboardEvent) bool {
+	l := f.locator
+	if event.Modifier == 0 {
+		l.lock.RLock()
+		defer l.lock.RUnlock()
+
+		switch event.Key {
+		case gxui.KeyEscape:
+			if len(l.completions) > 0 {
+				l.clearCompletions(l.completions)
+				l.completions = nil
+				return true
+			}
+		case gxui.KeySlash:
+			fullPath := l.Path()
+			if len(l.completions) > 0 {
+				fullPath = filepath.Join(l.dir.Text(), l.completions[0].Text())
+			}
+			l.dir.SetText(fullPath)
+			l.file.setFile("")
+			go l.loadDirContents()
+			return true
+		case gxui.KeyEnter:
+			if len(l.completions) == 0 {
+				return false
+			}
+			fullPath := filepath.Join(l.dir.Text(), l.completions[0].Text())
+			finfo, err := os.Stat(fullPath)
+			if os.IsNotExist(err) {
+				return false
+			}
+			if err != nil {
+				return false
+			}
+			if !finfo.IsDir() {
+				l.file.setFile(finfo.Name())
+				return false
+			}
+			l.dir.SetText(fullPath)
+			l.file.setFile("")
+			go l.loadDirContents()
+			return true
+		case gxui.KeyRight:
+			l.clearCompletions(l.completions)
+			for i := 1; i < len(l.completions); i++ {
+				l.completions[i-1], l.completions[i] = l.completions[i], l.completions[i-1]
+			}
+			l.addCompletions(l.completions)
+			return true
+		case gxui.KeyLeft:
+			l.clearCompletions(l.completions)
+			for i := len(l.completions) - 1; i > 0; i-- {
+				l.completions[i-1], l.completions[i] = l.completions[i], l.completions[i-1]
+			}
+			l.addCompletions(l.completions)
+			return true
+		case gxui.KeyBackspace:
+			if len(l.file.Text()) == 0 {
+				newDir := filepath.Dir(l.dir.Text())
+				if newDir == l.dir.Text() {
+					newDir = systemRoot
+				}
+				l.dir.SetText(newDir)
+				go l.loadDirContents()
+				return true
+			}
+		}
+	}
+	return f.TextBox.KeyPress(event)
+}
+
+func (f *fileBox) KeyStroke(event gxui.KeyStrokeEvent) bool {
+	defer f.locator.updateCompletions()
+	if event.Character == filepath.Separator {
+		return false
+	}
+	return f.TextBox.KeyStroke(event)
 }
 
 func (f *fileBox) setFile(file string) {
