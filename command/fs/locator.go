@@ -112,71 +112,65 @@ func (f *Locator) SetPath(filePath string) {
 }
 
 func (f *Locator) KeyPress(event gxui.KeyboardEvent) bool {
-	if event.Modifier == 0 {
-		f.lock.RLock()
-		defer f.lock.RUnlock()
+	if event.Modifier != 0 {
+		return f.file.KeyPress(event)
+	}
+	f.lock.RLock()
+	defer f.lock.RUnlock()
 
-		switch event.Key {
-		case gxui.KeyEscape:
-			if len(f.completions) > 0 {
-				f.clearCompletions(f.completions)
-				f.completions = nil
-				return true
-			}
-		case gxui.KeySlash:
-			fullPath := f.Path()
-			if len(f.completions) > 0 {
-				fullPath = filepath.Join(f.dir.Text(), f.completions[0].Text())
-			}
-			f.dir.SetText(fullPath)
-			f.file.setFile("")
-			go f.loadDirContents()
-			return true
-		case gxui.KeyEnter:
-			if len(f.completions) == 0 {
-				return false
-			}
-			fullPath := filepath.Join(f.dir.Text(), f.completions[0].Text())
-			finfo, err := os.Stat(fullPath)
-			if os.IsNotExist(err) {
-				return false
-			}
-			if err != nil {
-				return false
-			}
-			if !finfo.IsDir() {
-				f.file.setFile(finfo.Name())
-				return false
-			}
-			f.dir.SetText(fullPath)
-			f.file.setFile("")
-			go f.loadDirContents()
-			return true
-		case gxui.KeyRight:
+	switch event.Key {
+	case gxui.KeyEscape:
+		if len(f.completions) > 0 {
 			f.clearCompletions(f.completions)
-			for i := 1; i < len(f.completions); i++ {
-				f.completions[i-1], f.completions[i] = f.completions[i], f.completions[i-1]
-			}
-			f.addCompletions(f.completions)
+			f.completions = nil
 			return true
-		case gxui.KeyLeft:
-			f.clearCompletions(f.completions)
-			for i := len(f.completions) - 1; i > 0; i-- {
-				f.completions[i-1], f.completions[i] = f.completions[i], f.completions[i-1]
-			}
-			f.addCompletions(f.completions)
-			return true
-		case gxui.KeyBackspace:
-			if len(f.file.Text()) == 0 {
-				newDir := filepath.Dir(f.dir.Text())
-				if newDir == f.dir.Text() {
-					newDir = systemRoot
-				}
-				f.dir.SetText(newDir)
-				go f.loadDirContents()
-				return true
-			}
 		}
+	case gxui.KeyEnter:
+		if len(f.completions) == 0 {
+			return false
+		}
+		fullPath := filepath.Join(f.dir.Text(), f.completions[0].Text())
+		finfo, err := os.Stat(fullPath)
+		if os.IsNotExist(err) {
+			return false
+		}
+		if err != nil {
+			return false
+		}
+		if !finfo.IsDir() {
+			f.file.setFile(finfo.Name())
+			return false
+		}
+		f.dir.SetText(fullPath)
+		f.file.setFile("")
+		go f.loadDirContents()
+		return true
+	case gxui.KeyRight:
+		f.clearCompletions(f.completions)
+		for i := 1; i < len(f.completions); i++ {
+			f.completions[i-1], f.completions[i] = f.completions[i], f.completions[i-1]
+		}
+		f.addCompletions(f.completions)
+		return true
+	case gxui.KeyLeft:
+		f.clearCompletions(f.completions)
+		for i := len(f.completions) - 1; i > 0; i-- {
+			f.completions[i-1], f.completions[i] = f.completions[i], f.completions[i-1]
+		}
+		f.addCompletions(f.completions)
+		return true
+	case gxui.KeyBackspace:
+		if len(f.file.Text()) != 0 {
+			break
+		}
+		oldDir := strings.TrimSuffix(f.dir.Text(), string(filepath.Separator))
+		newDir := filepath.Dir(oldDir)
+		if oldDir == filepath.VolumeName(oldDir) {
+			newDir = systemRoot
+		}
+		f.dir.SetText(newDir)
+		go f.loadDirContents()
+		return true
 	}
 	return f.file.KeyPress(event)
 }
@@ -191,10 +185,17 @@ func (f *Locator) KeyUp(event gxui.KeyboardEvent) {
 
 func (f *Locator) KeyStroke(event gxui.KeyStrokeEvent) bool {
 	defer f.updateCompletions()
-	if event.Character == filepath.Separator {
-		return false
+	fullPath := f.Path()
+	if !pathSeparator(fullPath, event.Character) {
+		return f.file.KeyStroke(event)
 	}
-	return f.file.KeyStroke(event)
+	if len(f.completions) > 0 {
+		fullPath = filepath.Join(f.dir.Text(), f.completions[0].Text())
+	}
+	f.dir.SetText(fullPath)
+	f.file.setFile("")
+	go f.loadDirContents()
+	return false
 }
 
 func (f *Locator) KeyRepeat(event gxui.KeyboardEvent) {
@@ -246,7 +247,7 @@ func (f *Locator) updateCompletions() {
 
 	for _, comp := range newCompletions {
 		color := f.theme.LabelStyle.FontColor
-		if strings.HasSuffix(comp, "/") {
+		if len(comp) > 0 && comp[len(comp)-1] == filepath.Separator {
 			color = dirColor
 		}
 		l := newCompletionLabel(f.driver, f.theme, color)
@@ -302,7 +303,7 @@ func (f *Locator) loadDirContents() {
 	for _, finfo := range contents {
 		name := finfo.Name()
 		if finfo.IsDir() {
-			name += "/"
+			name += string(filepath.Separator)
 		}
 		f.files = append(f.files, name)
 	}
@@ -322,7 +323,8 @@ func newDirLabel(driver gxui.Driver, theme *basic.Theme) *dirLabel {
 }
 
 func (l *dirLabel) SetText(dir string) {
-	if len(dir) == 0 {
+	if root, ok := fsroot(dir); ok {
+		l.Label.SetText(root)
 		return
 	}
 	if dir[len(dir)-1] != filepath.Separator {
