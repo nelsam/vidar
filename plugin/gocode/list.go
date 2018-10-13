@@ -44,9 +44,10 @@ type suggestionList struct {
 	editor  Editor
 	ctrl    TextController
 	applier Applier
+	gocode  *GoCode
 }
 
-func newSuggestionList(driver gxui.Driver, theme *basic.Theme, proj setting.Project, editor Editor, ctrl TextController, applier Applier) *suggestionList {
+func newSuggestionList(driver gxui.Driver, theme *basic.Theme, proj setting.Project, editor Editor, ctrl TextController, applier Applier, gocode *GoCode) *suggestionList {
 	s := &suggestionList{
 		driver:  driver,
 		adapter: &suggestions.Adapter{},
@@ -55,11 +56,29 @@ func newSuggestionList(driver gxui.Driver, theme *basic.Theme, proj setting.Proj
 		editor:  editor,
 		ctrl:    ctrl,
 		applier: applier,
+		gocode:  gocode,
 	}
 
 	s.Init(s, theme)
 	s.OnGainedFocus(s.Redraw)
 	s.OnLostFocus(s.Redraw)
+	s.OnKeyPress(func(ev gxui.KeyboardEvent) {
+		if ev.Key == gxui.KeyEnter {
+			s.driver.CallSync(func() {
+				s.gocode.Confirm(s.editor)
+			})
+		} else if ev.Key == gxui.KeyEscape {
+			s.driver.CallSync(func() {
+				s.gocode.Cancel(s.editor)
+			})
+		}
+	})
+	s.OnDoubleClick(func(gxui.MouseEvent) {
+		s.driver.CallSync(func() {
+			s.gocode.Confirm(s.editor)
+		})
+	})
+
 	s.SetPadding(math.CreateSpacing(2))
 	s.SetBackgroundBrush(theme.CodeSuggestionListStyle.Brush)
 	s.SetBorderPen(theme.CodeSuggestionListStyle.Pen)
@@ -125,11 +144,13 @@ func (s *suggestionList) apply() {
 	end := carets[0]
 	runes := s.ctrl.TextRunes()
 
-	go s.applier.Apply(s.editor, input.Edit{
-		At:  start,
-		Old: runes[start:end],
-		New: []rune(suggestion.Name),
-	})
+	if start < end {
+		go s.applier.Apply(s.editor, input.Edit{
+			At:  start,
+			Old: runes[start:end],
+			New: []rune(suggestion.Name),
+		})
+	}
 }
 
 func wordPart(r rune) bool {
