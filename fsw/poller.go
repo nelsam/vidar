@@ -7,6 +7,7 @@
 package fsw
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -19,7 +20,7 @@ const pollDuration = 200 * time.Millisecond
 
 type poll map[string]os.FileInfo
 
-func (p poll) addChildren(name string) error {
+func (p poll) addChildren(name string, closed *uint32) error {
 	f, err := os.Open(name)
 	if err != nil {
 		return err
@@ -29,6 +30,9 @@ func (p poll) addChildren(name string) error {
 		return err
 	}
 	for _, info := range c {
+		if atomic.LoadUint32(closed) == 1 {
+			return errors.New("closed while adding children")
+		}
 		p[filepath.Join(name, info.Name())] = info
 	}
 	return nil
@@ -58,6 +62,9 @@ func (p *poller) run() {
 	defer close(p.events)
 	for range p.ticker.C {
 		if closed := atomic.LoadUint32(&p.closed); closed != 0 {
+			p.errs <- io.EOF
+			close(p.errs)
+			close(p.events)
 			return
 		}
 		p.triggerEvents()
@@ -79,7 +86,7 @@ func (p *poller) triggerEvents() {
 		next := make(poll)
 		next[name] = i
 		if i.IsDir() {
-			if err := next.addChildren(name); err != nil {
+			if err := next.addChildren(name, &p.closed); err != nil {
 				p.errs <- err
 				continue
 			}
@@ -123,6 +130,9 @@ func (p *poller) triggerDiff(prev, next poll) {
 }
 
 func (p *poller) Add(name string) error {
+	if atomic.LoadUint32(&p.closed) == 1 {
+		return errors.New("Add called on closed poller")
+	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	init := make(poll)
@@ -132,7 +142,7 @@ func (p *poller) Add(name string) error {
 	}
 	init[name] = i
 	if i.IsDir() {
-		if err := init.addChildren(name); err != nil {
+		if err := init.addChildren(name, &p.closed); err != nil {
 			return err
 		}
 	}
@@ -141,6 +151,9 @@ func (p *poller) Add(name string) error {
 }
 
 func (p *poller) Remove(name string) error {
+	if atomic.LoadUint32(&p.closed) == 1 {
+		return errors.New("Remove called on closed poller")
+	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	delete(p.last, name)

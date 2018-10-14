@@ -167,7 +167,9 @@ func (p *ProjectTree) startWatch(root string) {
 				return filepath.SkipDir
 			}
 			count++
-			p.watcher.Add(path)
+			if err := p.watcher.Add(path); err != nil {
+				return err
+			}
 		}
 		if count > maxWatchDirs {
 			p.watcher.Close()
