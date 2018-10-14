@@ -93,7 +93,7 @@ func NewProjectTree(cmdr Commander, driver gxui.Driver, window gxui.Window, them
 		layout:     newSplitterLayout(window, theme),
 	}
 	tree.layout.SetOrientation(gxui.Vertical)
-	tree.SetProject(setting.DefaultProject)
+	go tree.SetProject(setting.DefaultProject)
 
 	return tree
 }
@@ -133,17 +133,19 @@ func (p *ProjectTree) SetRoot(path string) {
 	p.watcher = watcher
 	p.startWatch(path)
 
-	p.dirs = newDirectory(p, path)
-	scrollable := p.theme.CreateScrollLayout()
-	// Disable horiz scrolling until we can figure out an accurate
-	// way to calculate our width.
-	scrollable.SetScrollAxis(false, true)
-	scrollable.SetChild(p.dirs)
-	p.layout.AddChild(scrollable)
-	p.layout.SetChildWeight(p.dirs, 1)
+	p.driver.Call(func() {
+		p.dirs = newDirectory(p, path)
+		scrollable := p.theme.CreateScrollLayout()
+		// Disable horiz scrolling until we can figure out an accurate
+		// way to calculate our width.
+		scrollable.SetScrollAxis(false, true)
+		scrollable.SetChild(p.dirs)
+		p.layout.AddChild(scrollable)
+		p.layout.SetChildWeight(p.dirs, 1)
 
-	// Expand the top level
-	p.dirs.button.Click(gxui.MouseEvent{})
+		// Expand the top level
+		p.dirs.button.Click(gxui.MouseEvent{})
+	})
 }
 
 func (p *ProjectTree) startWatch(root string) {
@@ -241,13 +243,16 @@ func (p *ProjectTree) update(path string) {
 func (p *ProjectTree) SetProject(project setting.Project) {
 	p.SetRoot(project.Path)
 
-	// For now, for some visual indication that the project has changed, we
-	// force open the project pane here.
-	if !p.layout.Attached() {
+	p.driver.Call(func() {
+		// For now, for some visual indication that the project has changed, we
+		// force open the project pane here.
+		if p.layout.Attached() {
+			return
+		}
 		p.button.Click(gxui.MouseEvent{
 			Button: gxui.MouseButtonLeft,
 		})
-	}
+	})
 }
 
 func (p *ProjectTree) Open(path string, pos token.Position) {
