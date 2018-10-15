@@ -41,7 +41,7 @@ func newFileBox(driver gxui.Driver, theme *basic.Theme, l *Locator) *fileBox {
 func (f *fileBox) KeyPress(event gxui.KeyboardEvent) bool {
 	l := f.locator
 	if event.Modifier != 0 {
-		return l.file.KeyPress(event)
+		return f.TextBox.KeyPress(event)
 	}
 	l.lock.RLock()
 	defer l.lock.RUnlock()
