@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-// +build !darwin
+// +build !darwin,!windows
 
 package fsw
 
