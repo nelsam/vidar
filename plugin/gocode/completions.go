@@ -74,7 +74,7 @@ func (c *Completions) Exec() error {
 		c.Err = "You appear to have multiple carets, but we can only show suggestions for a single caret."
 		return errors.New("completions: cannot show suggestions for multiple carets")
 	}
-	l := newSuggestionList(c.gocode.driver, c.Theme.(*basic.Theme), c.projecter.Project(), c.editor, c.ctrl, c.applier)
+	l := newSuggestionList(c.gocode.driver, c.Theme.(*basic.Theme), c.projecter.Project(), c.editor, c.ctrl, c.applier, c.gocode)
 	c.gocode.set(c.editor, l, carets[0])
 	return nil
 }
