@@ -17,6 +17,11 @@ import (
 	"github.com/nelsam/gxui/mixins"
 )
 
+type Watcher interface {
+	Add(path string) error
+	Remove(path string) error
+}
+
 type directory struct {
 	// length is an atomically updated list of child nodes of
 	// this directory.  Only access via atomics.
@@ -27,12 +32,13 @@ type directory struct {
 
 	mixins.LinearLayout
 
-	driver gxui.Driver
-	button *treeButton
-	tree   *dirTree
+	driver  gxui.Driver
+	button  *treeButton
+	tree    *dirTree
+	watcher Watcher
 }
 
-func newDirectory(projTree *ProjectTree, path string) *directory {
+func newDirectory(projTree *ProjectTree, path string, watcher Watcher) *directory {
 	driver := projTree.driver
 	theme := projTree.theme
 
@@ -40,9 +46,10 @@ func newDirectory(projTree *ProjectTree, path string) *directory {
 	tree := newDirTree(projTree, path)
 	tree.SetMargin(math.Spacing{L: 10})
 	d := &directory{
-		driver: driver,
-		button: button,
-		tree:   tree,
+		driver:  driver,
+		button:  button,
+		tree:    tree,
+		watcher: watcher,
 	}
 	d.Init(d, theme)
 	d.AddChild(button)
@@ -64,11 +71,12 @@ func newDirectory(projTree *ProjectTree, path string) *directory {
 			return
 		}
 		if d.tree.Attached() {
+			d.tree.Unload(watcher)
 			d.button.Collapse()
 			d.RemoveChild(d.tree)
 			return
 		}
-		d.tree.Load()
+		d.tree.Load(watcher)
 		d.button.Expand()
 		d.AddChild(d.tree)
 	})
@@ -134,7 +142,7 @@ func (d *directory) reload() {
 	d.updateExpandable(children)
 	atomic.StoreInt64(&d.length, children)
 	if d.tree.Attached() {
-		d.tree.parse(finfos)
+		d.tree.parse(finfos, d.watcher)
 	}
 }
 
@@ -166,16 +174,29 @@ func (d *dirTree) Dirs() (dirs []*directory) {
 	return dirs
 }
 
-func (d *dirTree) Load() error {
+func (d *dirTree) Unload(w Watcher) error {
+	for _, dir := range d.Dirs() {
+		if !dir.tree.Attached() {
+			continue
+		}
+		if err := dir.tree.Unload(w); err != nil {
+			return err
+		}
+	}
+	return w.Remove(d.path)
+}
+
+func (d *dirTree) Load(w Watcher) error {
+	w.Add(d.path)
 	finfos, err := ioutil.ReadDir(d.path)
 	if err != nil {
 		return err
 	}
-	d.parse(finfos)
+	d.parse(finfos, w)
 	return nil
 }
 
-func (d *dirTree) parse(finfos []os.FileInfo) {
+func (d *dirTree) parse(finfos []os.FileInfo, w Watcher) {
 	d.RemoveAll()
 	for _, finfo := range finfos {
 		if !finfo.IsDir() {
@@ -184,7 +205,8 @@ func (d *dirTree) parse(finfos []os.FileInfo) {
 		if strings.HasPrefix(finfo.Name(), ".") {
 			continue
 		}
-		dir := newDirectory(d.projTree, filepath.Join(d.path, finfo.Name()))
+		fullPath := filepath.Join(d.path, finfo.Name())
+		dir := newDirectory(d.projTree, fullPath, w)
 		d.AddChild(dir)
 	}
 }
