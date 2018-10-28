@@ -11,6 +11,7 @@ import (
 	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/command/history"
 	"github.com/nelsam/vidar/command/project"
+	"github.com/nelsam/vidar/command/scroll"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/command"
 )
@@ -25,6 +26,7 @@ func Bindables(cmdr command.Commander, driver gxui.Driver, theme *basic.Theme) [
 		Quit{},
 		Fullscreen{},
 		&caret.Mover{},
+		&scroll.Scroller{},
 		focus.NewLocation(driver),
 		FileHook{Theme: theme},
 		EditHook{Theme: theme, Driver: driver},

@@ -9,6 +9,7 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/command/caret"
+	"github.com/nelsam/vidar/command/scroll"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/command"
 )
@@ -141,6 +142,7 @@ func (n NavHook) OpName() string {
 func (n NavHook) FileBindables(string) []bind.Bindable {
 	return []bind.Bindable{
 		&caret.OnEdit{Commander: n.Commander},
+		&scroll.OnEdit{Commander: n.Commander},
 		NewPrevLine(),
 		NewSelectPrevLine(),
 		NewNextLine(),
