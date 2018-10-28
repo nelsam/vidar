@@ -91,6 +91,7 @@ func (s *suggestionList) show(ctx context.Context, pos int) int {
 	}
 
 	s.driver.CallSync(func() {
+		// TODO: This doesn't always create a large enough box; it needs to be fixed.
 		longest := s.adapter.Sort(runes[start:pos])
 		if s.adapter.Len() == 0 {
 			return

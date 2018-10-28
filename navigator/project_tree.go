@@ -5,11 +5,9 @@
 package navigator
 
 import (
-	"fmt"
 	"go/token"
 	"io"
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -22,14 +20,6 @@ import (
 	"github.com/nelsam/vidar/fsw"
 	"github.com/nelsam/vidar/setting"
 )
-
-// maxWatchDirs is here just to ensure that we don't take too long to
-// open up a project.  If the project has an excessive number of files,
-// watching will fail when it hits this number.
-//
-// TODO: think about alternate limits, and possibly rely on polling
-// when watching fails.
-const maxWatchDirs = 4096
 
 var (
 	dirColor = gxui.Color{
@@ -115,10 +105,6 @@ func (p *ProjectTree) Button() gxui.Button {
 }
 
 func (p *ProjectTree) SetRoot(path string) {
-	defer p.driver.Call(func() {
-		p.layout.Relayout()
-		p.layout.Redraw()
-	})
 	p.layout.RemoveAll()
 	p.SetTOC(nil)
 	p.tocCtl = nil
@@ -133,17 +119,22 @@ func (p *ProjectTree) SetRoot(path string) {
 	p.watcher = watcher
 	p.startWatch(path)
 
-	p.dirs = newDirectory(p, path)
-	scrollable := p.theme.CreateScrollLayout()
-	// Disable horiz scrolling until we can figure out an accurate
-	// way to calculate our width.
-	scrollable.SetScrollAxis(false, true)
-	scrollable.SetChild(p.dirs)
-	p.layout.AddChild(scrollable)
-	p.layout.SetChildWeight(p.dirs, 1)
+	p.driver.Call(func() {
+		p.dirs = newDirectory(p, path, p.watcher)
+		scrollable := p.theme.CreateScrollLayout()
+		// Disable horiz scrolling until we can figure out an accurate
+		// way to calculate our width.
+		scrollable.SetScrollAxis(false, true)
+		scrollable.SetChild(p.dirs)
+		p.layout.AddChild(scrollable)
+		p.layout.SetChildWeight(p.dirs, 1)
 
-	// Expand the top level
-	p.dirs.button.Click(gxui.MouseEvent{})
+		// Expand the top level
+		p.dirs.button.Click(gxui.MouseEvent{})
+
+		p.layout.Relayout()
+		p.layout.Redraw()
+	})
 }
 
 func (p *ProjectTree) startWatch(root string) {
@@ -151,33 +142,8 @@ func (p *ProjectTree) startWatch(root string) {
 		return
 	}
 
-	count := 0
-	err := filepath.Walk(root, func(path string, finfo os.FileInfo, err error) error {
-		if err != nil {
-			return fmt.Errorf("Error walking directory %s: %s", root, err)
-		}
-		if finfo.IsDir() {
-			if filepath.Base(path)[0] == '.' {
-				// This is mostly to skip .git directories, which contain
-				// a pretty deep structure and can eat up a lot of our
-				// watches.  Especially important on OS X, where the default
-				// max number of watches is 256.
-				return filepath.SkipDir
-			}
-			count++
-			p.watcher.Add(path)
-		}
-		if count > maxWatchDirs {
-			p.watcher.Close()
-			return fmt.Errorf("Could not watch project: exceeded directory watch limit of %d", maxWatchDirs)
-		}
-		return nil
-	})
-	if err != nil {
-		log.Printf("Warning: %s", err)
-		return
-	}
 	go p.watch()
+
 }
 
 // watch waits for events from p.watcher.  For each event, the tree will
@@ -241,13 +207,16 @@ func (p *ProjectTree) update(path string) {
 func (p *ProjectTree) SetProject(project setting.Project) {
 	p.SetRoot(project.Path)
 
-	// For now, for some visual indication that the project has changed, we
-	// force open the project pane here.
-	if !p.layout.Attached() {
+	p.driver.Call(func() {
+		if p.layout.Attached() {
+			return
+		}
+		// For now, for some visual indication that the project has changed, we
+		// force open the project pane here.
 		p.button.Click(gxui.MouseEvent{
 			Button: gxui.MouseButtonLeft,
 		})
-	}
+	})
 }
 
 func (p *ProjectTree) Open(path string, pos token.Position) {
