@@ -48,7 +48,7 @@ func TestBuiltins(t *testing.T) {
 
 	layers := s.Layers()
 
-	builtins := layers[theme.Builtin]
+	builtins := findLayer(theme.Builtin, layers)
 	expect(builtins.Spans).To.Have.Len(15).Else.FailNow()
 
 	expect(builtins.Spans[0]).To.Pass(position{src: src, match: "recover"})
@@ -67,11 +67,11 @@ func TestBuiltins(t *testing.T) {
 	expect(builtins.Spans[13]).To.Pass(position{src: src, match: "real"})
 	expect(builtins.Spans[14]).To.Pass(position{src: src, match: "panic"})
 
-	nils := layers[theme.Nil]
+	nils := findLayer(theme.Nil, layers)
 	expect(nils.Spans).To.Have.Len(1).Else.FailNow()
 	expect(nils.Spans[0]).To.Pass(position{src: src, match: "nil"})
 
 	// Test that we're not highlighting these as both idents and builtins.
-	idents := layers[theme.Ident]
+	idents := findLayer(theme.Ident, layers)
 	expect(idents.Spans).To.Have.Len(6)
 }

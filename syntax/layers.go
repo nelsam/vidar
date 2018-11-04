@@ -73,8 +73,12 @@ func (s *Syntax) Parse(source string) error {
 // gxui.CodeSyntaxLayer will have its foreground and background
 // constructs set, and all positions that should be highlighted that
 // construct will be stored.
-func (s *Syntax) Layers() map[theme.LanguageConstruct]*input.SyntaxLayer {
-	return s.layers
+func (s *Syntax) Layers() []input.SyntaxLayer {
+	l := make([]input.SyntaxLayer, 0, len(s.layers))
+	for _, layer := range s.layers {
+		l = append(l, *layer)
+	}
+	return l
 }
 
 func (s *Syntax) rainbowScope(openStart token.Pos, openLen int, closeStart token.Pos, closeLen int) (unscope func()) {

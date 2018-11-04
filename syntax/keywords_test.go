@@ -68,7 +68,7 @@ FOO:
 
 	layers := s.Layers()
 
-	keywords := layers[theme.Keyword]
+	keywords := findLayer(theme.Keyword, layers)
 
 	expect(keywords.Spans[0]).To.Pass(position{src: src, match: "package"})
 	expect(keywords.Spans[1]).To.Pass(position{src: src, match: "import"})

@@ -28,12 +28,12 @@ func µ() string {
 	expect(err).To.Be.Nil()
 
 	layers := s.Layers()
-	keywords := layers[theme.Keyword]
+	keywords := findLayer(theme.Keyword, layers)
 	expect(keywords.Spans).To.Have.Len(4)
 	expect(keywords.Spans[2]).To.Pass(position{src: src, match: "var"})
 	expect(keywords.Spans[3]).To.Pass(position{src: src, match: "return"})
 
-	strings := layers[theme.String]
+	strings := findLayer(theme.String, layers)
 	expect(strings.Spans).To.Have.Len(1)
 	expect(strings.Spans[0]).To.Pass(position{src: src, match: `"Ωð"`})
 }
@@ -52,7 +52,7 @@ package foo
 	layers := s.Layers()
 	expect(layers).To.Have.Len(2)
 
-	comments := layers[theme.Comment]
+	comments := findLayer(theme.Comment, layers)
 	expect(comments.Spans).To.Have.Len(1)
 	comment := "// Package foo does stuff.\n" +
 		"// It is also a thing."

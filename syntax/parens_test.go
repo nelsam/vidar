@@ -34,7 +34,7 @@ func FuncBody(t *testing.T) {
 
 	layers := s.Layers()
 
-	firstParens := layers[theme.ScopePair]
+	firstParens := findLayer(theme.ScopePair, layers)
 	expect(firstParens.Spans).To.Have.Len(6).Else.FailNow()
 
 	expect(firstParens.Spans[0]).To.Pass(position{src: src, match: "("})
@@ -44,7 +44,7 @@ func FuncBody(t *testing.T) {
 	expect(firstParens.Spans[4]).To.Pass(position{src: src, match: "{"})
 	expect(firstParens.Spans[5]).To.Pass(position{src: src, match: "}"})
 
-	secondParens := layers[theme.ScopePair+1]
+	secondParens := findLayer(theme.ScopePair+1, layers)
 	expect(secondParens.Spans).To.Have.Len(2).Else.FailNow()
 	expect(secondParens.Spans[0]).To.Pass(position{src: src, match: "(", idx: 2})
 	expect(secondParens.Spans[1]).To.Pass(position{src: src, match: ")", idx: 2})
@@ -68,7 +68,7 @@ func Array(t *testing.T) {
 	layers := s.Layers()
 
 	// Skip the function ScopePair
-	arrParens := layers[theme.ScopePair+1]
+	arrParens := findLayer(theme.ScopePair+1, layers)
 	expect(arrParens.Spans).To.Have.Len(6).Else.FailNow()
 	expect(arrParens.Spans[0]).To.Pass(position{src: src, match: "["})
 	expect(arrParens.Spans[1]).To.Pass(position{src: src, match: "]"})
@@ -77,7 +77,7 @@ func Array(t *testing.T) {
 	expect(arrParens.Spans[4]).To.Pass(position{src: src, match: "{", idx: 1})
 	expect(arrParens.Spans[5]).To.Pass(position{src: src, match: "}"})
 
-	typs := layers[theme.Type]
+	typs := findLayer(theme.Type, layers)
 	expect(typs.Spans).To.Have.Len(2).Else.FailNow()
 	expect(typs.Spans[0]).To.Pass(position{src: src, match: "string"})
 	expect(typs.Spans[1]).To.Pass(position{src: src, match: "string", idx: 1})
@@ -104,7 +104,7 @@ func Slice(t *testing.T) {
 	layers := s.Layers()
 
 	// Skip the function ScopePair
-	arrParens := layers[theme.ScopePair+1]
+	arrParens := findLayer(theme.ScopePair+1, layers)
 	expect(arrParens.Spans).To.Have.Len(12).Else.FailNow()
 	// 0 and 1 are the [3]string, for an array type.
 	expect(arrParens.Spans[2]).To.Pass(position{src: src, match: "[", idx: 1})

@@ -35,11 +35,11 @@ func main() {
 	layers := s.Layers()
 	expect(layers).To.Have.Len(6)
 
-	nums := layers[theme.Num]
+	nums := findLayer(theme.Num, layers)
 	expect(nums.Spans).To.Have.Len(1)
 	expect(nums.Spans[0]).To.Pass(position{src: src, match: "0.1"})
 
-	strings := layers[theme.String]
+	strings := findLayer(theme.String, layers)
 	expect(strings.Spans).To.Have.Len(1)
 	expect(strings.Spans[0]).To.Pass(position{src: src, match: `"foo"`})
 }
@@ -67,22 +67,22 @@ func main() {
 	layers := s.Layers()
 	expect(layers).To.Have.Len(9)
 
-	keywords := layers[theme.Keyword]
+	keywords := findLayer(theme.Keyword, layers)
 	expect(keywords.Spans).To.Have.Len(6)
 	expect(keywords.Spans[3]).To.Pass(position{src: src, match: "case"})
 	expect(keywords.Spans[4]).To.Pass(position{src: src, match: "case", idx: 1})
 	expect(keywords.Spans[5]).To.Pass(position{src: src, match: "default"})
 
-	strings := layers[theme.String]
+	strings := findLayer(theme.String, layers)
 	expect(strings.Spans).To.Have.Len(2)
 	expect(strings.Spans[0]).To.Pass(position{src: src, match: `"bar"`})
 	expect(strings.Spans[1]).To.Pass(position{src: src, match: `"bacon"`})
 
-	nums := layers[theme.Num]
+	nums := findLayer(theme.Num, layers)
 	expect(nums.Spans).To.Have.Len(1)
 	expect(nums.Spans[0]).To.Pass(position{src: src, match: "1"})
 
-	builtins := layers[theme.Builtin]
+	builtins := findLayer(theme.Builtin, layers)
 	expect(builtins.Spans).To.Have.Len(1)
 	expect(builtins.Spans[0]).To.Pass(position{src: src, match: "println"})
 }
