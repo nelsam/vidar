@@ -8,34 +8,34 @@
 
 Vidar is the Norse god of silence, patience, and revenge.  Sounds perfect for an editor, right?
 
-## History
+<img src="asset/logo.svg" width="512" />
 
-Vidar started as a repository that I had named `gxui_playground`.  It was quite literally just a
-place for me to mess around with [gxui](https://github.com/google/gxui).  The problem I chose to tackle
-for my little learning exercise was "I dislike nearly every editor out there for working on Go
-code."  Three weeks later, I had something that I was actually *starting* to use for development.
+## Screenshot
 
-Vidar is not a fully featured editor, right now.  However, it works for most purposes when editing
-Go code, and I don't think it's far off from being in a finished 1.0 state.
+![screenshot](docs/screenshot.jpg)
 
-## Installing
+Vidar is a text editor written in go, designed for writing go.  It supports plugins, performs reasonably
+well, and has some nice go-specific features that help with navigating go code.  While I don't think it's
+going to replace your favorite editor, I am pretty damn proud of what we've got, and I think it will
+support most use cases fairly well.  Panics are caught before any in-progress work is lost most of the
+time (we prioritize fixing those problems quickly), input is reasonably responsive, the usual editor
+features (copy/paste, find, regexp find, etc) are mostly working as you'd expect, and language-specific
+features can be loaded per file.
 
-1. [Install GXUI's C dependencies](https://github.com/google/gxui#dependencies)
-2. `go get github.com/nelsam/vidar`.
+## Quick start
 
-### Plugins
-
-If you're on linux using go 1.8 or newer, you'll notice that vidar runs a little barebones.
-This is because most of the go-specific functionality is in plugins in vidar's `plugin`
-sub-package.
-
-To build and install plugins on linux, use make:
+- [Install GXUI's C dependencies](https://github.com/google/gxui#dependencies)
 
 ```
-make plugins-install
+$ go get github.com/nelsam/vidar
+$ vidar
 ```
 
-This will build and install plugins to `~/.local/share/vidar/plugins/`
+If you're running linux, you will also probably want to install plugins, since most go-specific features
+are kept out of the main editor source code.  See [the Makefile](/Makefile) for plugin build and install
+commands.
+
+Other OSes will currently get all the go plugins baked directly into the binary.
 
 ### Go Version
 
@@ -44,15 +44,10 @@ won't work with older versions, but I promise nothing.
 
 ### Optional Dependencies
 
-- [gocode](https://github.com/nsf/gocode) for code suggestions
-- [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports) for formatting files on save
+- [gocode](https://github.com/nsf/gocode) - needed for the `gocode` plugin to work
+- [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports) - needed for the `goimports` plugin to work
   - This will some day be configurable, but it currently is not
-- [godef](https://github.com/rogpeppe/godef) for goto-definition
-
-### Binary Distribution
-
-In the (hopefully near) future, I plan to have CI build installers and upload them to github
-releases.  For the moment, though, I'm only distributing via source code.
+- [godef](https://github.com/rogpeppe/godef) - needed for the `godef` plugin to work
 
 ## Configuration
 
@@ -73,37 +68,40 @@ files:
   key bindings, so you can edit the file with any changes or aliases you'd like.
   Multiple bindings per command are supported.
 
-## Syntax Assumptions
+## History
 
-Much of the syntax highlighting assumes gofmted code.  If your code is not formatted that way,
-some of the highlighting may be off.  For example, if you use `}else{` instead of `} else {`,
-the wrong characters will be highlighted.  This should only have an affect on those particular
-instances, though, and the highlighting for the rest of the file should be fine.
+Vidar started as a repository that I had named `gxui_playground`.  It was quite literally just a place
+for me to mess around with [gxui](https://github.com/google/gxui).  Three weeks later, I had something
+that I was actually *starting* to use for development.
+
+Vidar is still missing some important features, but it's pretty close to being a fully featured editor.
+It's definitely much more respectable for editing go code than for editing other types of files, but
+with the plugin system in place, that's less and less a core problem with the editor, and more a problem
+with the lack of support from third party plugins.
 
 ## Current Features
 
-- Completion suggestions (via gocode)
-- Go to definition (via godef)
+- Plugins (still linux-only - I'm testing darwin plugin support and watching the upstream
+  issues for windows support)
+  - [Go syntax highlighting](plugin/gosyntax)
+    - Includes rainbow parens
+  - [Go to definition in go files (requires godef)](plugin/godef)
+  - [Style formatting both on command and on save (requires goimports)](plugin/goimports)
+  - [Comment and uncomment block](plugin/comments)
+  - [License header tracker - for projects that need the little license comment at the top of each go file](plugin/license)
 - Split view (both horizontal and vertical)
 - Watch filesystem for changes
   - Events trigger editor elements to reload their text
   - Since this has shown itself to be a bit unreliable, vidar will refuse to write a file that
-    has been changed on disk since the last reload; but this doesn't happen often.
-- Manage the license header of files (defined in a `.license-header` file in the project root)
-  - If you're like me and always forget to add the license blurb at the top of every Go file,
-    this is for you.
-  - New files will be opened with the license blurb as the initial text.
-  - There is a command (`ctrl+shift+l` or `cmd+shift+l` by default) which will update the
-    license blurb of the current file with the text from the `.license-header` file.
-- Syntax highlighting
-- Rainbow parens
+    has been changed on disk since the last reload.  If this happens, you have to close and re-open
+    the file.
 - Most of the basic stuff you expect from a text editor (copy/paste, undo/redo, etc)
-- Plugins, if you're running linux with go 1.8.
 
 ## Important Missing Features
 
 These are all planned, but have yet to be implemented.
 
+- Plugins on operating systems other than linux.
 - Configurability
   - When you open a new project, you can set up some basic configuration in the UI, but very
     little else.
@@ -112,5 +110,10 @@ These are all planned, but have yet to be implemented.
   - There are some frustrating, but difficult-to-solve, bugs lingering around.  I squash them
     when I can, but some of the less annoying ones that either have difficult solutions or are
     difficult to reproduce regularly are going to be there for a while.
-- Plugins on operating systems other than linux.
+  - The biggest source of frustration for me, personally, is related to the find command always
+    creating multiple cursors.  At the time of writing, gxui provides no way to highlight a bit of
+    text without also selecting it.  There is also no way to scroll to the next/previous match 
+    right now, and the matches are not displayed along the scroll bar as they should be.
+  - We also need to do a better job of making cursor history work, so that you can go back to
+    a previous mark, or mark a selection start and then search for the end.
 

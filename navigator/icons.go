@@ -24,7 +24,7 @@ func createIconButton(driver gxui.Driver, theme gxui.Theme, iconPath string) gxu
 	button := theme.CreateButton()
 	button.SetType(gxui.PushButton)
 
-	fileBytes, err := assets.Asset(iconPath)
+	fileBytes, err := asset.Asset(iconPath)
 	if err != nil {
 		log.Printf("Error: Failed to read asset %s: %s", iconPath, err)
 		return button
