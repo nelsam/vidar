@@ -7,15 +7,19 @@ package syntax_test
 import (
 	"testing"
 
-	"github.com/a8m/expect"
+	"github.com/apoydence/onpar"
+	"github.com/apoydence/onpar/expect"
+	. "github.com/apoydence/onpar/matchers"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/syntax"
 	"github.com/nelsam/vidar/theme"
 )
 
 func TestBuiltins(t *testing.T) {
-	expect := expect.New(t)
+	o := onpar.New()
+	defer o.Run(t)
 
-	src := `
+	const src = `
 	package foo
 
 	func foo() {
@@ -40,38 +44,47 @@ func TestBuiltins(t *testing.T) {
 		v := nil
 
 		panic("foo")
-	}
-	`
-	s := syntax.New()
-	err := s.Parse(src)
-	expect(err).To.Be.Nil().Else.FailNow()
+	}`
 
-	layers := s.Layers()
+	o.BeforeEach(func(t *testing.T) (expect.Expectation, []input.SyntaxLayer) {
+		expect := expect.New(t)
 
-	builtins := layers[theme.Builtin]
-	expect(builtins.Spans).To.Have.Len(15).Else.FailNow()
+		s := syntax.New()
+		err := s.Parse(src)
+		expect(err).To(BeNil())
 
-	expect(builtins.Spans[0]).To.Pass(position{src: src, match: "recover"})
-	expect(builtins.Spans[1]).To.Pass(position{src: src, match: "append"})
-	expect(builtins.Spans[2]).To.Pass(position{src: src, match: "cap"})
-	expect(builtins.Spans[3]).To.Pass(position{src: src, match: "copy"})
-	expect(builtins.Spans[4]).To.Pass(position{src: src, match: "delete"})
-	expect(builtins.Spans[5]).To.Pass(position{src: src, match: "len"})
-	expect(builtins.Spans[6]).To.Pass(position{src: src, match: "new"})
-	expect(builtins.Spans[7]).To.Pass(position{src: src, match: "print"})
-	expect(builtins.Spans[8]).To.Pass(position{src: src, match: "println"})
-	expect(builtins.Spans[9]).To.Pass(position{src: src, match: "make"})
-	expect(builtins.Spans[10]).To.Pass(position{src: src, match: "close"})
-	expect(builtins.Spans[11]).To.Pass(position{src: src, match: "complex"})
-	expect(builtins.Spans[12]).To.Pass(position{src: src, match: "imag"})
-	expect(builtins.Spans[13]).To.Pass(position{src: src, match: "real"})
-	expect(builtins.Spans[14]).To.Pass(position{src: src, match: "panic"})
+		layers := s.Layers()
 
-	nils := layers[theme.Nil]
-	expect(nils.Spans).To.Have.Len(1).Else.FailNow()
-	expect(nils.Spans[0]).To.Pass(position{src: src, match: "nil"})
+		return expect, layers
+	})
 
-	// Test that we're not highlighting these as both idents and builtins.
-	idents := layers[theme.Ident]
-	expect(idents.Spans).To.Have.Len(6)
+	o.Spec("it highlights the expected builtins", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		builtins := findLayer(theme.Builtin, layers)
+		expect(builtins.Spans[0]).To(matchPosition{src: src, match: "recover"})
+		expect(builtins.Spans[1]).To(matchPosition{src: src, match: "append"})
+		expect(builtins.Spans[2]).To(matchPosition{src: src, match: "cap"})
+		expect(builtins.Spans[3]).To(matchPosition{src: src, match: "copy"})
+		expect(builtins.Spans[4]).To(matchPosition{src: src, match: "delete"})
+		expect(builtins.Spans[5]).To(matchPosition{src: src, match: "len"})
+		expect(builtins.Spans[6]).To(matchPosition{src: src, match: "new"})
+		expect(builtins.Spans[7]).To(matchPosition{src: src, match: "print"})
+		expect(builtins.Spans[8]).To(matchPosition{src: src, match: "println"})
+		expect(builtins.Spans[9]).To(matchPosition{src: src, match: "make"})
+		expect(builtins.Spans[10]).To(matchPosition{src: src, match: "close"})
+		expect(builtins.Spans[11]).To(matchPosition{src: src, match: "complex"})
+		expect(builtins.Spans[12]).To(matchPosition{src: src, match: "imag"})
+		expect(builtins.Spans[13]).To(matchPosition{src: src, match: "real"})
+		expect(builtins.Spans[14]).To(matchPosition{src: src, match: "panic"})
+	})
+
+	o.Spec("it highlights nil", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		nils := findLayer(theme.Nil, layers)
+		expect(nils.Spans).To(HaveLen(1))
+		expect(nils.Spans[0]).To(matchPosition{src: src, match: "nil"})
+	})
+
+	o.Spec("it does not highlight builtins as idents", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		idents := findLayer(theme.Ident, layers)
+		expect(idents.Spans).To(HaveLen(6))
+	})
 }

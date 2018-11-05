@@ -6,6 +6,7 @@ package gosyntax
 
 import (
 	"context"
+	"sync"
 
 	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/syntax"
@@ -15,6 +16,8 @@ type Highlight struct {
 	ctx    context.Context
 	layers []input.SyntaxLayer
 	syntax *syntax.Syntax
+
+	mu sync.Mutex
 }
 
 func New() *Highlight {
@@ -73,17 +76,21 @@ func (h *Highlight) Init(e input.Editor, text []rune) {
 }
 
 func (h *Highlight) TextChanged(ctx context.Context, editor input.Editor, _ []input.Edit) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	// TODO: only update layers that changed.
 	err := h.syntax.Parse(editor.Text())
 	if err != nil {
 		// TODO: Report the error in the UI
 		_ = err
 	}
-	layers := h.syntax.Layers()
-	h.layers = make([]input.SyntaxLayer, 0, len(layers))
-	for _, layer := range layers {
-		h.layers = append(h.layers, *layer)
+	select {
+	case <-ctx.Done():
+		return
+	default:
 	}
+
+	h.layers = h.syntax.Layers()
 }
 
 func (h *Highlight) Apply(e input.Editor) error {

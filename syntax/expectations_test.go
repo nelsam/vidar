@@ -9,7 +9,17 @@ import (
 	"fmt"
 
 	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/theme"
 )
+
+func findLayer(c theme.LanguageConstruct, l []input.SyntaxLayer) input.SyntaxLayer {
+	for _, layer := range l {
+		if layer.Construct == c {
+			return layer
+		}
+	}
+	return input.SyntaxLayer{}
+}
 
 func numSuffix(n int) string {
 	switch n % 10 {
@@ -24,15 +34,15 @@ func numSuffix(n int) string {
 	}
 }
 
-type position struct {
+type matchPosition struct {
 	src, match string
 	idx        int
 }
 
-func (p position) Match(actual interface{}) error {
+func (p matchPosition) Match(actual interface{}) (interface{}, error) {
 	span, ok := actual.(input.Span)
 	if !ok {
-		return errors.New("be of type input.Span")
+		return actual, errors.New("be of type input.Span")
 	}
 	// Switch to []rune, since we want to match positions based on rune index, not byte
 	runes, sep := []rune(p.src), []rune(p.match)
@@ -42,18 +52,18 @@ func (p position) Match(actual interface{}) error {
 	for ; p.idx >= 0; p.idx-- {
 		expectedStart = expectedEnd + index(runes[expectedEnd:], sep)
 		if expectedStart == -1 {
-			return fmt.Errorf("have a %s %s in %s", humanIdx, p.match, p.src)
+			return actual, fmt.Errorf("have a %s %s in %s", humanIdx, p.match, p.src)
 		}
 		expectedEnd = expectedStart + len(sep)
 	}
 
 	if span.Start != expectedStart {
-		return fmt.Errorf("have a start position of %d for the %s %s in %s", expectedStart, humanIdx, p.match, p.src)
+		return actual, fmt.Errorf("expected the start position %d to be %d for the %s %s in %s", span.Start, expectedStart, humanIdx, p.match, p.src)
 	}
 	if span.End != expectedEnd {
-		return fmt.Errorf("have an end position of %d for the %s %s in %s", expectedEnd, humanIdx, p.match, p.src)
+		return actual, fmt.Errorf("expected the end position %d to be %d for the %s %s in %s", span.End, expectedEnd, humanIdx, p.match, p.src)
 	}
-	return nil
+	return actual, nil
 }
 
 // index is like strings.Index, but for rune slices.
