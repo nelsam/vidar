@@ -5,17 +5,22 @@
 package syntax_test
 
 import (
+	"fmt"
 	"testing"
 
-	"github.com/a8m/expect"
+	"github.com/apoydence/onpar"
+	"github.com/apoydence/onpar/expect"
+	. "github.com/apoydence/onpar/matchers"
+	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/syntax"
 	"github.com/nelsam/vidar/theme"
 )
 
 func TestKeywords(t *testing.T) {
-	expect := expect.New(t)
+	o := onpar.New()
+	defer o.Run(t)
 
-	src := `
+	const src = `
 	package foo
 
 	import "time"
@@ -60,54 +65,66 @@ FOO:
 		case <-time.After(time.Second):
 		default:
 		}
+	}`
+
+	o.BeforeEach(func(t *testing.T) (expect.Expectation, []input.SyntaxLayer) {
+		expect := expect.New(t)
+
+		s := syntax.New()
+		err := s.Parse(src)
+		expect(err).To(BeNil())
+
+		return expect, s.Layers()
+	})
+
+	matchers := []matchPosition{
+		{src: src, match: "package"},
+		{src: src, match: "import"},
+		{src: src, match: "var"},
+		{src: src, match: "map"},
+		{src: src, match: "const"},
+		{src: src, match: "type"},
+		{src: src, match: "struct"},
+		{src: src, idx: 1, match: "type"},
+		{src: src, match: "interface"},
+		{src: src, match: "func"},
+		{src: src, match: "chan"},
+		{src: src, idx: 1, match: "chan"},
+		{src: src, idx: 1, match: "struct"},
+		{src: src, match: "go"},
+		{src: src, idx: 1, match: "func"},
+		{src: src, idx: 1, match: "var"},
+		{src: src, match: "chan<-"},
+		{src: src, idx: 2, match: "struct"},
+		{src: src, match: "defer"},
+		{src: src, match: "for"},
+		{src: src, match: "range"},
+		{src: src, idx: 2, match: "var"},
+		{src: src, match: "<-chan"},
+		{src: src, idx: 3, match: "struct"},
+		{src: src, match: "goto"},
+		{src: src, idx: 1, match: "for"},
+		{src: src, match: "if"},
+		{src: src, match: "break"},
+		{src: src, match: "else"},
+		{src: src, idx: 1, match: "if"},
+		{src: src, match: "continue"},
+		{src: src, idx: 1, match: "else"},
+		{src: src, match: "switch"},
+		{src: src, match: "case"},
+		{src: src, match: "fallthrough"},
+		{src: src, match: "default"},
+		{src: src, match: "return"},
+		{src: src, match: "select"},
+		{src: src, idx: 1, match: "case"},
+		{src: src, idx: 1, match: "default"},
 	}
-	`
-	s := syntax.New()
-	err := s.Parse(src)
-	expect(err).To.Be.Nil().Else.FailNow()
 
-	layers := s.Layers()
-
-	keywords := findLayer(theme.Keyword, layers)
-
-	expect(keywords.Spans[0]).To.Pass(position{src: src, match: "package"})
-	expect(keywords.Spans[1]).To.Pass(position{src: src, match: "import"})
-	expect(keywords.Spans[2]).To.Pass(position{src: src, match: "var"})
-	expect(keywords.Spans[3]).To.Pass(position{src: src, match: "map"})
-	expect(keywords.Spans[4]).To.Pass(position{src: src, match: "const"})
-	expect(keywords.Spans[5]).To.Pass(position{src: src, match: "type"})
-	expect(keywords.Spans[6]).To.Pass(position{src: src, match: "struct"})
-	expect(keywords.Spans[7]).To.Pass(position{src: src, idx: 1, match: "type"})
-	expect(keywords.Spans[8]).To.Pass(position{src: src, match: "interface"})
-	expect(keywords.Spans[9]).To.Pass(position{src: src, match: "func"})
-	expect(keywords.Spans[10]).To.Pass(position{src: src, match: "chan"})
-	expect(keywords.Spans[11]).To.Pass(position{src: src, idx: 1, match: "chan"})
-	expect(keywords.Spans[12]).To.Pass(position{src: src, idx: 1, match: "struct"})
-	expect(keywords.Spans[13]).To.Pass(position{src: src, match: "go"})
-	expect(keywords.Spans[14]).To.Pass(position{src: src, idx: 1, match: "func"})
-	expect(keywords.Spans[15]).To.Pass(position{src: src, idx: 1, match: "var"})
-	expect(keywords.Spans[16]).To.Pass(position{src: src, match: "chan<-"})
-	expect(keywords.Spans[17]).To.Pass(position{src: src, idx: 2, match: "struct"})
-	expect(keywords.Spans[18]).To.Pass(position{src: src, match: "defer"})
-	expect(keywords.Spans[19]).To.Pass(position{src: src, match: "for"})
-	expect(keywords.Spans[20]).To.Pass(position{src: src, match: "range"})
-	expect(keywords.Spans[21]).To.Pass(position{src: src, idx: 2, match: "var"})
-	expect(keywords.Spans[22]).To.Pass(position{src: src, match: "<-chan"})
-	expect(keywords.Spans[23]).To.Pass(position{src: src, idx: 3, match: "struct"})
-	expect(keywords.Spans[24]).To.Pass(position{src: src, match: "goto"})
-	expect(keywords.Spans[25]).To.Pass(position{src: src, idx: 1, match: "for"})
-	expect(keywords.Spans[26]).To.Pass(position{src: src, match: "if"})
-	expect(keywords.Spans[27]).To.Pass(position{src: src, match: "break"})
-	expect(keywords.Spans[28]).To.Pass(position{src: src, match: "else"})
-	expect(keywords.Spans[29]).To.Pass(position{src: src, idx: 1, match: "if"})
-	expect(keywords.Spans[30]).To.Pass(position{src: src, match: "continue"})
-	expect(keywords.Spans[31]).To.Pass(position{src: src, idx: 1, match: "else"})
-	expect(keywords.Spans[32]).To.Pass(position{src: src, match: "switch"})
-	expect(keywords.Spans[33]).To.Pass(position{src: src, match: "case"})
-	expect(keywords.Spans[34]).To.Pass(position{src: src, match: "fallthrough"})
-	expect(keywords.Spans[35]).To.Pass(position{src: src, match: "default"})
-	expect(keywords.Spans[36]).To.Pass(position{src: src, match: "return"})
-	expect(keywords.Spans[37]).To.Pass(position{src: src, match: "select"})
-	expect(keywords.Spans[38]).To.Pass(position{src: src, idx: 1, match: "case"})
-	expect(keywords.Spans[39]).To.Pass(position{src: src, idx: 1, match: "default"})
+	for idx, match := range matchers {
+		name := fmt.Sprintf("%d%s %s", match.idx+1, numSuffix(match.idx+1), match.match)
+		o.Spec(name, func(expect expect.Expectation, layers []input.SyntaxLayer) {
+			keywords := findLayer(theme.Keyword, layers)
+			expect(keywords.Spans[idx]).To(match)
+		})
+	}
 }

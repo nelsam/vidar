@@ -8,150 +8,177 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/a8m/expect"
+	"github.com/apoydence/onpar"
+	"github.com/apoydence/onpar/expect"
+	. "github.com/apoydence/onpar/matchers"
 	"github.com/nelsam/vidar/commander/input"
 	"github.com/nelsam/vidar/syntax"
 	"github.com/nelsam/vidar/theme"
 )
 
-func findLayer(c theme.LanguageConstruct, l []input.SyntaxLayer) input.SyntaxLayer {
-	for _, layer := range l {
-		if layer.Construct == c {
-			return layer
-		}
-	}
-	return input.SyntaxLayer{}
-}
-
 func TestDecl(t *testing.T) {
-	t.Run("Gen", GenDecl)
-	t.Run("Func", FuncDecl)
-	t.Run("Bad", BadDecl)
-}
+	o := onpar.New()
+	defer o.Run(t)
 
-func GenDecl(t *testing.T) {
-	t.Run("NoParens", GenDeclNoParen)
-	t.Run("Parens", GenDeclParen)
-}
+	o.BeforeEach(func(t *testing.T) expect.Expectation {
+		return expect.New(t)
+	})
 
-func GenDeclNoParen(t *testing.T) {
-	expect := expect.New(t)
+	o.Group("Gen", func() {
+		o.Group("NoParen", func() {
+			const src = `
+			package foo
+			
+			// Foo is a thing
+			var Foo string
+			`
 
-	src := `
-package foo
+			o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []input.SyntaxLayer) {
+				s := syntax.New()
+				err := s.Parse(src)
+				expect(err).To(BeNil())
 
-// Foo is a thing
-var Foo string
-`
-	s := syntax.New()
-	err := s.Parse(src)
-	expect(err).To.Be.Nil()
+				layers := s.Layers()
+				expect(layers).To(HaveLen(3))
+				return expect, layers
+			})
 
-	layers := s.Layers()
-	expect(layers).To.Have.Len(3)
+			o.Spec("it highlights keywords", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+				keywords := findLayer(theme.Keyword, layers)
+				expect(keywords.Spans).To(HaveLen(2))
+				expect(keywords.Spans[1]).To(matchPosition{src: src, match: "var"})
+			})
 
-	keywords := findLayer(theme.Keyword, layers)
-	expect(keywords.Spans).To.Have.Len(2).Else.FailNow()
-	expect(keywords.Spans[1]).To.Pass(position{src: src, match: "var"})
+			o.Spec("it highlights comments", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+				comments := findLayer(theme.Comment, layers)
+				expect(comments.Spans).To(HaveLen(1))
+				expect(comments.Spans[0]).To(matchPosition{src: src, match: "// Foo is a thing"})
+			})
 
-	comments := findLayer(theme.Comment, layers)
-	expect(comments.Spans).To.Have.Len(1)
-	expect(comments.Spans[0]).To.Pass(position{src: src, match: "// Foo is a thing"})
+			o.Spec("it highlights types", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+				typs := findLayer(theme.Type, layers)
+				expect(typs.Spans).To(HaveLen(1))
+				expect(typs.Spans[0]).To(matchPosition{src: src, match: "string"})
+			})
+		})
 
-	typs := findLayer(theme.Type, layers)
-	expect(typs.Spans).To.Have.Len(1)
-	expect(typs.Spans[0]).To.Pass(position{src: src, match: "string"})
-}
+		o.Group("Paren", func() {
 
-func GenDeclParen(t *testing.T) {
-	expect := expect.New(t)
+			const src = `
+			package foo
+			
+			var (
+				Foo string
+				Bar int
+			)
+			`
 
-	src := `
-package foo
+			o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []input.SyntaxLayer) {
+				s := syntax.New()
+				err := s.Parse(src)
+				expect(err).To(BeNil())
 
-var (
-	Foo string
-	Bar int
-)
-`
-	s := syntax.New()
-	err := s.Parse(src)
-	expect(err).To.Be.Nil()
+				layers := s.Layers()
+				expect(layers).To(HaveLen(3))
 
-	layers := s.Layers()
-	expect(layers).To.Have.Len(3)
+				return expect, layers
+			})
 
-	keywords := findLayer(theme.Keyword, layers)
-	expect(keywords.Spans).To.Have.Len(2)
-	expect(keywords.Spans[1]).To.Pass(position{src: src, match: "var"})
+			o.Spec("it highlights keywords", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+				keywords := findLayer(theme.Keyword, layers)
+				expect(keywords.Spans).To(HaveLen(2))
+				expect(keywords.Spans[1]).To(matchPosition{src: src, match: "var"})
+			})
 
-	parens := findLayer(theme.ScopePair, layers)
-	expect(parens.Spans).To.Have.Len(2).Else.FailNow()
-	expect(parens.Spans[0]).To.Pass(position{src: src, match: "("})
-	expect(parens.Spans[1]).To.Pass(position{src: src, match: ")"})
+			o.Spec("it highlights parenthesis", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+				parens := findLayer(theme.ScopePair, layers)
+				expect(parens.Spans).To(HaveLen(2))
+				expect(parens.Spans[0]).To(matchPosition{src: src, match: "("})
+				expect(parens.Spans[1]).To(matchPosition{src: src, match: ")"})
+			})
 
-	typs := findLayer(theme.Type, layers)
-	expect(typs.Spans).To.Have.Len(2)
-	expect(typs.Spans[0]).To.Pass(position{src: src, match: "string"})
-	expect(typs.Spans[1]).To.Pass(position{src: src, match: "int"})
-}
+			o.Spec("it highlights types", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+				typs := findLayer(theme.Type, layers)
+				expect(typs.Spans).To(HaveLen(2))
+				expect(typs.Spans[0]).To(matchPosition{src: src, match: "string"})
+				expect(typs.Spans[1]).To(matchPosition{src: src, match: "int"})
+			})
+		})
+	})
 
-func FuncDecl(t *testing.T) {
-	expect := expect.New(t)
+	o.Group("Func", func() {
+		// Note: this needs a trailing newline to parse the closing brace correctly.
+		const src = `
+		package foo
+			
+		func Foo(bar string) int {
+			return 0
+		}
+		`
 
-	src := `
-package foo
+		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []input.SyntaxLayer) {
+			s := syntax.New()
+			err := s.Parse(src)
+			expect(err).To(BeNil())
 
-func Foo(bar string) int {
-	return 0
-}
-`
-	s := syntax.New()
-	err := s.Parse(src)
-	expect(err).To.Be.Nil()
+			layers := s.Layers()
+			expect(layers).To(HaveLen(5))
 
-	layers := s.Layers()
-	expect(layers).To.Have.Len(5)
+			return expect, layers
+		})
 
-	keywords := findLayer(theme.Keyword, layers)
-	expect(keywords.Spans).To.Have.Len(3)
-	expect(keywords.Spans[1]).To.Pass(position{src: src, match: "func"})
-	expect(keywords.Spans[2]).To.Pass(position{src: src, match: "return"})
+		o.Spec("it highlights function and return keywords", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+			keywords := findLayer(theme.Keyword, layers)
+			expect(keywords.Spans).To(HaveLen(3))
+			expect(keywords.Spans[1]).To(matchPosition{src: src, match: "func"})
+			expect(keywords.Spans[2]).To(matchPosition{src: src, match: "return"})
+		})
 
-	parens := findLayer(theme.ScopePair, layers)
-	expect(parens.Spans).To.Have.Len(4)
-	expect(parens.Spans[0]).To.Pass(position{src: src, match: "("})
-	expect(parens.Spans[1]).To.Pass(position{src: src, match: ")"})
-	expect(parens.Spans[2]).To.Pass(position{src: src, match: "{"})
-	expect(parens.Spans[3]).To.Pass(position{src: src, match: "}"})
+		o.Spec("it highlights function parenthesis and braces", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+			parens := findLayer(theme.ScopePair, layers)
+			expect(parens.Spans).To(HaveLen(4))
+			expect(parens.Spans[0]).To(matchPosition{src: src, match: "("})
+			expect(parens.Spans[1]).To(matchPosition{src: src, match: ")"})
+			expect(parens.Spans[2]).To(matchPosition{src: src, match: "{"})
+			expect(parens.Spans[3]).To(matchPosition{src: src, match: "}"})
+		})
 
-	typs := findLayer(theme.Type, layers)
-	expect(typs.Spans).To.Have.Len(2)
-	expect(typs.Spans[0]).To.Pass(position{src: src, match: "string"})
-	expect(typs.Spans[1]).To.Pass(position{src: src, match: "int"})
+		o.Spec("it highlights parameter and return types", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+			typs := findLayer(theme.Type, layers)
+			expect(typs.Spans).To(HaveLen(2))
+			expect(typs.Spans[0]).To(matchPosition{src: src, match: "string"})
+			expect(typs.Spans[1]).To(matchPosition{src: src, match: "int"})
+		})
 
-	ints := findLayer(theme.Num, layers)
-	expect(ints.Spans).To.Have.Len(1)
-	expect(ints.Spans[0]).To.Pass(position{src: src, match: "0"})
-}
+		o.Spec("it highlights expressions in the return statement", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+			ints := findLayer(theme.Num, layers)
+			expect(ints.Spans).To(HaveLen(1))
+			expect(ints.Spans[0]).To(matchPosition{src: src, match: "0"})
+		})
+	})
 
-func BadDecl(t *testing.T) {
-	expect := expect.New(t)
+	o.Group("Bad", func() {
+		const src = `
+		package foo
+		
+		10`
 
-	src := `
-package foo
+		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []input.SyntaxLayer) {
+			s := syntax.New()
+			err := s.Parse(src)
+			expect(err).To(Not(BeNil()))
 
-10
-`
-	s := syntax.New()
-	err := s.Parse(src)
-	expect(err).Not.To.Be.Nil()
+			layers := s.Layers()
+			expect(layers).To(HaveLen(2))
 
-	layers := s.Layers()
-	expect(layers).To.Have.Len(2)
+			return expect, layers
+		})
 
-	bad := findLayer(theme.Bad, layers)
-	expect(bad.Spans).To.Have.Len(1)
-	expectedStart := strings.Index(src, "10")
-	expect(bad.Spans[0].Start).To.Equal(expectedStart)
+		o.Spec("it highlights bad syntax", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+			bad := findLayer(theme.Bad, layers)
+			expect(bad.Spans).To(HaveLen(1))
+			expectedStart := strings.Index(src, "10")
+			expect(bad.Spans[0].Start).To(Equal(expectedStart))
+		})
+	})
 }
