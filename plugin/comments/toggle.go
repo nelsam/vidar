@@ -77,13 +77,13 @@ func (t *Toggle) Exec() error {
 	var edits []input.Edit
 	for i := len(selections) - 1; i >= 0; i-- {
 		begin, end := selections[i].Start(), selections[i].End()
-		str := t.editor.Text()[begin:end]
+		runes := t.editor.Runes()[begin:end]
+		str := string(runes)
 		re, replace := regexpReplace(str)
 		newstr := re.ReplaceAllString(str, replace)
-
 		edits = append(edits, input.Edit{
 			At:  int(begin),
-			Old: []rune(str),
+			Old: runes,
 			New: []rune(newstr),
 		})
 	}
