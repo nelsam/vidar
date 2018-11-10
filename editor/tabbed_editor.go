@@ -104,6 +104,21 @@ func (e *TabbedEditor) AddPanelAt(c gxui.Control, n string, i int) {
 	e.editors[n] = c.(input.Editor)
 }
 
+func (e *TabbedEditor) RemovePanel(panel gxui.Control) {
+	toRemove := panel.(input.Editor)
+	for name, editor := range e.editors {
+		if editor == toRemove {
+			delete(e.editors, name)
+			break
+		}
+	}
+	e.PanelHolder.RemovePanel(panel)
+	if ed := e.CurrentEditor(); ed != nil {
+		opener := e.cmdr.Bindable("focus-location").(Opener)
+		e.cmdr.Execute(opener.For(focus.Path(ed.Filepath())))
+	}
+}
+
 func (e *TabbedEditor) Files() []string {
 	files := make([]string, 0, len(e.editors))
 	for file := range e.editors {
@@ -125,16 +140,14 @@ func (e *TabbedEditor) CreatePanelTab() mixins.PanelTab {
 	})
 	tab.OnMouseUp(func(gxui.MouseEvent) {
 		if e.CurrentEditor() == nil {
-			if len(e.editors) == 1 {
+			if len(e.editors) <= 1 {
 				e.purgeSelf()
 			} else {
 				delete(e.editors, e.cur)
 			}
-			return
 		}
-		opener := e.cmdr.Bindable("focus-location").(Opener)
-		e.cmdr.Execute(opener.For(focus.Path(e.CurrentEditor().Filepath())))
 	})
+
 	return tab
 }
 
@@ -174,20 +187,18 @@ func (e *TabbedEditor) CloseCurrentEditor() (name string, editor input.Editor) {
 	if toRemove == nil {
 		return "", nil
 	}
-	e.RemovePanel(toRemove.(gxui.Control))
-	defer func() {
-		if ed := e.CurrentEditor(); ed != nil {
-			opener := e.cmdr.Bindable("focus-location").(Opener)
-			e.cmdr.Execute(opener.For(focus.Path(ed.Filepath())))
-		}
-	}()
-	for name, panel := range e.editors {
+	name = ""
+	for key, panel := range e.editors {
 		if panel == toRemove {
-			delete(e.editors, name)
-			return name, toRemove
+			name = key
+			break
 		}
 	}
-	return "", nil
+	e.RemovePanel(toRemove.(gxui.Control))
+	if name == "" {
+		return "", nil
+	}
+	return name, toRemove
 }
 
 func (e *TabbedEditor) SaveAll() {
