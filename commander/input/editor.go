@@ -17,6 +17,7 @@ package input
 type Editor interface {
 	Filepath() string
 	Text() string
+	Runes() []rune
 	SetText(string)
 	SyntaxLayers() []SyntaxLayer
 	SetSyntaxLayers([]SyntaxLayer)
