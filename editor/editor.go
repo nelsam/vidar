@@ -339,6 +339,7 @@ func (e *CodeEditor) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
 func (e *CodeEditor) CreateLine(theme gxui.Theme, index int) (mixins.TextBoxLine, gxui.Control) {
 	lineNumber := theme.CreateLabel()
 	lineNumber.SetText(fmt.Sprintf("%4d", index+1))
+	lineNumber.SetMargin(math.Spacing{L: 0, T: 0, R: 3, B: 0})
 
 	line := &mixins.CodeEditorLine{}
 	line.Init(line, theme, &e.CodeEditor, index)
