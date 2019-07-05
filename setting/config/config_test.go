@@ -96,15 +96,21 @@ func TestConfig(t *testing.T) {
 		return <-r
 	}
 
-	confTypes := map[string]string{
-		"toml": `bacon = "eggs"`,
-		"yaml": `bacon: eggs`,
-		"yml":  `bacon: eggs`,
-		"json": `{"bacon": "eggs"}`,
+	typTests := []struct {
+		typ  string
+		body string
+	}{
+		{typ: "toml", body: `bacon = "eggs"`},
+		{typ: "yaml", body: `bacon: eggs`},
+		{typ: "yml", body: `bacon: eggs`},
+		{typ: "json", body: `{"bacon": "eggs"}`},
 	}
-	for t, b := range confTypes {
-		o.Spec(fmt.Sprintf("it can load %s files", t), func(expect Expectation, o *mockOpener) {
-			ret := newConfig(expect, o, fmt.Sprintf("/bar/foo.%s", t), b, "foo", "/bar")
+	for i := range typTests {
+		// We need to assign here to avoid having all the tests use the same memory location
+		// for tt, which would cause them to all test json when run in parallel.
+		tt := typTests[i]
+		o.Spec(fmt.Sprintf("it can load %s files", tt.typ), func(expect Expectation, o *mockOpener) {
+			ret := newConfig(expect, o, fmt.Sprintf("/bar/foo.%s", tt.typ), tt.body, "foo", "/bar")
 			expect(ret.err).To(Not(HaveOccurred()))
 			expect(ret.c.Get("bacon")).To(Equal("eggs"))
 		})

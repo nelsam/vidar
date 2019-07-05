@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -32,7 +33,15 @@ type codec struct {
 var (
 	codecJSON = codec{
 		unmarshal: func(r io.Reader, t interface{}) error {
-			return json.NewDecoder(r).Decode(t)
+			// json.Decoder seems to react very differently from other decoders, refusing to
+			// actually read until EOF and instead stopping after a call to Read returns a
+			// number less than the length of the byte slice passed in.  This is ... incorrect
+			// behavior, to say the least ... so we're doing the reading manually.
+			b, err := ioutil.ReadAll(r)
+			if err != nil {
+				return err
+			}
+			return json.Unmarshal(b, t)
 		},
 		marshal: func(w io.Writer, t interface{}) error {
 			return json.NewEncoder(w).Encode(t)
