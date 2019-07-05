@@ -49,6 +49,9 @@ var (
 	projects         *config.Config
 	settings         *config.Config
 
+	// BuiltinFonts is a list of the fonts that we have built in to the
+	// editor.  This is done so that vidar will always be able to start,
+	// even if none of the fonts on a user's system are parseable.
 	BuiltinFonts = map[string][]byte{
 		"gomono":           gomono.TTF,
 		"gomonobold":       gomonobold.TTF,
