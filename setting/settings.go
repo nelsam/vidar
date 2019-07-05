@@ -24,14 +24,26 @@ import (
 )
 
 const (
-	LicenseHeaderFilename = ".license-header" // TODO: move to the plugin
-	DefaultFontSize       = 12                // TODO: read from DPI settings from the monitor
+	// LicenseHeaderFilename is the file name to look for in projects.
+	//
+	// TODO: this belongs in the license header plugin, since not all
+	// languages need it.
+	LicenseHeaderFilename = ".license-header"
+
+	// DefaultFontSize is the font size that will be used if no font
+	// size settings are found in the config files.
+	DefaultFontSize = 12
 
 	projectsFilename = "projects"
 	settingsFilename = "settings"
 )
 
 var (
+	// App is an XDG application config.  It's exported so that plugins can load their own config
+	// files from vidar's config directories.
+	//
+	// TODO: we should unexport this and provide functions to access its methods.  Allowing plugins
+	// to assign to App is misleading and potentially dangerous.
 	App              = xdg.New("", "vidar")
 	defaultConfigDir = App.ConfigHome()
 	projects         *config.Config
