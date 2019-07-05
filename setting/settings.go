@@ -14,9 +14,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/OpenPeeDeeP/xdg"
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/vidar/setting/config"
 	"golang.org/x/image/font/gofont/gomono"
 	"golang.org/x/image/font/gofont/gomonobold"
 	"golang.org/x/image/font/gofont/gomonobolditalic"
@@ -34,8 +34,8 @@ const (
 var (
 	App              = xdg.New("", "vidar")
 	defaultConfigDir = App.ConfigHome()
-	projects         *config
-	settings         *config
+	projects         *config.Config
+	settings         *config.Config
 
 	BuiltinFonts = map[string][]byte{
 		"gomono":           gomono.TTF,
@@ -51,23 +51,23 @@ func init() {
 		log.Printf("Error: Could not create config directory %s: %s", defaultConfigDir, err)
 		return
 	}
-	projects, err = newConfig(projectsFilename, defaultConfigDir)
+	projects, err = config.New(opener{}, projectsFilename, defaultConfigDir)
 	if os.IsNotExist(err) {
 		err = nil
 	}
 	if err != nil {
 		log.Printf("Error reading projects: %s", err)
 	}
-	projects.setDefault("projects", []Project(nil))
+	projects.SetDefault("projects", []Project(nil))
 
-	settings, err = newConfig(settingsFilename, defaultConfigDir)
+	settings, err = config.New(opener{}, settingsFilename, defaultConfigDir)
 	if os.IsNotExist(err) {
 		err = nil
 	}
 	if err != nil {
 		log.Printf("Error reading settings: %s", err)
 	}
-	settings.setDefault("fonts", []Font(nil))
+	settings.SetDefault("fonts", []Font(nil))
 }
 
 type Font struct {
@@ -129,7 +129,7 @@ func addEnv(environ []string, key, value string, replace bool) []string {
 }
 
 func Projects() (projs []Project) {
-	projs, ok := projects.get("projects").([]Project)
+	projs, ok := projects.Get("projects").([]Project)
 	if !ok {
 		return nil
 	}
@@ -137,8 +137,8 @@ func Projects() (projs []Project) {
 }
 
 func AddProject(project Project) {
-	projects.set("projects", append(Projects(), project))
-	if err := writeConfig(projects, projectsFilename); err != nil {
+	projects.Set("projects", append(Projects(), project))
+	if err := projects.Write(); err != nil {
 		log.Printf("Error updating projects file")
 	}
 }
@@ -215,7 +215,7 @@ func loadFont(font string) (io.Reader, error) {
 
 // PrefFont returns the most preferred font found on the system.
 func PrefFont(d gxui.Driver) gxui.Font {
-	fonts, ok := settings.get("fonts").([]Font)
+	fonts, ok := settings.Get("fonts").([]Font)
 	if !ok {
 		return parseDefaultFont(d)
 	}
@@ -257,17 +257,4 @@ func parseFont(d gxui.Driver, f io.Reader, size int) (gxui.Font, error) {
 		return nil, err
 	}
 	return font, nil
-}
-
-func writeConfig(cfg *config, fname string) error {
-	f, err := os.Create(filepath.Join(defaultConfigDir, fname+".toml"))
-	if err != nil {
-		return fmt.Errorf("Could not create config file %s: %s", fname, err)
-	}
-	defer f.Close()
-	encoder := toml.NewEncoder(f)
-	if err := encoder.Encode(cfg.data); err != nil {
-		return fmt.Errorf("Could not marshal settings: %s", err)
-	}
-	return nil
 }

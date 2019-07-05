@@ -5,28 +5,41 @@
 package setting
 
 import (
+	"io"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
+	"github.com/nelsam/vidar/setting/config"
 )
 
 const keysFilename = "keys"
 
-var bindings *config
+var bindings *config.Config
 
 func init() {
 	var err error
-	bindings, err = newConfig(keysFilename, defaultConfigDir)
+	bindings, err = config.New(opener{}, keysFilename, defaultConfigDir)
 	if err != nil {
 		log.Printf("Error reading key bindings: %s", err)
 	}
 }
 
+type opener struct{}
+
+func (o opener) Open(path string) (io.ReadCloser, error) {
+	return os.Open(path)
+}
+
+func (o opener) Create(path string) (io.WriteCloser, error) {
+	return os.Create(path)
+}
+
 func Bindings(commandName string) (events []gxui.KeyboardEvent) {
-	for event, action := range bindings.data {
-		if action == commandName {
+	for _, event := range bindings.Keys() {
+		if bindings.Get(event) == commandName {
 			events = append(events, parseBinding(event)...)
 		}
 	}
@@ -77,8 +90,8 @@ func SetDefaultBindings(cmds ...bind.Command) {
 	for _, c := range cmds {
 		defaults := c.Defaults()
 		for _, d := range defaults {
-			bindings.setDefault(d.String(), c.Name())
+			bindings.SetDefault(d.String(), c.Name())
 		}
 	}
-	writeConfig(bindings, keysFilename)
+	bindings.Write()
 }
