@@ -5,6 +5,8 @@
 package history
 
 import (
+	"sync"
+
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
@@ -36,6 +38,7 @@ func Bindables(_ command.Commander, _ gxui.Driver, theme *basic.Theme) []bind.Bi
 type History struct {
 	current *node
 	skip    []input.Edit
+	mu      sync.Mutex
 
 	all map[string]*node
 }
@@ -65,6 +68,8 @@ func (h *History) shouldSkip(e input.Edit) bool {
 }
 
 func (h *History) TextChanged(_ input.Editor, e input.Edit) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	if h.shouldSkip(e) {
 		copy(h.skip, h.skip[1:])
 		h.skip = h.skip[:len(h.skip)-1]
@@ -77,6 +82,8 @@ func (h *History) TextChanged(_ input.Editor, e input.Edit) {
 // input.Edit that needs to be applied in order to rewind the
 // text to its previous state.
 func (h *History) Rewind() input.Edit {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	if h.current.parent == nil {
 		return input.Edit{At: -1}
 	}
