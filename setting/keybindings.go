@@ -5,44 +5,45 @@
 package setting
 
 import (
+	"io"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/spf13/viper"
+	"github.com/nelsam/vidar/setting/config"
 )
 
 const keysFilename = "keys"
 
-var bindings = viper.New()
+var bindings *config.Config
 
 func init() {
-	bindings.AddConfigPath(defaultConfigDir)
-	bindings.SetConfigName(keysFilename)
+	var err error
+	bindings, err = config.New(opener{}, keysFilename, defaultConfigDir)
+	if err != nil {
+		log.Printf("Error reading key bindings: %s", err)
+	}
+}
+
+type opener struct{}
+
+func (o opener) Open(path string) (io.ReadCloser, error) {
+	return os.Open(path)
+}
+
+func (o opener) Create(path string) (io.WriteCloser, error) {
+	return os.Create(path)
 }
 
 func Bindings(commandName string) (events []gxui.KeyboardEvent) {
-	for event, action := range bindings.AllSettings() {
-		if action == commandName {
+	for _, event := range bindings.Keys() {
+		if bindings.Get(event) == commandName {
 			events = append(events, parseBinding(event)...)
 		}
 	}
 	return events
-}
-
-func parseBindings() {
-	err := bindings.ReadInConfig()
-	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-		err = writeConfig(bindings, keysFilename)
-		if err != nil {
-			log.Printf("Error writing new config: %s", err)
-			return
-		}
-	}
-	if err != nil {
-		log.Printf("Error parsing key bindings: %s", err)
-	}
 }
 
 func parseBinding(eventPattern string) []gxui.KeyboardEvent {
@@ -86,12 +87,11 @@ func parseBinding(eventPattern string) []gxui.KeyboardEvent {
 }
 
 func SetDefaultBindings(cmds ...bind.Command) {
-	parseBindings()
 	for _, c := range cmds {
 		defaults := c.Defaults()
 		for _, d := range defaults {
 			bindings.SetDefault(d.String(), c.Name())
 		}
 	}
-	writeConfig(bindings, keysFilename)
+	bindings.Write()
 }

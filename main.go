@@ -5,8 +5,6 @@
 package main
 
 import (
-	"io"
-	"io/ioutil"
 	"log"
 	"path/filepath"
 
@@ -27,7 +25,6 @@ import (
 	"github.com/nelsam/vidar/setting"
 	"github.com/nelsam/vidar/theme"
 	"github.com/spf13/cobra"
-	"github.com/tmc/fonts"
 )
 
 var (
@@ -56,44 +53,9 @@ func main() {
 	cmd.Execute()
 }
 
-func font(driver gxui.Driver) gxui.Font {
-	desiredFonts := setting.DesiredFonts()
-	if len(desiredFonts) == 0 {
-		return nil
-	}
-	var (
-		font       setting.Font
-		fontReader io.Reader
-		err        error
-	)
-	for _, font = range desiredFonts {
-		fontReader, err = fonts.Load(font.Name)
-		if err == nil {
-			break
-		}
-	}
-	if err != nil {
-		return nil
-	}
-	if closer, ok := fontReader.(io.Closer); ok {
-		defer closer.Close()
-	}
-	fontBytes, err := ioutil.ReadAll(fontReader)
-	if err != nil {
-		log.Printf("Failed to read font file: %s", err)
-		return nil
-	}
-	gFont, err := driver.CreateFont(fontBytes, font.Size)
-	if err != nil {
-		log.Printf("Could not parse font: %s", err)
-		return nil
-	}
-	return gFont
-}
-
 func uiMain(driver gxui.Driver) {
 	gTheme := dark.CreateTheme(driver).(*basic.Theme)
-	font := font(driver)
+	font := setting.PrefFont(driver)
 	if font == nil {
 		font = gTheme.DefaultMonospaceFont()
 	}
