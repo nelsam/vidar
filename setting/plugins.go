@@ -13,7 +13,7 @@ import (
 const pluginsDirname = "plugins"
 
 func Plugins() []string {
-	pluginsPath := App.DataPath(pluginsDirname)
+	pluginsPath := filepath.Join(App.DataHome(), pluginsDirname)
 	dir, err := os.Open(pluginsPath)
 	if err == os.ErrNotExist {
 		return nil

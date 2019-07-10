@@ -4,8 +4,6 @@
 [![Join the chat at https://gitter.im/nelsam/vidar](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nelsam/vidar?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nelsam/vidar)](https://goreportcard.com/report/github.com/nelsam/vidar)
 
-[![Waffle.io - Issues](https://badge.waffle.io/nelsam/vidar.svg?columns=all)](http://waffle.io/nelsam/vidar)
-
 Vidar is the Norse god of silence, patience, and revenge.  Sounds perfect for an editor, right?
 
 <img src="asset/logo.svg" width="512" />
@@ -31,6 +29,8 @@ $ go get github.com/nelsam/vidar
 $ vidar
 ```
 
+### On Linux: Install Plugins!
+
 If you're running linux, you will also probably want to install plugins, since most go-specific features
 are kept out of the main editor source code.  See [the Makefile](/Makefile) for plugin build and install
 commands.
@@ -55,9 +55,8 @@ Vidar uses [xdg-go](https://github.com/casimir/xdg-go) to decide where to save c
 files.  On linux systems, this will probably end up in `~/.config/vidar/`; for Windows
 and OS X, you'll likely need to check the xdg-go package to see what it uses.
 
-Config files are written as `toml` by default, but can be parsed from any format that
-[viper](https://github.com/spf13/viper) supports.  Currently, there are three config
-files:
+Config files are written as `toml` by default, but can be parsed from `json` or `yaml`
+as well.  Currently, there are three config files:
 - settings: Only used to configure a `fonts` list, which should be a list of names
   of fonts installed on your system in order of preference.  Note that only truetype
   fonts are supported right now, and many of those display incorrectly.  My current
@@ -95,6 +94,8 @@ with the lack of support from third party plugins.
   - Since this has shown itself to be a bit unreliable, vidar will refuse to write a file that
     has been changed on disk since the last reload.  If this happens, you have to close and re-open
     the file.
+  - Most of the time, vidar will notice when a file is renamed and update the buffer's file path.  Not
+    always, though.
 - Most of the basic stuff you expect from a text editor (copy/paste, undo/redo, etc)
 
 ## Important Missing Features
