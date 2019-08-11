@@ -12,7 +12,7 @@ import (
 	"github.com/nelsam/vidar/bind"
 	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/input"
-	"github.com/nelsam/vidar/internal/editor"
+	"github.com/nelsam/vidar/ui"
 )
 
 type BindManager interface {
@@ -21,7 +21,7 @@ type BindManager interface {
 }
 
 type EditorChooser interface {
-	NextEditor(editor.Direction) input.Editor
+	NextEditor(ui.Direction) input.Editor
 }
 
 type Locationer interface {
@@ -30,7 +30,7 @@ type Locationer interface {
 }
 
 type ChangeFocus struct {
-	direction editor.Direction
+	direction ui.Direction
 	name      string
 
 	binder  BindManager
@@ -38,19 +38,19 @@ type ChangeFocus struct {
 }
 
 func NewFocusRight() *ChangeFocus {
-	return &ChangeFocus{direction: editor.Right, name: "focus-right"}
+	return &ChangeFocus{direction: ui.Right, name: "focus-right"}
 }
 
 func NewFocusLeft() *ChangeFocus {
-	return &ChangeFocus{direction: editor.Left, name: "focus-left"}
+	return &ChangeFocus{direction: ui.Left, name: "focus-left"}
 }
 
 func NewFocusUp() *ChangeFocus {
-	return &ChangeFocus{direction: editor.Up, name: "focus-up"}
+	return &ChangeFocus{direction: ui.Up, name: "focus-up"}
 }
 
 func NewFocusDown() *ChangeFocus {
-	return &ChangeFocus{direction: editor.Down, name: "focus-down"}
+	return &ChangeFocus{direction: ui.Down, name: "focus-down"}
 }
 
 func (p *ChangeFocus) Name() string {
@@ -66,13 +66,13 @@ func (p *ChangeFocus) Defaults() []fmt.Stringer {
 		Modifier: gxui.ModAlt,
 	}
 	switch p.direction {
-	case editor.Right:
+	case ui.Right:
 		e.Key = gxui.KeyRight
-	case editor.Left:
+	case ui.Left:
 		e.Key = gxui.KeyLeft
-	case editor.Up:
+	case ui.Up:
 		e.Key = gxui.KeyUp
-	case editor.Down:
+	case ui.Down:
 		e.Key = gxui.KeyDown
 	default:
 		panic(fmt.Errorf("Direction %d is invalid", p.direction))

@@ -12,26 +12,32 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-type watcher struct {
-	*fsnotify.Watcher
+type fsnotifyWatcher struct{}
+
+func New() Watcher {
+	return &fsnotifyWatcher{}
 }
 
-func New() (Watcher, error) {
+func (w fsnotifyWatcher) Watch(path string) (EventHandler, error) {
 	fsw, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
 	}
-	return &watcher{Watcher: fsw}, nil
+	return fsnotifyEventHandler{Watcher: fsw}, nil
 }
 
-func (w *watcher) Next() (Event, error) {
+type fsnotifyEventHandler struct {
+	*fsnotify.Watcher
+}
+
+func (h fsnotifyEventHandler) Next() (Event, error) {
 	select {
-	case e, ok := <-w.Events:
+	case e, ok := <-h.Events:
 		if !ok {
 			return Event{}, io.EOF
 		}
 		return Event{Path: e.Name, Op: Op(e.Op)}, nil
-	case err, ok := <-w.Errors:
+	case err, ok := <-h.Errors:
 		if !ok {
 			return Event{}, io.EOF
 		}

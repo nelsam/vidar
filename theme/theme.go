@@ -12,10 +12,8 @@ type Highlight struct {
 	Foreground, Background Color
 }
 
-type ConstructHighlights map[LanguageConstruct]Highlight
-
 type Theme struct {
-	Constructs ConstructHighlights
+	Highlights map[Construct]Highlight
 
 	// Rainbow is used to highlight any LanguageConstruct values
 	// that are not in the Theme's Constructs map.  If you want

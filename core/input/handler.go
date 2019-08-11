@@ -12,8 +12,8 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/bind"
+	"github.com/nelsam/vidar/core/internal/editor"
 	"github.com/nelsam/vidar/input"
-	"github.com/nelsam/vidar/internal/editor"
 )
 
 type Binder interface {
@@ -53,10 +53,6 @@ func New(d gxui.Driver, b Binder) *Handler {
 
 func (e *Handler) Name() string {
 	return "input-handler"
-}
-
-func (e *Handler) New() input.Handler {
-	return New(e.driver, e.binder)
 }
 
 func (e *Handler) Bind(b bind.Bindable) (input.Handler, error) {

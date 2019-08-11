@@ -6,13 +6,11 @@ package ui
 
 // Runner is a type that can run functions on the UI goroutine.
 type Runner interface {
-	Wrapper
-
 	// Queue queues the passed in function to run on the UI
 	// goroutine, returning after adding it to the queue.
-	Queue(func())
+	Enqueue(func())
 
 	// Run runs the passed in function on the UI goroutine,
-	// returning after the function has run.
+	// returning after the function has returned.
 	Run(func())
 }

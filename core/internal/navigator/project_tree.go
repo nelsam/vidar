@@ -16,8 +16,9 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
+	"github.com/nelsam/vidar/core/internal/editor"
 	"github.com/nelsam/vidar/fsw"
-	"github.com/nelsam/vidar/internal/editor"
+
 	"github.com/nelsam/vidar/setting"
 )
 

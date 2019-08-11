@@ -33,7 +33,6 @@ type Edit struct {
 // bind to vidar's default Handler.
 type Handler interface {
 	bind.Bindable
-	New() Handler
 	Init(Editor, []rune)
 	Bind(bind.Bindable) (Handler, error)
 	Apply(focused Editor, edits ...Edit)

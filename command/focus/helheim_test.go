@@ -10,140 +10,6 @@ import (
 	"github.com/nelsam/vidar/input"
 )
 
-type mockOpener struct {
-	OpenCalled chan bool
-	OpenInput  struct {
-		Arg0 chan string
-	}
-}
-
-func newMockOpener() *mockOpener {
-	m := &mockOpener{}
-	m.OpenCalled = make(chan bool, 100)
-	m.OpenInput.Arg0 = make(chan string, 100)
-	return m
-}
-func (m *mockOpener) Open(arg0 string) {
-	m.OpenCalled <- true
-	m.OpenInput.Arg0 <- arg0
-}
-
-type mockEditorOpener struct {
-	OpenCalled chan bool
-	OpenInput  struct {
-		Arg0 chan string
-	}
-	OpenOutput struct {
-		Editor  chan input.Editor
-		Existed chan bool
-	}
-	CurrentEditorCalled chan bool
-	CurrentEditorOutput struct {
-		Ret0 chan input.Editor
-	}
-}
-
-func newMockEditorOpener() *mockEditorOpener {
-	m := &mockEditorOpener{}
-	m.OpenCalled = make(chan bool, 100)
-	m.OpenInput.Arg0 = make(chan string, 100)
-	m.OpenOutput.Editor = make(chan input.Editor, 100)
-	m.OpenOutput.Existed = make(chan bool, 100)
-	m.CurrentEditorCalled = make(chan bool, 100)
-	m.CurrentEditorOutput.Ret0 = make(chan input.Editor, 100)
-	return m
-}
-func (m *mockEditorOpener) Open(arg0 string) (editor input.Editor, existed bool) {
-	m.OpenCalled <- true
-	m.OpenInput.Arg0 <- arg0
-	return <-m.OpenOutput.Editor, <-m.OpenOutput.Existed
-}
-func (m *mockEditorOpener) CurrentEditor() input.Editor {
-	m.CurrentEditorCalled <- true
-	return <-m.CurrentEditorOutput.Ret0
-}
-
-type mockBinder struct {
-	PushCalled chan bool
-	PushInput  struct {
-		Arg0 chan []bind.Bindable
-	}
-	PopCalled chan bool
-	PopOutput struct {
-		Ret0 chan []bind.Bindable
-	}
-	ExecuteCalled chan bool
-	ExecuteInput  struct {
-		Arg0 chan bind.Bindable
-	}
-}
-
-func newMockBinder() *mockBinder {
-	m := &mockBinder{}
-	m.PushCalled = make(chan bool, 100)
-	m.PushInput.Arg0 = make(chan []bind.Bindable, 100)
-	m.PopCalled = make(chan bool, 100)
-	m.PopOutput.Ret0 = make(chan []bind.Bindable, 100)
-	m.ExecuteCalled = make(chan bool, 100)
-	m.ExecuteInput.Arg0 = make(chan bind.Bindable, 100)
-	return m
-}
-func (m *mockBinder) Push(arg0 ...bind.Bindable) {
-	m.PushCalled <- true
-	m.PushInput.Arg0 <- arg0
-}
-func (m *mockBinder) Pop() []bind.Bindable {
-	m.PopCalled <- true
-	return <-m.PopOutput.Ret0
-}
-func (m *mockBinder) Execute(arg0 bind.Bindable) {
-	m.ExecuteCalled <- true
-	m.ExecuteInput.Arg0 <- arg0
-}
-
-type mockFileChanger struct {
-	FileChangedCalled chan bool
-	FileChangedInput  struct {
-		OldPath, NewPath chan string
-	}
-}
-
-func newMockFileChanger() *mockFileChanger {
-	m := &mockFileChanger{}
-	m.FileChangedCalled = make(chan bool, 100)
-	m.FileChangedInput.OldPath = make(chan string, 100)
-	m.FileChangedInput.NewPath = make(chan string, 100)
-	return m
-}
-func (m *mockFileChanger) FileChanged(oldPath, newPath string) {
-	m.FileChangedCalled <- true
-	m.FileChangedInput.OldPath <- oldPath
-	m.FileChangedInput.NewPath <- newPath
-}
-
-type mockFileBinder struct {
-	FileBindablesCalled chan bool
-	FileBindablesInput  struct {
-		Path chan string
-	}
-	FileBindablesOutput struct {
-		Ret0 chan []bind.Bindable
-	}
-}
-
-func newMockFileBinder() *mockFileBinder {
-	m := &mockFileBinder{}
-	m.FileBindablesCalled = make(chan bool, 100)
-	m.FileBindablesInput.Path = make(chan string, 100)
-	m.FileBindablesOutput.Ret0 = make(chan []bind.Bindable, 100)
-	return m
-}
-func (m *mockFileBinder) FileBindables(path string) []bind.Bindable {
-	m.FileBindablesCalled <- true
-	m.FileBindablesInput.Path <- path
-	return <-m.FileBindablesOutput.Ret0
-}
-
 type mockLineStarter struct {
 	LineStartCalled chan bool
 	LineStartInput  struct {
@@ -190,6 +56,158 @@ func (m *mockMover) To(arg0 ...int) bind.Bindable {
 	return <-m.ToOutput.Ret0
 }
 
+type mockBinder struct {
+	PushCalled chan bool
+	PushInput  struct {
+		Arg0 chan []bind.Bindable
+	}
+	PopCalled chan bool
+	PopOutput struct {
+		Ret0 chan []bind.Bindable
+	}
+	ExecuteCalled chan bool
+	ExecuteInput  struct {
+		Arg0 chan bind.Bindable
+	}
+}
+
+func newMockBinder() *mockBinder {
+	m := &mockBinder{}
+	m.PushCalled = make(chan bool, 100)
+	m.PushInput.Arg0 = make(chan []bind.Bindable, 100)
+	m.PopCalled = make(chan bool, 100)
+	m.PopOutput.Ret0 = make(chan []bind.Bindable, 100)
+	m.ExecuteCalled = make(chan bool, 100)
+	m.ExecuteInput.Arg0 = make(chan bind.Bindable, 100)
+	return m
+}
+func (m *mockBinder) Push(arg0 ...bind.Bindable) {
+	m.PushCalled <- true
+	m.PushInput.Arg0 <- arg0
+}
+func (m *mockBinder) Pop() []bind.Bindable {
+	m.PopCalled <- true
+	return <-m.PopOutput.Ret0
+}
+func (m *mockBinder) Execute(arg0 bind.Bindable) {
+	m.ExecuteCalled <- true
+	m.ExecuteInput.Arg0 <- arg0
+}
+
+type mockOpener struct {
+	OpenCalled chan bool
+	OpenInput  struct {
+		Arg0 chan string
+	}
+}
+
+func newMockOpener() *mockOpener {
+	m := &mockOpener{}
+	m.OpenCalled = make(chan bool, 100)
+	m.OpenInput.Arg0 = make(chan string, 100)
+	return m
+}
+func (m *mockOpener) Open(arg0 string) {
+	m.OpenCalled <- true
+	m.OpenInput.Arg0 <- arg0
+}
+
+type mockFileBinder struct {
+	FileBindablesCalled chan bool
+	FileBindablesInput  struct {
+		Path chan string
+	}
+	FileBindablesOutput struct {
+		Ret0 chan []bind.Bindable
+	}
+}
+
+func newMockFileBinder() *mockFileBinder {
+	m := &mockFileBinder{}
+	m.FileBindablesCalled = make(chan bool, 100)
+	m.FileBindablesInput.Path = make(chan string, 100)
+	m.FileBindablesOutput.Ret0 = make(chan []bind.Bindable, 100)
+	return m
+}
+func (m *mockFileBinder) FileBindables(path string) []bind.Bindable {
+	m.FileBindablesCalled <- true
+	m.FileBindablesInput.Path <- path
+	return <-m.FileBindablesOutput.Ret0
+}
+
+type mockEditorOpener struct {
+	OpenCalled chan bool
+	OpenInput  struct {
+		Arg0 chan string
+	}
+	OpenOutput struct {
+		Editor  chan input.Editor
+		Existed chan bool
+	}
+	CurrentEditorCalled chan bool
+	CurrentEditorOutput struct {
+		Ret0 chan input.Editor
+	}
+}
+
+func newMockEditorOpener() *mockEditorOpener {
+	m := &mockEditorOpener{}
+	m.OpenCalled = make(chan bool, 100)
+	m.OpenInput.Arg0 = make(chan string, 100)
+	m.OpenOutput.Editor = make(chan input.Editor, 100)
+	m.OpenOutput.Existed = make(chan bool, 100)
+	m.CurrentEditorCalled = make(chan bool, 100)
+	m.CurrentEditorOutput.Ret0 = make(chan input.Editor, 100)
+	return m
+}
+func (m *mockEditorOpener) Open(arg0 string) (editor input.Editor, existed bool) {
+	m.OpenCalled <- true
+	m.OpenInput.Arg0 <- arg0
+	return <-m.OpenOutput.Editor, <-m.OpenOutput.Existed
+}
+func (m *mockEditorOpener) CurrentEditor() input.Editor {
+	m.CurrentEditorCalled <- true
+	return <-m.CurrentEditorOutput.Ret0
+}
+
+type mockFileChanger struct {
+	FileChangedCalled chan bool
+	FileChangedInput  struct {
+		OldPath, NewPath chan string
+	}
+}
+
+func newMockFileChanger() *mockFileChanger {
+	m := &mockFileChanger{}
+	m.FileChangedCalled = make(chan bool, 100)
+	m.FileChangedInput.OldPath = make(chan string, 100)
+	m.FileChangedInput.NewPath = make(chan string, 100)
+	return m
+}
+func (m *mockFileChanger) FileChanged(oldPath, newPath string) {
+	m.FileChangedCalled <- true
+	m.FileChangedInput.OldPath <- oldPath
+	m.FileChangedInput.NewPath <- newPath
+}
+
+type mockBindable struct {
+	NameCalled chan bool
+	NameOutput struct {
+		Ret0 chan string
+	}
+}
+
+func newMockBindable() *mockBindable {
+	m := &mockBindable{}
+	m.NameCalled = make(chan bool, 100)
+	m.NameOutput.Ret0 = make(chan string, 100)
+	return m
+}
+func (m *mockBindable) Name() string {
+	m.NameCalled <- true
+	return <-m.NameOutput.Ret0
+}
+
 type mockEditor struct {
 	FilepathCalled chan bool
 	FilepathOutput struct {
@@ -198,6 +216,10 @@ type mockEditor struct {
 	TextCalled chan bool
 	TextOutput struct {
 		Ret0 chan string
+	}
+	RunesCalled chan bool
+	RunesOutput struct {
+		Ret0 chan []rune
 	}
 	SetTextCalled chan bool
 	SetTextInput  struct {
@@ -219,6 +241,8 @@ func newMockEditor() *mockEditor {
 	m.FilepathOutput.Ret0 = make(chan string, 100)
 	m.TextCalled = make(chan bool, 100)
 	m.TextOutput.Ret0 = make(chan string, 100)
+	m.RunesCalled = make(chan bool, 100)
+	m.RunesOutput.Ret0 = make(chan []rune, 100)
 	m.SetTextCalled = make(chan bool, 100)
 	m.SetTextInput.Arg0 = make(chan string, 100)
 	m.SyntaxLayersCalled = make(chan bool, 100)
@@ -235,6 +259,10 @@ func (m *mockEditor) Text() string {
 	m.TextCalled <- true
 	return <-m.TextOutput.Ret0
 }
+func (m *mockEditor) Runes() []rune {
+	m.RunesCalled <- true
+	return <-m.RunesOutput.Ret0
+}
 func (m *mockEditor) SetText(arg0 string) {
 	m.SetTextCalled <- true
 	m.SetTextInput.Arg0 <- arg0
@@ -246,22 +274,4 @@ func (m *mockEditor) SyntaxLayers() []input.SyntaxLayer {
 func (m *mockEditor) SetSyntaxLayers(arg0 []input.SyntaxLayer) {
 	m.SetSyntaxLayersCalled <- true
 	m.SetSyntaxLayersInput.Arg0 <- arg0
-}
-
-type mockBindable struct {
-	NameCalled chan bool
-	NameOutput struct {
-		Ret0 chan string
-	}
-}
-
-func newMockBindable() *mockBindable {
-	m := &mockBindable{}
-	m.NameCalled = make(chan bool, 100)
-	m.NameOutput.Ret0 = make(chan string, 100)
-	return m
-}
-func (m *mockBindable) Name() string {
-	m.NameCalled <- true
-	return <-m.NameOutput.Ret0
 }

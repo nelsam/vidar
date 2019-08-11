@@ -6,7 +6,10 @@ package navigator
 
 import (
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/gxui/mixins"
+
+	// TODO: Remove once we're fully decoupled.
+	vgxui "github.com/nelsam/vidar/core/gxui"
+	"github.com/nelsam/vidar/ui"
 )
 
 // Pane is a type that has a button and a window frame.
@@ -20,21 +23,20 @@ type Pane interface {
 	Frame() gxui.Control
 }
 
-// Caller is any type that can call a function on the UI goroutine
-type Caller interface {
-	Call(func()) bool
-}
-
 // HeightSetter is any type which needs its height set explicitly
 type HeightSetter interface {
 	SetHeight(int)
 }
 
+type Creator interface {
+	Runner() ui.Runner
+	LinearLayout(ui.Direction) (ui.Layout, error)
+}
+
 // Navigator is a type implementing the navigation pane of vidar.
 type Navigator struct {
-	mixins.LinearLayout
-
-	caller Caller
+	runner ui.Runner
+	layout ui.Layout
 
 	buttons gxui.LinearLayout
 	frame   gxui.Control
@@ -42,20 +44,23 @@ type Navigator struct {
 	panes []Pane
 }
 
-// New creates and returns a new *Navigator.
-func New(driver gxui.Driver, theme gxui.Theme) *Navigator {
-	nav := &Navigator{}
-	nav.Init(nav, theme)
+// New creates and returns a new *Navigator and its UI layout.
+func New(creator Creator) (*Navigator, ui.Layout, error) {
+	layout, err := creator.LinearLayout(ui.Left)
+	if err != nil {
+		return nil, nil, err
+	}
+	nav := &Navigator{
+		runner: creator.Runner(),
+		layout: layout,
+	}
 
-	nav.SetDirection(gxui.LeftToRight)
-	nav.caller = driver
-
+	driver, theme := creator.(*vgxui.Creator).Raw()
 	nav.buttons = theme.CreateLinearLayout()
-	// TODO: update buttons to use more restrictive type
 	nav.buttons.SetDirection(gxui.TopToBottom)
-	nav.AddChild(nav.buttons)
+	nav.layout.Add(vgxui.Control{nav.buttons})
 
-	return nav
+	return nav, layout, nil
 }
 
 func (n *Navigator) Elements() []interface{} {
@@ -79,7 +84,7 @@ func (n *Navigator) Add(pane Pane) {
 		}
 		n.ToggleNavPane(pane.Frame())
 	})
-	n.caller.Call(func() {
+	n.runner.Enqueue(func() {
 		n.buttons.AddChild(button)
 	})
 }
@@ -104,7 +109,7 @@ func (n *Navigator) HideNavPane() {
 	if n.frame == nil {
 		return
 	}
-	n.RemoveChild(n.frame)
+	n.layout.RemoveChild(n.frame)
 	n.frame = nil
 }
 
@@ -114,7 +119,7 @@ func (n *Navigator) ShowNavPane(frame gxui.Control) {
 		return
 	}
 	n.frame = frame
-	n.AddChild(n.frame)
+	n.layout.AddChild(n.frame)
 	if focusable, ok := n.frame.(gxui.Focusable); ok {
 		gxui.SetFocus(focusable)
 	}

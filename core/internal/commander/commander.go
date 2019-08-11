@@ -11,14 +11,16 @@ import (
 	"sync"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/gxui/math"
-	"github.com/nelsam/gxui/mixins/base"
-	"github.com/nelsam/gxui/mixins/parts"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/bind"
+	"github.com/nelsam/vidar/core/internal/controller"
 	"github.com/nelsam/vidar/input"
-	"github.com/nelsam/vidar/internal/controller"
 	"github.com/nelsam/vidar/setting"
+	"github.com/nelsam/vidar/ui"
+
+	// TODO: drop this package from imports when we no longer
+	// need access to the core gxui types.
+	vgxui "github.com/nelsam/vidar/core/gxui"
 )
 
 // Controller is a type which is used by the Commander to control the
@@ -28,19 +30,22 @@ type Controller interface {
 	Editor() controller.MultiEditor
 }
 
-type Controllable interface {
+type deprecatedControllable interface {
 	Controller() *gxui.TextBoxController
+}
+
+type Creator interface {
+	Runner() ui.Runner
+	LinearLayout(ui.Direction) (ui.Layout, error)
+	ManualLayout() (ui.Layout, error)
 }
 
 // Commander is a gxui.LinearLayout that takes care of displaying the
 // command utilities around a controller.
 type Commander struct {
-	base.Container
-	parts.BackgroundBorderPainter
+	layout ui.Layout
 
-	driver gxui.Driver
-	theme  *basic.Theme
-	root   gxui.Window
+	creator Creator
 
 	controller Controller
 	box        *commandBox
@@ -56,73 +61,56 @@ type Commander struct {
 }
 
 // New creates and initializes a *Commander, then returns it.
-func New(driver gxui.Driver, theme *basic.Theme, root gxui.Window, controller Controller) *Commander {
+func New(creator Creator, controller Controller) (*Commander, ui.Layout, error) {
 	commander := &Commander{
-		driver: driver,
-		theme:  theme,
-		root:   root,
+		creator: creator,
 	}
-	commander.Container.Init(commander, theme)
-	commander.BackgroundBorderPainter.Init(commander)
-	commander.SetMouseEventTarget(true)
-	commander.SetBackgroundBrush(gxui.TransparentBrush)
-	commander.SetBorderPen(gxui.TransparentPen)
 
-	mainLayout := theme.CreateLinearLayout()
+	layout, err := creator.ManualLayout()
+	if err != nil {
+		return nil, nil, err
+	}
+	commander.layout = layout
 
-	mainLayout.SetDirection(gxui.TopToBottom)
-	mainLayout.SetSize(math.MaxSize)
+	driver, theme := creator.(vgxui.Creator).Raw()
+
+	mainLayout, err := creator.LinearLayout(ui.Up)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	commander.controller = controller
-	commander.menuBar = newMenuBar(commander, theme)
+	commander.menuBar = newMenuBar(commander, theme.(*basic.Theme))
 	commander.box = newCommandBox(driver, theme, commander.controller)
 
-	mainLayout.AddChild(commander.menuBar)
+	mainLayout.Add(vgxui.Control{commander.menuBar})
 
-	subLayout := theme.CreateLinearLayout()
-	subLayout.SetDirection(gxui.BottomToTop)
-	subLayout.AddChild(commander.box)
-	subLayout.AddChild(commander.controller)
-	mainLayout.AddChild(subLayout)
-	commander.AddChild(mainLayout)
-	return commander
+	subLayout, err := creator.LinearLayout(ui.Down)
+	if err != nil {
+		return nil, nil, err
+	}
+	subLayout.Add(vgxui.Control{commander.box})
+	subLayout.Add(vgxui.Control{commander.controller})
+	mainLayout.Add(subLayout)
+
+	commander.layout.Add(mainLayout)
+	return commander, commander.layout, nil
 }
 
 func (c *Commander) InputHandler() input.Handler {
 	return c.inputHandler
 }
 
-func (c *Commander) DesiredSize(_, max math.Size) math.Size {
-	return max
-}
-
-func (c *Commander) LayoutChildren() {
-	maxSize := c.Size().Contract(c.Padding())
-	for _, child := range c.Children() {
-		margin := child.Control.Margin()
-		desiredSize := child.Control.DesiredSize(math.ZeroSize, maxSize.Contract(margin))
-		child.Control.SetSize(desiredSize)
-	}
-}
-
-func (c *Commander) Paint(canvas gxui.Canvas) {
-	rect := c.Size().Rect()
-	c.BackgroundBorderPainter.PaintBackground(canvas, rect)
-	c.PaintChildren.Paint(canvas)
-	c.BackgroundBorderPainter.PaintBorder(canvas, rect)
-}
-
 func (c *Commander) cloneTop() []bind.Bindable {
 	if len(c.stack) == 0 {
 		return nil
 	}
-	next := make([]bind.Bindable, 0, len(c.stack[len(c.stack)-1]))
-	for _, b := range c.stack[len(c.stack)-1] {
-		if h, ok := b.(input.Handler); ok {
-			// TODO: decide if this is helpful.  Bind now returns a new
-			// input.Handler each time, so this is probably useless.
-			b = h.New()
-		}
+	current := c.stack[len(c.stack)-1]
+	if len(current) == 0 {
+		return nil
+	}
+	next := make([]bind.Bindable, 0, len(current))
+	for _, b := range current {
 		next = append(next, b)
 	}
 	return next
@@ -161,8 +149,8 @@ func (c *Commander) bindStack() {
 	}
 
 	if e := c.editor(c.controller.Editor()); e != nil {
-		defer c.driver.Call(func() {
-			c.inputHandler.Init(e, e.(Controllable).Controller().TextRunes())
+		defer c.creator.Runner().Enqueue(func() {
+			c.inputHandler.Init(e, e.(deprecatedControllable).Controller().TextRunes())
 		})
 	}
 
@@ -202,7 +190,7 @@ func (c *Commander) mapBindings() {
 		c.bind(cmd, setting.Bindings(cmd.Name())...)
 	}
 	if handler == nil {
-		log.Fatal("There is no input handler available!  This should never happen.  Please create an issue in github stating that you saw this message.")
+		log.Fatal("There is no input handler available!  This should never happen.  Please create an issue stating that you saw this message.")
 	}
 	c.inputHandler = handler
 }
@@ -269,64 +257,6 @@ func (c *Commander) Bindable(name string) bind.Bindable {
 	return nil
 }
 
-// KeyPress handles key bindings for c.
-func (c *Commander) KeyPress(event gxui.KeyboardEvent) (consume bool) {
-	defer func() {
-		if r := recover(); r != nil {
-			// TODO: display this in the UI
-			log.Printf("ERR: panic while handling key event: %v", r)
-			log.Printf("Stack trace:\n%s", debug.Stack())
-		}
-	}()
-	editor := c.controller.Editor()
-	if event.Modifier == 0 && event.Key == gxui.KeyEscape {
-		c.box.Clear()
-		if e := editor.CurrentEditor(); e != nil {
-			gxui.SetFocus(e.(gxui.Focusable))
-		}
-	}
-	codeEditor := editor.CurrentEditor()
-	if codeEditor != nil && codeEditor.(gxui.Focusable).HasFocus() {
-		c.inputHandler.HandleEvent(codeEditor, event)
-	}
-	if command := c.Binding(event); command != nil {
-		c.box.Clear()
-		if c.box.Run(command) {
-			return true
-		}
-		c.Execute(c.box.Current())
-		c.box.Finish()
-		return true
-	}
-	if !c.box.HasFocus() {
-		return false
-	}
-	if c.box.Finished(event) {
-		c.Execute(c.box.Current())
-		c.box.Finish()
-	}
-	return true
-}
-
-func (c *Commander) KeyStroke(event gxui.KeyStrokeEvent) (consume bool) {
-	defer func() {
-		if r := recover(); r != nil {
-			// TODO: display this in the UI
-			log.Printf("ERR: panic while handling key stroke: %v", r)
-			log.Printf("Stack trace:\n%s", debug.Stack())
-		}
-	}()
-	if event.Modifier&^gxui.ModShift != 0 {
-		return false
-	}
-	e := c.controller.Editor().CurrentEditor()
-	if e == nil || !e.(gxui.Focusable).HasFocus() {
-		return false
-	}
-	c.inputHandler.HandleInput(e, event)
-	return true
-}
-
 func (c *Commander) Execute(e bind.Bindable) {
 	defer func() {
 		// Mitigate the potential for plugins to cause the editor to panic
@@ -336,15 +266,15 @@ func (c *Commander) Execute(e bind.Bindable) {
 		}
 	}()
 	if before, ok := e.(BeforeExecutor); ok {
-		before.BeforeExec(c.root)
+		before.BeforeExec(c)
 	}
 	var status bind.Status
 	switch src := e.(type) {
 	case bind.Op:
-		status = execute(src.Exec, c.root)
+		status = execute(src.Exec, c)
 	case bind.MultiOp:
 		src.Reset()
-		status = execute(src.Store, c.root)
+		status = execute(src.Store, c)
 		if status&bind.Executed == 0 {
 			break
 		}

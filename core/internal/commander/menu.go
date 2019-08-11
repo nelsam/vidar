@@ -25,6 +25,10 @@ type menuBar struct {
 	menus     map[string]*menu
 }
 
+type deprecatedGXUICoupling interface {
+	Control() gxui.Control
+}
+
 func newMenuBar(commander *Commander, theme *basic.Theme) *menuBar {
 	m := &menuBar{
 		commander: commander,
@@ -42,7 +46,7 @@ func (m *menuBar) Add(command bind.Command, bindings ...gxui.KeyboardEvent) {
 	if !ok {
 		menu = newMenu(m.commander, m.theme)
 		m.menus[command.Menu()] = menu
-		button := newMenuButton(m.commander, m.theme, command.Menu())
+		button := newMenuButton(m.commander.layout.(deprecatedGXUICoupling).Control().(gxui.Container), m.theme, command.Menu())
 		child := m.AddChild(button)
 		button.SetMenu(child, menu)
 	}

@@ -11,7 +11,17 @@ import (
 	"github.com/nelsam/vidar/input"
 	"github.com/nelsam/vidar/setting"
 	"github.com/nelsam/vidar/theme"
+	"github.com/nelsam/vidar/ui"
+	"github.com/pkg/errors"
 )
+
+type deprecatedGXUIDriverTheme interface {
+	Raw() (gxui.Driver, gxui.Theme)
+}
+
+type deprecatedGXUICoupling interface {
+	Control() gxui.Control
+}
 
 type ProjectEditor struct {
 	SplitEditor
@@ -19,23 +29,26 @@ type ProjectEditor struct {
 	project setting.Project
 }
 
-func NewProjectEditor(driver gxui.Driver, window gxui.Window, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font, project setting.Project) *ProjectEditor {
+func NewProjectEditor(creator ui.Creator, window gxui.Window, cmdr Commander, syntaxTheme theme.Theme, project setting.Project) (*ProjectEditor, error) {
 	p := &ProjectEditor{}
-	p.driver = driver
+	d, t := creator.(deprecatedGXUIDriverTheme).Raw()
+	p.driver = d
 	p.window = window
 	p.cmdr = cmdr
-	p.theme = theme
+	p.theme = t.(*basic.Theme)
 	p.syntaxTheme = syntaxTheme
-	p.font = font
-	p.SplitterLayout.Init(p, theme)
+	p.font = t.DefaultMonospaceFont()
+	p.SplitterLayout.Init(p, t)
 	p.SetOrientation(gxui.Horizontal)
-	p.driver = driver
-	p.theme = theme
 	p.project = project
 	p.SetMouseEventTarget(true)
 
-	p.AddChild(NewTabbedEditor(driver, cmdr, theme, syntaxTheme, font))
-	return p
+	e, err := NewTabbedEditor(creator, cmdr, syntaxTheme)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create tabbed editor")
+	}
+	p.AddChild(e.layout.(deprecatedGXUICoupling).Control())
+	return p, nil
 }
 
 func (p *ProjectEditor) Open(path string) (e input.Editor, existed bool) {
@@ -49,6 +62,7 @@ func (p *ProjectEditor) Project() setting.Project {
 type MultiProjectEditor struct {
 	mixins.LinearLayout
 
+	creator     ui.Creator
 	driver      gxui.Driver
 	cmdr        Commander
 	theme       *basic.Theme
@@ -60,35 +74,43 @@ type MultiProjectEditor struct {
 	projects map[string]*ProjectEditor
 }
 
-func New(driver gxui.Driver, window gxui.Window, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *MultiProjectEditor {
-	defaultEditor := NewProjectEditor(driver, window, cmdr, theme, syntaxTheme, font, setting.DefaultProject)
+func New(creator ui.Creator, window gxui.Window, cmdr Commander, syntaxTheme theme.Theme) (*MultiProjectEditor, error) {
+	defaultEditor, err := NewProjectEditor(creator, window, cmdr, syntaxTheme, setting.DefaultProject)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create project editor")
+	}
 
+	d, t := creator.(deprecatedGXUIDriverTheme).Raw()
 	e := &MultiProjectEditor{
 		projects: map[string]*ProjectEditor{
 			"*default*": defaultEditor,
 		},
-		driver:      driver,
+		creator:     creator,
+		driver:      d,
 		window:      window,
 		cmdr:        cmdr,
-		font:        font,
-		theme:       theme,
+		font:        t.DefaultMonospaceFont(),
+		theme:       t.(*basic.Theme),
 		syntaxTheme: syntaxTheme,
 	}
-	e.LinearLayout.Init(e, theme)
+	e.LinearLayout.Init(e, t)
 	e.AddChild(defaultEditor)
 	e.current = defaultEditor
-	return e
+	return e, nil
 }
 
-func (e *MultiProjectEditor) SetProject(project setting.Project) {
+func (e *MultiProjectEditor) SetProject(project setting.Project) error {
 	editor, ok := e.projects[project.Name]
 	if !ok {
-		editor = NewProjectEditor(e.driver, e.window, e.cmdr, e.theme, e.syntaxTheme, e.font, project)
+		var err error
+		editor, err = NewProjectEditor(e.creator, e.window, e.cmdr, e.syntaxTheme, project)
 		e.projects[project.Name] = editor
+		return errors.Wrap(err, "could not create project editor")
 	}
 	e.RemoveChild(e.current)
 	e.AddChild(editor)
 	e.current = editor
+	return nil
 }
 
 func (e *MultiProjectEditor) Elements() []interface{} {

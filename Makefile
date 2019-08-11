@@ -6,6 +6,8 @@ define depsfiles =
 	$(foreach p,$(call depslist,$(1)),$(wildcard $(GOPATH)/src/$(p)/*.go))
 endef
 
+FILES=`find . -name '*.go' -not -name '*_test.go'`
+
 all: vidar plugins
 .PHONY: all
 
@@ -65,3 +67,11 @@ plugins-install: plugins | $(HOME)/.local/share/vidar/plugins
 clean:
 	@rm -rf build
 .PHONY: clean
+
+%/helheim_test.go: %/*.go
+	echo $@
+	echo $?
+	echo $(dir $@)
+	go generate ./$(dir $@)
+
+generate: **/helheim_test.go

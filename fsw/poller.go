@@ -38,16 +38,13 @@ func (p poll) addChildren(name string, closed *uint32) error {
 	return nil
 }
 
-type poller struct {
-	closed uint32
-	mu     sync.Mutex
-	ticker *time.Ticker
-	last   map[string]poll
-	events chan Event
-	errs   chan error
+type watcher struct{}
+
+func New() Watcher {
+	return watcher{}
 }
 
-func New() (Watcher, error) {
+func (w watcher) Watch(path string) (EventHandler, error) {
 	p := &poller{
 		ticker: time.NewTicker(pollDuration),
 		last:   make(map[string]poll),
@@ -56,6 +53,15 @@ func New() (Watcher, error) {
 	}
 	go p.run()
 	return p, nil
+}
+
+type poller struct {
+	closed uint32
+	mu     sync.Mutex
+	ticker *time.Ticker
+	last   map[string]poll
+	events chan Event
+	errs   chan error
 }
 
 func (p *poller) run() {

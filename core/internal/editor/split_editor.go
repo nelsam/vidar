@@ -18,6 +18,8 @@ import (
 	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/input"
 	"github.com/nelsam/vidar/theme"
+	"github.com/nelsam/vidar/ui"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -65,18 +67,10 @@ type MultiEditor interface {
 	SaveAll()
 }
 
-type Direction int
-
-const (
-	Up Direction = 1 + iota
-	Right
-	Down
-	Left
-)
-
 type SplitEditor struct {
 	mixins.SplitterLayout
 
+	creator     ui.Creator
 	driver      gxui.Driver
 	cmdr        Commander
 	theme       *basic.Theme
@@ -87,16 +81,18 @@ type SplitEditor struct {
 	current MultiEditor
 }
 
-func NewSplitEditor(driver gxui.Driver, cmdr Commander, window gxui.Window, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *SplitEditor {
+func NewSplitEditor(creator ui.Creator, cmdr Commander, window gxui.Window, syntaxTheme theme.Theme) *SplitEditor {
+	d, t := creator.(deprecatedGXUIDriverTheme).Raw()
 	editor := &SplitEditor{
-		driver:      driver,
+		creator:     creator,
+		driver:      d,
 		cmdr:        cmdr,
-		theme:       theme,
+		theme:       t.(*basic.Theme),
 		syntaxTheme: syntaxTheme,
-		font:        font,
+		font:        t.DefaultMonospaceFont(),
 		window:      window,
 	}
-	editor.SplitterLayout.Init(editor, theme)
+	editor.SplitterLayout.Init(editor, t)
 	return editor
 }
 
@@ -104,26 +100,29 @@ func (e *SplitEditor) Elements() []interface{} {
 	return []interface{}{e.current}
 }
 
-func (e *SplitEditor) Split(orientation gxui.Orientation) {
+func (e *SplitEditor) Split(orientation gxui.Orientation) error {
 	if e.current.Editors() <= 1 {
-		return
+		return errors.New("cannot split when there are fewer than 2 files open")
 	}
 	if splitter, ok := e.current.(Splitter); ok {
 		splitter.Split(orientation)
-		return
+		return nil
 	}
 	name, editor := e.current.CloseCurrentEditor()
-	newSplit := NewTabbedEditor(e.driver, e.cmdr, e.theme, e.syntaxTheme, e.font)
+	newSplit, err := NewTabbedEditor(e.creator, e.cmdr, e.syntaxTheme)
+	if err != nil {
+		return errors.Wrap(err, "could not create new tabbed editor")
+	}
 	defer func() {
-		newSplit.Add(name, editor)
+		newSplit.layout.Add(editor, ui.LayoutName(name))
 		opener := e.cmdr.Bindable("focus-location").(Opener)
 		e.cmdr.Execute(opener.For(focus.Path(editor.Filepath())))
 	}()
 	if e.Orientation() == orientation {
-		e.AddChild(newSplit)
-		return
+		e.AddChild(newSplit.layout.(deprecatedGXUICoupling).Control())
+		return nil
 	}
-	newSplitter := NewSplitEditor(e.driver, e.cmdr, e.window, e.theme, e.syntaxTheme, e.font)
+	newSplitter := NewSplitEditor(e.creator, e.cmdr, e.window, e.syntaxTheme)
 	newSplitter.SetOrientation(orientation)
 	var (
 		index       int
@@ -138,7 +137,8 @@ func (e *SplitEditor) Split(orientation gxui.Orientation) {
 	newSplitter.AddChild(e.current)
 	e.current = newSplitter
 	e.AddChildAt(index, e.current)
-	newSplitter.AddChild(newSplit)
+	newSplitter.AddChild(newSplit.layout.(deprecatedGXUICoupling).Control())
+	return nil
 }
 
 func (e *SplitEditor) Editors() (count uint) {
@@ -270,21 +270,21 @@ func (e *SplitEditor) ChildIndex(c gxui.Control) int {
 	return -1
 }
 
-func (e *SplitEditor) NextEditor(direction Direction) input.Editor {
+func (e *SplitEditor) NextEditor(direction ui.Direction) input.Editor {
 	editor, _ := e.nextEditor(direction)
 	return editor
 }
 
-func (e *SplitEditor) nextEditor(direction Direction) (editor input.Editor, wrapped bool) {
+func (e *SplitEditor) nextEditor(direction ui.Direction) (editor input.Editor, wrapped bool) {
 	switch direction {
-	case Up, Down:
+	case ui.Up, ui.Down:
 		if e.Orientation().Horizontal() {
 			if splitter, ok := e.current.(*SplitEditor); ok {
 				return splitter.nextEditor(direction)
 			}
 			return nil, false
 		}
-	case Left, Right:
+	case ui.Left, ui.Right:
 		if e.Orientation().Vertical() {
 			if splitter, ok := e.current.(*SplitEditor); ok {
 				return splitter.nextEditor(direction)
@@ -310,7 +310,7 @@ func (e *SplitEditor) nextEditor(direction Direction) (editor input.Editor, wrap
 	}
 	var next func(i int) int
 	switch direction {
-	case Up, Left:
+	case ui.Up, ui.Left:
 		next = func(i int) int {
 			i--
 			if i < 0 {
@@ -319,7 +319,7 @@ func (e *SplitEditor) nextEditor(direction Direction) (editor input.Editor, wrap
 			}
 			return i
 		}
-	case Down, Right:
+	case ui.Down, ui.Right:
 		next = func(i int) int {
 			i++
 			if i == len(children) {
@@ -348,16 +348,16 @@ func (e *SplitEditor) nextEditor(direction Direction) (editor input.Editor, wrap
 	return me.CurrentEditor(), wrapped
 }
 
-func (e *SplitEditor) first(d Direction) input.Editor {
+func (e *SplitEditor) first(d ui.Direction) input.Editor {
 	switch d {
-	case Up, Down:
+	case ui.Up, ui.Down:
 		if e.Orientation().Horizontal() {
 			if splitter, ok := e.current.(*SplitEditor); ok {
 				return splitter.first(d)
 			}
 			return e.current.CurrentEditor()
 		}
-	case Left, Right:
+	case ui.Left, ui.Right:
 		if e.Orientation().Vertical() {
 			if splitter, ok := e.current.(*SplitEditor); ok {
 				return splitter.first(d)
@@ -368,9 +368,9 @@ func (e *SplitEditor) first(d Direction) input.Editor {
 
 	var first *gxui.Child
 	switch d {
-	case Up, Left:
+	case ui.Up, ui.Left:
 		first = e.Children()[0]
-	case Down, Right:
+	case ui.Down, ui.Right:
 		first = e.Children()[len(e.Children())-1]
 	}
 

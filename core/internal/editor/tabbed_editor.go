@@ -5,18 +5,19 @@
 package editor
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/input"
 	"github.com/nelsam/vidar/theme"
+	"github.com/nelsam/vidar/ui"
 )
 
 type refocuser interface {
@@ -24,42 +25,33 @@ type refocuser interface {
 }
 
 type TabbedEditor struct {
-	mixins.PanelHolder
+	layout ui.Layout
 
-	editors map[string]input.Editor
+	editors map[string]*CodeEditor
 
-	driver      gxui.Driver
-	cmdr        Commander
-	theme       *basic.Theme
-	syntaxTheme theme.Theme
-	font        gxui.Font
-	cur         string
+	runner ui.Runner
+	cur    string
 }
 
-func NewTabbedEditor(driver gxui.Driver, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) *TabbedEditor {
-	editor := &TabbedEditor{}
-	editor.Init(editor, driver, cmdr, theme, syntaxTheme, font)
-	return editor
+func NewTabbedEditor(c ui.Creator, cmdr Commander, syntaxTheme theme.Theme) (*TabbedEditor, error) {
+	l, err := c.TabbedLayout()
+	if err != nil {
+		return nil, fmt.Errorf("could not create tabbed layout: %s", err)
+	}
+
+	editor := &TabbedEditor{
+		layout:  l,
+		editors: make(map[string]input.Editor),
+		runner:  c.Runner(),
+	}
 }
 
-func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) {
-	e.editors = make(map[string]input.Editor)
-	e.driver = driver
-	e.cmdr = cmdr
-	e.theme = theme
-	e.syntaxTheme = syntaxTheme
-	e.font = font
-	e.PanelHolder.Init(outer, theme)
-	e.SetMargin(math.Spacing{L: 0, T: 2, R: 0, B: 0})
-}
-
-func (e *TabbedEditor) Has(hiddenPrefix, path string) bool {
-	_, ok := e.editors[relPath(hiddenPrefix, path)]
+func (e *TabbedEditor) Has(name string) bool {
+	_, ok := e.editors[name]
 	return ok
 }
 
-func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []string) (editor input.Editor, existed bool) {
-	name := relPath(hiddenPrefix, path)
+func (e *TabbedEditor) Open(name, path string, environ []string) (editor input.Editor, existed bool) {
 	if editor, ok := e.editors[name]; ok {
 		e.Select(e.PanelIndex(editor.(gxui.Control)))
 		gxui.SetFocus(editor.(gxui.Focusable))
@@ -161,19 +153,19 @@ func (e *TabbedEditor) purgeSelf() {
 	parent.(refocuser).ReFocus()
 }
 
-func (e *TabbedEditor) EditorAt(d Direction) input.Editor {
+func (e *TabbedEditor) EditorAt(d ui.Direction) input.Editor {
 	panels := e.PanelCount()
 	if panels < 2 {
 		return e.CurrentEditor()
 	}
 	idx := e.PanelIndex(e.SelectedPanel())
 	switch d {
-	case Right:
+	case ui.Right:
 		idx++
 		if idx == panels {
 			idx = 0
 		}
-	case Left:
+	case ui.Left:
 		idx--
 		if idx < 0 {
 			idx = panels - 1

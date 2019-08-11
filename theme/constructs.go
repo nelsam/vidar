@@ -4,10 +4,10 @@
 
 package theme
 
-type LanguageConstruct int
+type Construct int
 
 const (
-	Keyword LanguageConstruct = 1 + iota
+	Keyword Construct = 1 + iota
 	Builtin
 	Func
 	Type

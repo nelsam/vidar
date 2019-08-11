@@ -7,9 +7,13 @@ package controller
 import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
-	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/input"
+	"github.com/nelsam/vidar/ui"
 )
+
+type deprecatedGXUICoupling interface {
+	Control() gxui.Control
+}
 
 type Navigator interface {
 	gxui.Control
@@ -22,28 +26,25 @@ type MultiEditor interface {
 	Open(path string) (editor input.Editor, existed bool)
 }
 
+type Creator interface {
+	LinearLayout(ui.Direction) (ui.Layout, error)
+}
+
 type Controller struct {
 	mixins.LinearLayout
 
-	theme     *basic.Theme
-	driver    gxui.Driver
-	font      gxui.Font
 	navigator Navigator
 	editor    MultiEditor
 }
 
-func New(driver gxui.Driver, theme *basic.Theme) *Controller {
-	controller := new(Controller)
-	controller.Init(driver, theme)
-	return controller
-}
-
-func (c *Controller) Init(driver gxui.Driver, theme *basic.Theme) {
-	c.LinearLayout.Init(c, theme)
-	c.driver = driver
-	c.theme = theme
-
-	c.SetDirection(gxui.LeftToRight)
+func New(creator Creator) (*Controller, error) {
+	layout, err := creator.LinearLayout(ui.Left)
+	if err != nil {
+		return nil, err
+	}
+	ll := layout.(deprecatedGXUICoupling).Control().(*mixins.LinearLayout)
+	c := &Controller{LinearLayout: *ll}
+	return c, nil
 }
 
 // Navigator returns c's Navigator instance.

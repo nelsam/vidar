@@ -11,7 +11,7 @@ import (
 	"log"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/internal/asset"
+	"github.com/nelsam/vidar/asset"
 
 	"github.com/nfnt/resize"
 

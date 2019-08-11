@@ -12,15 +12,15 @@ import (
 	"github.com/nelsam/vidar/bind"
 	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/input"
-	"github.com/nelsam/vidar/internal/editor"
+	"github.com/nelsam/vidar/ui"
 )
 
 type TabChooser interface {
-	EditorAt(editor.Direction) input.Editor
+	EditorAt(ui.Direction) input.Editor
 }
 
 type ChangeTab struct {
-	shift editor.Direction
+	shift ui.Direction
 	name  string
 
 	binder  BindManager
@@ -28,11 +28,11 @@ type ChangeTab struct {
 }
 
 func NewNextTab() *ChangeTab {
-	return &ChangeTab{shift: editor.Right, name: "next-tab"}
+	return &ChangeTab{shift: ui.Right, name: "next-tab"}
 }
 
 func NewPrevTab() *ChangeTab {
-	return &ChangeTab{shift: editor.Left, name: "prev-tab"}
+	return &ChangeTab{shift: ui.Left, name: "prev-tab"}
 }
 
 func (t *ChangeTab) Name() string {
@@ -48,7 +48,7 @@ func (t *ChangeTab) Defaults() []fmt.Stringer {
 		Modifier: gxui.ModControl,
 		Key:      gxui.KeyTab,
 	}
-	if t.shift == editor.Left {
+	if t.shift == ui.Left {
 		e.Modifier |= gxui.ModShift
 	}
 	return []fmt.Stringer{e}

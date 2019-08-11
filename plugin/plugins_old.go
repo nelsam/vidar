@@ -10,7 +10,6 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/bind"
-	"github.com/nelsam/vidar/internal/commander"
 )
 
 func Bindables(cmdr *commander.Commander, driver gxui.Driver, theme *basic.Theme) []bind.Bindable {

@@ -33,9 +33,13 @@ import (
 	"github.com/nelsam/vidar/bind"
 	"github.com/nelsam/vidar/plugin/command"
 	"github.com/nelsam/vidar/setting"
+	"github.com/nelsam/vidar/ui"
 )
 
-const lookupName = "Bindables"
+const (
+	bindableName = "Bindables"
+	uiName       = "UIs"
+)
 
 // Bindables returns all bindables that are found via plugins
 // in the plugin directory.
@@ -45,27 +49,54 @@ const lookupName = "Bindables"
 // gxui.Theme as arguments.
 func Bindables(cmdr command.Commander, driver gxui.Driver, theme gxui.Theme) []bind.Bindable {
 	var bindables []bind.Bindable
+	for _, c := range pluginLookup(bindableName) {
+		binds, ok := c.symbol.(func(command.Commander, gxui.Driver, gxui.Theme) []bind.Bindable)
+		if !ok {
+			log.Printf("Error: don't know how to call bindable constructor of type %T from plugin %s", c.symbol, c.path)
+			continue
+		}
+		bindables = append(bindables, binds(cmdr, driver, theme)...)
+	}
+	return bindables
+}
+
+// UIs returns all ui.Creators that are found via plugins in
+// the plugin directory.
+//
+// For each plugin, UIs will look up a UIs function and expect
+// it to take no arguments, returning a slice of ui.Creators.
+func UIs() []ui.Creator {
+	var uis []ui.Creator
+	for _, c := range pluginLookup(uiName) {
+		ui, ok := c.symbol.(func() ui.Creator)
+		if !ok {
+			log.Printf("Error: don't know how to call ui constructor of type %T from plugin %s", c.symbol, c.path)
+			continue
+		}
+		uis = append(uis, ui())
+	}
+	return uis
+}
+
+type symbolMap struct {
+	path   string
+	symbol plugin.Symbol
+}
+
+func pluginLookup(name string) []symbolMap {
+	var s []symbolMap
 	for _, path := range setting.Plugins() {
 		plugin, err := plugin.Open(path)
 		if err != nil {
 			log.Printf("Error opening plugin at %s: %s", path, err)
 			continue
 		}
-		c, err := plugin.Lookup(lookupName)
+		c, err := plugin.Lookup(name)
 		if err != nil {
-			log.Printf("Error looking up constructor %s in plugin %s: %s", lookupName, path, err)
+			log.Printf("Error looking up constructor %s in plugin %s: %s", name, path, err)
 			continue
 		}
-
-		var newBindables []bind.Bindable
-		switch construct := c.(type) {
-		case func(command.Commander, gxui.Driver, gxui.Theme) []bind.Bindable:
-			newBindables = construct(cmdr, driver, theme)
-		default:
-			log.Printf("Error: don't know how to call constructor of type %T from plugin %s", c, path)
-			continue
-		}
-		bindables = append(bindables, newBindables...)
+		s = append(s, symbolMap{path: path, symbol: c})
 	}
-	return bindables
+	return s
 }

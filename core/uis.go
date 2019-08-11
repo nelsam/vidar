@@ -2,15 +2,13 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package input
+package core
 
-import "github.com/nelsam/vidar/theme"
+import (
+	"github.com/nelsam/vidar/core/gxui"
+	"github.com/nelsam/vidar/ui"
+)
 
-type Span struct {
-	Start, End int
-}
-
-type SyntaxLayer struct {
-	Spans     []Span
-	Construct theme.Construct
+func UIs() []ui.Creator {
+	return []ui.Creator{gxui.Creator{}}
 }

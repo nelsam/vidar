@@ -7,7 +7,7 @@ package history_test
 import (
 	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/command/history"
-	"github.com/nelsam/vidar/command/input"
+	"github.com/nelsam/vidar/core/input"
 )
 
 var (

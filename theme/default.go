@@ -6,7 +6,7 @@ package theme
 
 var Default = Theme{
 	Rainbow: DefaultRainbow,
-	Constructs: ConstructHighlights{
+	Highlights: map[Construct]Highlight{
 		Bad: Highlight{
 			Foreground: Color{
 				R: 0.3,

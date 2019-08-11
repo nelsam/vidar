@@ -14,13 +14,16 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/input"
-	"github.com/nelsam/vidar/internal/commander"
 )
 
 type SelectionEditor interface {
 	input.Editor
 	Controller() *gxui.TextBoxController
 	SelectSlice([]gxui.TextSelection)
+}
+
+type Elementer interface {
+	Elements() []interface{}
 }
 
 type Find struct {
@@ -126,7 +129,7 @@ func findEditor(elem interface{}) SelectionEditor {
 	switch src := elem.(type) {
 	case SelectionEditor:
 		return src
-	case commander.Elementer:
+	case Elementer:
 		for _, child := range src.Elements() {
 			if editor := findEditor(child); editor != nil {
 				return editor
