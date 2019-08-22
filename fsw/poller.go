@@ -64,7 +64,6 @@ func (p *poller) run() {
 		if closed := atomic.LoadUint32(&p.closed); closed != 0 {
 			p.errs <- io.EOF
 			close(p.errs)
-			close(p.events)
 			return
 		}
 		p.triggerEvents()
