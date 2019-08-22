@@ -15,11 +15,6 @@ import (
 	"github.com/nelsam/vidar/plugin/command"
 )
 
-type ll struct {
-	edit input.Edit
-	next unsafe.Pointer
-}
-
 type node struct {
 	// prevP *node
 	prevP unsafe.Pointer
