@@ -15,38 +15,87 @@ import (
 	"github.com/nelsam/vidar/plugin/command"
 )
 
+// node is an entry in a linked list
 type node struct {
-	// prevP *node
-	prevP unsafe.Pointer
-	// nextP *node
+	// nextP *node - the next entry in the list
 	nextP unsafe.Pointer
-	// in order to keep access to multiple children goroutine-safe
-	// without using something slow, we keep access to siblings too.
-	// siblingP *node
-	siblingP unsafe.Pointer
-	// the above should be kept first in the struct for byte alignment.
+
+	// the above should be kept first in the struct for byte alignment
 
 	edit input.Edit
-}
-
-func (n *node) prev() *node {
-	return (*node)(atomic.LoadPointer(&n.prevP))
 }
 
 func (n *node) next() *node {
 	return (*node)(atomic.LoadPointer(&n.nextP))
 }
 
-func (n *node) sibling() *node {
-	return (*node)(atomic.LoadPointer(&n.siblingP))
+func (n *node) setNext(nn *node) {
+	atomic.StorePointer(&n.nextP, unsafe.Pointer(nn))
 }
 
-func (n *node) push(e input.Edit) *node {
-	next := &node{edit: e, prevP: unsafe.Pointer(n)}
+func (n *node) casNext(old, nn *node) bool {
+	return atomic.CompareAndSwapPointer(&n.nextP, unsafe.Pointer(old), unsafe.Pointer(nn))
+}
+
+// A branch is an entry in a (non-binary) tree.  The first child
+// will be at next(); all other children will be at
+// next().siblings()
+type branch struct {
+	// prevP *branch - the parent node
+	prevP unsafe.Pointer
+
+	// nextP *branch - the first child node.  Additional branching
+	// nodes should be accessed via this node's siblings.
+	nextP unsafe.Pointer
+
+	// siblingsP *[]*branch - the siblings of this node.  Normal
+	// (i.e. non-branching) edits perform much better if next()
+	// directly returns a *node, but if siblings() also returns a
+	// *node we end up hitting double digits of milliseconds per
+	// thousand operations in heavily branching history.  So we
+	// take the extra performance penalty of using a slice *only*
+	// on branching edits, to prevent the performance hit from
+	// being paid for every child node.
+	siblingsP unsafe.Pointer
+
+	// the above should be kept first in the struct for byte alignment.
+
+	edit input.Edit
+}
+
+func (b *branch) prev() *branch {
+	return (*branch)(atomic.LoadPointer(&b.prevP))
+}
+
+func (b *branch) next(i uint) *branch {
+	next := (*branch)(atomic.LoadPointer(&b.nextP))
+	if i == 0 {
+		return next
+	}
+	sibIdx := i - 1
+	sibs := next.siblings()
+	if sibIdx >= uint(len(sibs)) {
+		return nil
+	}
+	return sibs[sibIdx]
+}
+
+func (b *branch) siblings() []*branch {
+	sibs := (*[]*branch)(atomic.LoadPointer(&b.siblingsP))
+	if sibs == nil {
+		return nil
+	}
+	return *sibs
+}
+
+func (b *branch) push(e input.Edit) *branch {
+	next := &branch{edit: e, prevP: unsafe.Pointer(b)}
 	np := unsafe.Pointer(next)
-	done := atomic.CompareAndSwapPointer(&n.nextP, nil, np)
-	for curr := n.next(); !done; curr = curr.sibling() {
-		done = atomic.CompareAndSwapPointer(&curr.siblingP, nil, np)
+	done := atomic.CompareAndSwapPointer(&b.nextP, nil, np)
+	if !done {
+		sibs := b.siblings()
+		sibs = append(sibs, next)
+		atomic.StorePointer(&b.siblingsP, unsafe.Pointer(&sibs))
 	}
 	return next
 }
@@ -54,20 +103,20 @@ func (n *node) push(e input.Edit) *node {
 // Bindables returns the slice of bind.Bindable types that is implemented
 // by this package.
 func Bindables(_ command.Commander, _ gxui.Driver, theme *basic.Theme) []bind.Bindable {
-	h := History{currentP: unsafe.Pointer(&node{}), all: make(map[string]*node)}
+	h := History{currentP: unsafe.Pointer(&branch{}), all: make(map[string]*branch)}
 	onOpen := OnOpen{theme: theme}
 	return []bind.Bindable{&h, &onOpen}
 }
 
 // History keeps track of change history for a file.
 type History struct {
-	// current *node
+	// current *branch
 	currentP unsafe.Pointer
-	// skip *node
+	// skip *branch
 	skipP unsafe.Pointer
 	// the above must be kept first in the struct for byte alignment
 
-	all map[string]*node
+	all map[string]*branch
 }
 
 // Name returns the name of h
@@ -84,8 +133,8 @@ func (h *History) OpNames() []string {
 // Init implements input.ChangeHook
 func (h *History) Init(input.Editor, []rune) {}
 
-func (h *History) current() *node {
-	return (*node)(atomic.LoadPointer(&h.currentP))
+func (h *History) current() *branch {
+	return (*branch)(atomic.LoadPointer(&h.currentP))
 }
 
 func (h *History) skip() *node {
@@ -93,10 +142,13 @@ func (h *History) skip() *node {
 }
 
 func (h *History) addSkip(e input.Edit) {
-	p := unsafe.Pointer(&node{edit: e})
+	n := &node{edit: e}
+	p := unsafe.Pointer(n)
 	added := atomic.CompareAndSwapPointer(&h.skipP, nil, p)
-	for curr := h.skip(); !added; curr = curr.next() {
-		added = atomic.CompareAndSwapPointer(&curr.nextP, nil, p)
+	if !added {
+		for curr := h.skip(); !added; curr = curr.next() {
+			added = curr.casNext(nil, n)
+		}
 	}
 }
 
@@ -143,25 +195,22 @@ func (h *History) Rewind() input.Edit {
 }
 
 // Branches returns the number of branches available to fast
-// forward to at the current node.
+// forward to at the current branch.
 func (h *History) Branches() uint {
-	var count uint
-	for curr := h.current().next(); curr != nil; curr = curr.sibling() {
-		count++
+	next := h.current().next(0)
+	if next == nil {
+		return 0
 	}
-	return count
+	return uint(len(next.siblings()) + 1)
 }
 
 // FastForward moves h's state forward in the history, based
 // on branch.  To fast forward the most recent undo, run
 // h.FastForward(h.Branches() - 1).
 func (h *History) FastForward(branch uint) input.Edit {
-	if branch > h.Branches() {
+	ff := h.current().next(branch)
+	if ff == nil {
 		return input.Edit{At: -1}
-	}
-	ff := h.current().next()
-	for ; branch > 0; branch-- {
-		ff = ff.sibling()
 	}
 	atomic.StorePointer(&h.currentP, unsafe.Pointer(ff))
 	h.addSkip(ff.edit)
@@ -178,7 +227,7 @@ func (h *History) FileChanged(oldPath, newPath string) {
 	if oldPath != "" {
 		h.all[oldPath] = h.current()
 	}
-	h.currentP = unsafe.Pointer(&node{})
+	h.currentP = unsafe.Pointer(&branch{})
 	if n, ok := h.all[newPath]; ok {
 		atomic.StorePointer(&h.currentP, unsafe.Pointer(n))
 	}
