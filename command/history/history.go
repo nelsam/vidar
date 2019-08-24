@@ -15,12 +15,12 @@ import (
 	"github.com/nelsam/vidar/plugin/command"
 )
 
-// node is an entry in a linked list
+// node is an entry in a linked list.
 type node struct {
-	// nextP *node - the next entry in the list
+	// nextP *node - the next entry in the list.
 	nextP unsafe.Pointer
 
-	// the above should be kept first in the struct for byte alignment
+	// the above should be kept first in the struct for byte alignment.
 
 	edit input.Edit
 }
@@ -39,7 +39,7 @@ func (n *node) casNext(old, nn *node) bool {
 
 // A branch is an entry in a (non-binary) tree.  The first child
 // will be at next(); all other children will be at
-// next().siblings()
+// next().siblings().
 type branch struct {
 	// prevP *branch - the parent node
 	prevP unsafe.Pointer
@@ -110,11 +110,14 @@ func Bindables(_ command.Commander, _ gxui.Driver, theme *basic.Theme) []bind.Bi
 
 // History keeps track of change history for a file.
 type History struct {
-	// current *branch
+	// current *branch - the current point in history.
 	currentP unsafe.Pointer
-	// skip *branch
+
+	// skip *branch - edits that we need to skip because they're from
+	// undo and redo operations.
 	skipP unsafe.Pointer
-	// the above must be kept first in the struct for byte alignment
+
+	// the above must be kept first in the struct for byte alignment.
 
 	all map[string]*branch
 }
@@ -153,7 +156,7 @@ func (h *History) addSkip(e input.Edit) {
 }
 
 // shouldSkip reports whether e is an edit that was created by h and
-// should be skipped
+// should be skipped.
 func (h *History) shouldSkip(e input.Edit) bool {
 	skip := h.skip()
 	if skip == nil {
