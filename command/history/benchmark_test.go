@@ -52,7 +52,7 @@ func BenchmarkHistoryBranches(b *testing.B) {
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		hist.TextChanged(nil, input.Edit{At: 210, Old: []rune(""), New: []rune("v")})
-		hist.Rewind()
+		hist.TextChanged(nil, hist.Rewind())
 	}
 }
 
