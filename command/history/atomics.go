@@ -102,7 +102,7 @@ func (b *branch) prev() *branch {
 // of b and return it as a *branch.
 func (b *branch) next(i uint) *branch {
 	next := (*branch)(atomic.LoadPointer(&b.nextP))
-	if i == 0 {
+	if i == 0 || next == nil {
 		return next
 	}
 	sibIdx := i - 1
