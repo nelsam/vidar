@@ -5,9 +5,6 @@
 package history
 
 import (
-	"sync/atomic"
-	"unsafe"
-
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
@@ -15,109 +12,19 @@ import (
 	"github.com/nelsam/vidar/plugin/command"
 )
 
-// node is an entry in a linked list.
-type node struct {
-	// nextP *node - the next entry in the list.
-	nextP unsafe.Pointer
-
-	// the above should be kept first in the struct for byte alignment.
-
-	edit input.Edit
-}
-
-func (n *node) next() *node {
-	return (*node)(atomic.LoadPointer(&n.nextP))
-}
-
-func (n *node) setNext(nn *node) {
-	atomic.StorePointer(&n.nextP, unsafe.Pointer(nn))
-}
-
-func (n *node) casNext(old, nn *node) bool {
-	return atomic.CompareAndSwapPointer(&n.nextP, unsafe.Pointer(old), unsafe.Pointer(nn))
-}
-
-// A branch is an entry in a (non-binary) tree.  The first child
-// will be at next(); all other children will be at
-// next().siblings().
-type branch struct {
-	// prevP *branch - the parent node
-	prevP unsafe.Pointer
-
-	// nextP *branch - the first child node.  Additional branching
-	// nodes should be accessed via this node's siblings.
-	nextP unsafe.Pointer
-
-	// siblingsP *[]*branch - the siblings of this node.  Normal
-	// (i.e. non-branching) edits perform much better if next()
-	// directly returns a *node, but if siblings() also returns a
-	// *node we end up hitting double digits of milliseconds per
-	// thousand operations in heavily branching history.  So we
-	// take the extra performance penalty of using a slice *only*
-	// on branching edits, to prevent the performance hit from
-	// being paid for every child node.
-	siblingsP unsafe.Pointer
-
-	// the above should be kept first in the struct for byte alignment.
-
-	edit input.Edit
-}
-
-func (b *branch) prev() *branch {
-	return (*branch)(atomic.LoadPointer(&b.prevP))
-}
-
-func (b *branch) next(i uint) *branch {
-	next := (*branch)(atomic.LoadPointer(&b.nextP))
-	if i == 0 {
-		return next
-	}
-	sibIdx := i - 1
-	sibs := next.siblings()
-	if sibIdx >= uint(len(sibs)) {
-		return nil
-	}
-	return sibs[sibIdx]
-}
-
-func (b *branch) siblings() []*branch {
-	sibs := (*[]*branch)(atomic.LoadPointer(&b.siblingsP))
-	if sibs == nil {
-		return nil
-	}
-	return *sibs
-}
-
-func (b *branch) push(e input.Edit) *branch {
-	next := &branch{edit: e, prevP: unsafe.Pointer(b)}
-	np := unsafe.Pointer(next)
-	done := atomic.CompareAndSwapPointer(&b.nextP, nil, np)
-	if !done {
-		sibs := b.siblings()
-		sibs = append(sibs, next)
-		atomic.StorePointer(&b.siblingsP, unsafe.Pointer(&sibs))
-	}
-	return next
-}
-
 // Bindables returns the slice of bind.Bindable types that is implemented
 // by this package.
 func Bindables(_ command.Commander, _ gxui.Driver, theme *basic.Theme) []bind.Bindable {
-	h := History{currentP: unsafe.Pointer(&branch{}), all: make(map[string]*branch)}
+	h := History{all: make(map[string]*branch)}
+	h.resetCurrent("")
 	onOpen := OnOpen{theme: theme}
 	return []bind.Bindable{&h, &onOpen}
 }
 
 // History keeps track of change history for a file.
 type History struct {
-	// current *branch - the current point in history.
-	currentP unsafe.Pointer
-
-	// skip *branch - edits that we need to skip because they're from
-	// undo and redo operations.
-	skipP unsafe.Pointer
-
-	// the above must be kept first in the struct for byte alignment.
+	current tree
+	skip    linkedlist
 
 	all map[string]*branch
 }
@@ -136,20 +43,24 @@ func (h *History) OpNames() []string {
 // Init implements input.ChangeHook
 func (h *History) Init(input.Editor, []rune) {}
 
-func (h *History) current() *branch {
-	return (*branch)(atomic.LoadPointer(&h.currentP))
+// resetCurrent resets h.current.trunk to a previous history (if one
+// exists for path) or a new empty branch.
+func (h *History) resetCurrent(path string) {
+	if n, ok := h.all[path]; ok {
+		h.current.setTrunk(n)
+		return
+	}
+	h.current.setTrunk(&branch{})
 }
 
-func (h *History) skip() *node {
-	return (*node)(atomic.LoadPointer(&h.skipP))
-}
-
+// addSkip takes an edit that has been returned by h (from either
+// Rewind or FastForward) and adds it to h.skipP, so that h will
+// ignore e when it is triggered by TextChanged.
 func (h *History) addSkip(e input.Edit) {
 	n := &node{edit: e}
-	p := unsafe.Pointer(n)
-	added := atomic.CompareAndSwapPointer(&h.skipP, nil, p)
+	added := h.skip.casHead(nil, n)
 	if !added {
-		for curr := h.skip(); !added; curr = curr.next() {
+		for curr := h.skip.head(); !added; curr = curr.next() {
 			added = curr.casNext(nil, n)
 		}
 	}
@@ -158,7 +69,7 @@ func (h *History) addSkip(e input.Edit) {
 // shouldSkip reports whether e is an edit that was created by h and
 // should be skipped.
 func (h *History) shouldSkip(e input.Edit) bool {
-	skip := h.skip()
+	skip := h.skip.head()
 	if skip == nil {
 		return false
 	}
@@ -171,23 +82,23 @@ func (h *History) shouldSkip(e input.Edit) bool {
 // in the editor so that h can track the history of those changes.
 func (h *History) TextChanged(_ input.Editor, e input.Edit) {
 	if h.shouldSkip(e) {
-		atomic.StorePointer(&h.skipP, unsafe.Pointer(h.skip().next()))
+		h.skip.setHead(h.skip.head().next())
 		return
 	}
-	atomic.StorePointer(&h.currentP, unsafe.Pointer(h.current().push(e)))
+	h.current.setTrunk(h.current.trunk().push(e))
 }
 
 // Rewind tells h to rewind its current state and return the
 // input.Edit that needs to be applied in order to rewind the
 // text to its previous state.
 func (h *History) Rewind() input.Edit {
-	curr := h.current()
+	curr := h.current.trunk()
 	prev := curr.prev()
 	if prev == nil {
 		return input.Edit{At: -1}
 	}
 	e := curr.edit
-	atomic.StorePointer(&h.currentP, unsafe.Pointer(prev))
+	h.current.setTrunk(prev)
 	undo := input.Edit{
 		At:  e.At,
 		Old: e.New,
@@ -200,7 +111,7 @@ func (h *History) Rewind() input.Edit {
 // Branches returns the number of branches available to fast
 // forward to at the current branch.
 func (h *History) Branches() uint {
-	next := h.current().next(0)
+	next := h.current.trunk().next(0)
 	if next == nil {
 		return 0
 	}
@@ -211,11 +122,11 @@ func (h *History) Branches() uint {
 // on branch.  To fast forward the most recent undo, run
 // h.FastForward(h.Branches() - 1).
 func (h *History) FastForward(branch uint) input.Edit {
-	ff := h.current().next(branch)
+	ff := h.current.trunk().next(branch)
 	if ff == nil {
 		return input.Edit{At: -1}
 	}
-	atomic.StorePointer(&h.currentP, unsafe.Pointer(ff))
+	h.current.setTrunk(ff)
 	h.addSkip(ff.edit)
 	return ff.edit
 }
@@ -228,11 +139,8 @@ func (h *History) Apply(input.Editor) error { return nil }
 // file is changed.
 func (h *History) FileChanged(oldPath, newPath string) {
 	if oldPath != "" {
-		h.all[oldPath] = h.current()
+		h.all[oldPath] = h.current.trunk()
 	}
-	h.currentP = unsafe.Pointer(&branch{})
-	if n, ok := h.all[newPath]; ok {
-		atomic.StorePointer(&h.currentP, unsafe.Pointer(n))
-	}
-	atomic.StorePointer(&h.skipP, nil)
+	h.resetCurrent(newPath)
+	h.skip.setHead(nil)
 }
