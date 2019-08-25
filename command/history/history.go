@@ -5,6 +5,8 @@
 package history
 
 import (
+	"sync"
+
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
@@ -26,7 +28,12 @@ type History struct {
 	current tree
 	skip    linkedlist
 
-	all map[string]*branch
+	// all stores history for all files - it is used when the open
+	// file is changed, to store the history for the previously open
+	// file.  We're just using a mutex to synchronize access to it
+	// because it will only be accessed when the open file is changed.
+	all   map[string]*branch
+	allMu sync.Mutex
 }
 
 // Name returns the name of h
@@ -138,6 +145,8 @@ func (h *History) Apply(input.Editor) error { return nil }
 // FileChanged updates the current history when the focused
 // file is changed.
 func (h *History) FileChanged(oldPath, newPath string) {
+	h.allMu.Lock()
+	defer h.allMu.Unlock()
 	if oldPath != "" {
 		h.all[oldPath] = h.current.trunk()
 	}
