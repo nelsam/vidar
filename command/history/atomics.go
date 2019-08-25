@@ -129,9 +129,10 @@ func (b *branch) push(e input.Edit) *branch {
 	np := unsafe.Pointer(next)
 	done := atomic.CompareAndSwapPointer(&b.nextP, nil, np)
 	if !done {
-		sibs := b.siblings()
+		fchild := b.next(0)
+		sibs := fchild.siblings()
 		sibs = append(sibs, next)
-		atomic.StorePointer(&b.siblingsP, unsafe.Pointer(&sibs))
+		atomic.StorePointer(&fchild.siblingsP, unsafe.Pointer(&sibs))
 	}
 	return next
 }

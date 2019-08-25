@@ -10,23 +10,11 @@ import (
 	"time"
 
 	"github.com/nelsam/vidar/command/history"
-	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/commander/input"
 )
 
 func init() {
 	rand.Seed(time.Now().Unix())
-}
-
-func findHistory(b *testing.B, all []bind.Bindable) *history.History {
-	b.Helper()
-	for _, b := range all {
-		if h, ok := b.(*history.History); ok {
-			return h
-		}
-	}
-	b.Fatal("could not find *history.History type")
-	return nil
 }
 
 func BenchmarkHistorySimple(b *testing.B) {
