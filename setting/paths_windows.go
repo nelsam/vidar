@@ -17,5 +17,6 @@ var (
 	fontPaths = []string{
 		filepath.Join(xdg.DataHome(), "FONTS"),
 		filepath.Join(os.Getenv("SYSTEMDRIVE"), "WINDOWS", "FONTS"),
+		filepath.Join(os.Getenv("SYSTEMDRIVE")+"//", "WINDOWS", "FONTS"),
 	}
 )
