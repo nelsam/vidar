@@ -48,9 +48,9 @@ func NewAdd(driver gxui.Driver, theme *basic.Theme) *Add {
 func (p *Add) Init(driver gxui.Driver, theme *basic.Theme) {
 	p.Theme = theme
 	p.status = theme.CreateLabel()
-	p.path = fs.NewLocator(driver, theme)
+	p.path = fs.NewLocator(driver, theme, fs.Dirs)
 	p.name = theme.CreateTextBox()
-	p.gopath = fs.NewLocator(driver, theme)
+	p.gopath = fs.NewLocator(driver, theme, fs.Dirs)
 }
 
 func (p *Add) Name() string {

@@ -40,6 +40,14 @@ var (
 	}
 )
 
+type Mod int
+
+const (
+	Files Mod = 1 << iota
+	Dirs
+	All = Files | Dirs
+)
+
 // FileGetter is used to get the currently open file.
 //
 // TODO: replace this with hooks on opening a file.
@@ -67,18 +75,20 @@ type Locator struct {
 	file        *fileBox
 	completions []gxui.Label
 	files       []string
+	mod         Mod
 }
 
-func NewLocator(driver gxui.Driver, theme *basic.Theme) *Locator {
+func NewLocator(driver gxui.Driver, theme *basic.Theme, mod Mod) *Locator {
 	f := &Locator{}
-	f.Init(driver, theme)
+	f.Init(driver, theme, mod)
 	return f
 }
 
-func (f *Locator) Init(driver gxui.Driver, theme *basic.Theme) {
+func (f *Locator) Init(driver gxui.Driver, theme *basic.Theme, mod Mod) {
 	f.LinearLayout.Init(f, theme)
 	f.theme = theme
 	f.driver = driver
+	f.mod = mod
 
 	f.SetDirection(gxui.LeftToRight)
 	f.dir = newDirLabel(driver, theme)
@@ -228,6 +238,11 @@ func (f *Locator) loadDirContents() {
 		return
 	}
 	for _, finfo := range contents {
+		if f.mod == Files && finfo.IsDir() {
+			continue
+		} else if f.mod == Dirs && !finfo.IsDir() {
+			continue
+		}
 		name := finfo.Name()
 		if finfo.IsDir() {
 			name += string(filepath.Separator)
