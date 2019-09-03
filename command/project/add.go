@@ -135,6 +135,12 @@ func (p *Add) Store(e interface{}) bind.Status {
 
 func (p *Add) Exec() error {
 	proj := p.Project()
+	if finfo, err := os.Stat(proj.Path); (err == nil && !finfo.IsDir()) || (err != nil && !os.IsNotExist(err)) {
+		return fmt.Errorf("You can't choose file %s as path for project", proj.Path)
+	}
+	if finfo, err := os.Stat(proj.Gopath); (err == nil && !finfo.IsDir()) || (err != nil && !os.IsNotExist(err)) {
+		return fmt.Errorf("You can't choose file %s as gopath for project", proj.Gopath)
+	}
 	for _, prevProject := range setting.Projects() {
 		if prevProject.Name == proj.Name {
 			// TODO: Let the user choose a new name
