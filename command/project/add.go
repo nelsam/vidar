@@ -6,6 +6,7 @@ package project
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -101,6 +102,9 @@ func (p *Add) Next() gxui.Focusable {
 }
 
 func (p *Add) Project() setting.Project {
+	if _, err := os.Stat(p.path.Path()); os.IsNotExist(err) {
+		os.MkdirAll(p.path.Path(), os.ModePerm)
+	}
 	return setting.Project{
 		Name:   p.name.Text(),
 		Path:   p.path.Path(),
