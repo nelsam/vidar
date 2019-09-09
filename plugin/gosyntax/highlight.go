@@ -94,6 +94,8 @@ func (h *Highlight) TextChanged(ctx context.Context, editor input.Editor, _ []in
 }
 
 func (h *Highlight) Apply(e input.Editor) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	e.SetSyntaxLayers(h.layers)
 	return nil
 }

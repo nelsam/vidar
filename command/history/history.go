@@ -5,6 +5,8 @@
 package history
 
 import (
+	"sync"
+
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
@@ -12,32 +14,26 @@ import (
 	"github.com/nelsam/vidar/plugin/command"
 )
 
-type node struct {
-	edit   input.Edit
-	next   []*node
-	parent *node
-}
-
-func (n *node) push(e input.Edit) *node {
-	next := &node{edit: e, parent: n}
-	n.next = append(n.next, next)
-	return next
-}
-
 // Bindables returns the slice of bind.Bindable types that is implemented
 // by this package.
 func Bindables(_ command.Commander, _ gxui.Driver, theme *basic.Theme) []bind.Bindable {
-	h := History{current: &node{}, all: make(map[string]*node)}
+	h := History{all: make(map[string]*branch)}
+	h.resetCurrent("")
 	onOpen := OnOpen{theme: theme}
 	return []bind.Bindable{&h, &onOpen}
 }
 
 // History keeps track of change history for a file.
 type History struct {
-	current *node
-	skip    []input.Edit
+	current tree
+	skip    node
 
-	all map[string]*node
+	// all stores history for all files - it is used when the open
+	// file is changed, to store the history for the previously open
+	// file.  We're just using a mutex to synchronize access to it
+	// because it will only be accessed when the open file is changed.
+	all   map[string]*branch
+	allMu sync.Mutex
 }
 
 // Name returns the name of h
@@ -54,59 +50,92 @@ func (h *History) OpNames() []string {
 // Init implements input.ChangeHook
 func (h *History) Init(input.Editor, []rune) {}
 
-func (h *History) shouldSkip(e input.Edit) bool {
-	if len(h.skip) == 0 {
-		return false
-	}
-	nextSkip := h.skip[0]
-	return nextSkip.At == e.At &&
-		string(nextSkip.Old) == string(e.Old) &&
-		string(nextSkip.New) == string(e.New)
-}
-
-func (h *History) TextChanged(_ input.Editor, e input.Edit) {
-	if h.shouldSkip(e) {
-		copy(h.skip, h.skip[1:])
-		h.skip = h.skip[:len(h.skip)-1]
+// resetCurrent resets h.current.trunk to a previous history (if one
+// exists for path) or a new empty branch.
+func (h *History) resetCurrent(path string) {
+	if n, ok := h.all[path]; ok {
+		h.current.setTrunk(n)
 		return
 	}
-	h.current = h.current.push(e)
+	h.current.setTrunk(&branch{})
+}
+
+// addSkip takes an edit that has been returned by h (from either
+// Rewind or FastForward) and adds it to h.skipP, so that h will
+// ignore e when it is triggered by TextChanged.
+func (h *History) addSkip(e input.Edit) {
+	n := &node{edit: e}
+	added := h.skip.casNext(nil, n)
+	if !added {
+		for curr := h.skip.next(); !added; curr = curr.next() {
+			added = curr.casNext(nil, n)
+		}
+	}
+}
+
+// shouldSkip reports whether e is an edit that was created by h and
+// should be skipped.
+func (h *History) shouldSkip(e input.Edit) bool {
+	skip := h.skip.next()
+	if skip == nil {
+		return false
+	}
+	return skip.edit.At == e.At &&
+		string(skip.edit.Old) == string(e.Old) &&
+		string(skip.edit.New) == string(e.New)
+}
+
+// TextChanged hooks into the input handler to trigger off of changes
+// in the editor so that h can track the history of those changes.
+func (h *History) TextChanged(_ input.Editor, e input.Edit) {
+	if h.shouldSkip(e) {
+		h.skip.setNext(h.skip.next().next())
+		return
+	}
+	h.current.setTrunk(h.current.trunk().push(e))
 }
 
 // Rewind tells h to rewind its current state and return the
 // input.Edit that needs to be applied in order to rewind the
 // text to its previous state.
 func (h *History) Rewind() input.Edit {
-	if h.current.parent == nil {
+	curr := h.current.trunk()
+	prev := curr.prev()
+	if prev == nil {
 		return input.Edit{At: -1}
 	}
-	e := h.current.edit
-	h.current = h.current.parent
+	e := curr.edit
+	h.current.setTrunk(prev)
 	undo := input.Edit{
 		At:  e.At,
 		Old: e.New,
 		New: e.Old,
 	}
-	h.skip = append(h.skip, undo)
+	h.addSkip(undo)
 	return undo
 }
 
 // Branches returns the number of branches available to fast
-// forward to at the current node.
+// forward to at the current branch.
 func (h *History) Branches() uint {
-	return uint(len(h.current.next))
+	next := h.current.trunk().next(0)
+	if next == nil {
+		return 0
+	}
+	return uint(len(next.siblings()) + 1)
 }
 
 // FastForward moves h's state forward in the history, based
 // on branch.  To fast forward the most recent undo, run
 // h.FastForward(h.Branches() - 1).
 func (h *History) FastForward(branch uint) input.Edit {
-	if branch > uint(len(h.current.next)) {
+	ff := h.current.trunk().next(branch)
+	if ff == nil {
 		return input.Edit{At: -1}
 	}
-	h.current = h.current.next[branch]
-	h.skip = append(h.skip, h.current.edit)
-	return h.current.edit
+	h.current.setTrunk(ff)
+	h.addSkip(ff.edit)
+	return ff.edit
 }
 
 // Apply is unused on history - recording the changes is all
@@ -116,12 +145,11 @@ func (h *History) Apply(input.Editor) error { return nil }
 // FileChanged updates the current history when the focused
 // file is changed.
 func (h *History) FileChanged(oldPath, newPath string) {
+	h.allMu.Lock()
+	defer h.allMu.Unlock()
 	if oldPath != "" {
-		h.all[oldPath] = h.current
+		h.all[oldPath] = h.current.trunk()
 	}
-	h.current = &node{}
-	if n, ok := h.all[newPath]; ok {
-		h.current = n
-	}
-	h.skip = nil
+	h.resetCurrent(newPath)
+	h.skip.setNext(nil)
 }
