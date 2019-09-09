@@ -26,7 +26,7 @@ func Bindables(_ command.Commander, _ gxui.Driver, theme *basic.Theme) []bind.Bi
 // History keeps track of change history for a file.
 type History struct {
 	current tree
-	skip    linkedlist
+	skip    node
 
 	// all stores history for all files - it is used when the open
 	// file is changed, to store the history for the previously open
@@ -65,9 +65,9 @@ func (h *History) resetCurrent(path string) {
 // ignore e when it is triggered by TextChanged.
 func (h *History) addSkip(e input.Edit) {
 	n := &node{edit: e}
-	added := h.skip.casHead(nil, n)
+	added := h.skip.casNext(nil, n)
 	if !added {
-		for curr := h.skip.head(); !added; curr = curr.next() {
+		for curr := h.skip.next(); !added; curr = curr.next() {
 			added = curr.casNext(nil, n)
 		}
 	}
@@ -76,7 +76,7 @@ func (h *History) addSkip(e input.Edit) {
 // shouldSkip reports whether e is an edit that was created by h and
 // should be skipped.
 func (h *History) shouldSkip(e input.Edit) bool {
-	skip := h.skip.head()
+	skip := h.skip.next()
 	if skip == nil {
 		return false
 	}
@@ -89,7 +89,7 @@ func (h *History) shouldSkip(e input.Edit) bool {
 // in the editor so that h can track the history of those changes.
 func (h *History) TextChanged(_ input.Editor, e input.Edit) {
 	if h.shouldSkip(e) {
-		h.skip.setHead(h.skip.head().next())
+		h.skip.setNext(h.skip.next().next())
 		return
 	}
 	h.current.setTrunk(h.current.trunk().push(e))
@@ -151,5 +151,5 @@ func (h *History) FileChanged(oldPath, newPath string) {
 		h.all[oldPath] = h.current.trunk()
 	}
 	h.resetCurrent(newPath)
-	h.skip.setHead(nil)
+	h.skip.setNext(nil)
 }

@@ -39,33 +39,6 @@ func (n *node) casNext(old, nn *node) bool {
 	return atomic.CompareAndSwapPointer(&n.nextP, unsafe.Pointer(old), unsafe.Pointer(nn))
 }
 
-// linkedlist is a simple linked list implementation to store
-// input.Edit values using atomics.
-type linkedlist struct {
-	// headP *node - the head of the linked list.
-	headP unsafe.Pointer
-
-	// The above must be kept first in the struct for byte alignment.
-}
-
-// head performs atomic incantations to load l.headP, returning it as
-// a *node.
-func (l *linkedlist) head() *node {
-	return (*node)(atomic.LoadPointer(&l.headP))
-}
-
-// setHead performs atomic incantations to store n at l.headP.
-func (l *linkedlist) setHead(n *node) {
-	atomic.StorePointer(&l.headP, unsafe.Pointer(n))
-}
-
-// casHead performs atomic compare-and-swap operations to set
-// l.headP to n only if it is currently equal to old.  It returns
-// whether or not l.headP was set.
-func (l *linkedlist) casHead(old, n *node) bool {
-	return atomic.CompareAndSwapPointer(&l.headP, unsafe.Pointer(old), unsafe.Pointer(n))
-}
-
 // A branch is an entry in a (non-binary) tree.  The first child
 // will be at next(); all other children will be at
 // next().siblings().
@@ -130,9 +103,16 @@ func (b *branch) push(e input.Edit) *branch {
 	done := atomic.CompareAndSwapPointer(&b.nextP, nil, np)
 	if !done {
 		fchild := b.next(0)
-		sibs := fchild.siblings()
-		sibs = append(sibs, next)
-		atomic.StorePointer(&fchild.siblingsP, unsafe.Pointer(&sibs))
+
+		// We have to do _some_ kind of special case for nil; might as
+		// well just try it here.
+		fsib := []*branch{next}
+		done = atomic.CompareAndSwapPointer(&fchild.siblingsP, nil, unsafe.Pointer(&fsib))
+		for !done {
+			oldSibsP := (*[]*branch)(atomic.LoadPointer(&fchild.siblingsP))
+			sibs := append(*oldSibsP, next)
+			done = atomic.CompareAndSwapPointer(&fchild.siblingsP, unsafe.Pointer(oldSibsP), unsafe.Pointer(&sibs))
+		}
 	}
 	return next
 }

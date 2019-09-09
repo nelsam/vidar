@@ -17,7 +17,7 @@ func init() {
 	rand.Seed(time.Now().Unix())
 }
 
-func BenchmarkHistorySimple(b *testing.B) {
+func BenchmarkHistoryFresh(b *testing.B) {
 	b.StopTimer()
 	all := history.Bindables(nil, nil, nil)
 	hist := findHistory(b, all)
@@ -56,8 +56,10 @@ func BenchmarkHistoryFF(b *testing.B) {
 	}
 }
 
-func BenchmarkHistoryExtreme(b *testing.B) {
+func BenchmarkHistoryLongRunning(b *testing.B) {
 	b.StopTimer()
+	// Simulate a long-running history by filling in many, many edits and
+	// branches in the history.
 	all := history.Bindables(nil, nil, nil)
 	hist := findHistory(b, all)
 	for i := 0; i < 100000; i++ {
