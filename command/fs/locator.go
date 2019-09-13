@@ -249,9 +249,10 @@ func (f *Locator) loadDirContents() {
 }
 
 func (m Mod) match(finfo os.FileInfo) bool {
-	if m == Files {
+	switch m {
+	case Files:
 		return !finfo.IsDir()
-	} else if m == Dirs {
+	case Dirs:
 		return finfo.IsDir()
 	}
 	return true
