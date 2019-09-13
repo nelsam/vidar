@@ -238,15 +238,21 @@ func (f *Locator) loadDirContents() {
 		return
 	}
 	for _, finfo := range contents {
-		if f.mod == Files && finfo.IsDir() {
-			continue
-		} else if f.mod == Dirs && !finfo.IsDir() {
-			continue
+		if f.mod.match(finfo) {
+			name := finfo.Name()
+			if finfo.IsDir() {
+				name += string(filepath.Separator)
+			}
+			f.files = append(f.files, name)
 		}
-		name := finfo.Name()
-		if finfo.IsDir() {
-			name += string(filepath.Separator)
-		}
-		f.files = append(f.files, name)
 	}
+}
+
+func (m Mod) match(finfo os.FileInfo) bool {
+	if m == Files {
+		return !finfo.IsDir()
+	} else if m == Dirs {
+		return finfo.IsDir()
+	}
+	return true
 }

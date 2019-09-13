@@ -135,10 +135,10 @@ func (p *Add) Store(e interface{}) bind.Status {
 
 func (p *Add) Exec() error {
 	proj := p.Project()
-	if finfo, err := os.Stat(proj.Path); (err == nil && !finfo.IsDir()) || (err != nil && !os.IsNotExist(err)) {
+	if !p.isCorrectPath(proj.Path) {
 		return fmt.Errorf("You can't choose file %s as path for project", proj.Path)
 	}
-	if finfo, err := os.Stat(proj.Gopath); (err == nil && !finfo.IsDir()) || (err != nil && !os.IsNotExist(err)) {
+	if !p.isCorrectPath(proj.Gopath) {
 		return fmt.Errorf("You can't choose file %s as gopath for project", proj.Gopath)
 	}
 	for _, prevProject := range setting.Projects() {
@@ -153,4 +153,12 @@ func (p *Add) Exec() error {
 	}
 	p.exec.Execute(p.open.For(Project(proj)))
 	return nil
+}
+
+func (p *Add) isCorrectPath(path string) bool {
+	finfo, err := os.Stat(path)
+	if err == nil {
+		return finfo.IsDir() //exist dir
+	}
+	return os.IsNotExist(err) //path not exist
 }
