@@ -205,18 +205,17 @@ func (p *ProjectTree) update(path string) {
 }
 
 func (p *ProjectTree) SetProject(project setting.Project) {
-	p.SetRoot(project.Path)
-
+	// Ensure that the project tree is the current pane before
+	// the UI goroutine process switches.
 	p.driver.Call(func() {
 		if p.layout.Attached() {
 			return
 		}
-		// For now, for some visual indication that the project has changed, we
-		// force open the project pane here.
 		p.button.Click(gxui.MouseEvent{
 			Button: gxui.MouseButtonLeft,
 		})
 	})
+	p.SetRoot(project.Path)
 }
 
 func (p *ProjectTree) Open(path string, pos token.Position) {
