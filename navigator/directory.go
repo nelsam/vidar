@@ -183,11 +183,16 @@ func (d *dirTree) Unload(w Watcher) error {
 			return err
 		}
 	}
+	if w == nil {
+		return nil
+	}
 	return w.Remove(d.path)
 }
 
 func (d *dirTree) Load(w Watcher) error {
-	w.Add(d.path)
+	if w != nil {
+		w.Add(d.path)
+	}
 	finfos, err := ioutil.ReadDir(d.path)
 	if err != nil {
 		return err
