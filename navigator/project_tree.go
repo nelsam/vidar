@@ -82,10 +82,22 @@ func NewProjectTree(cmdr Commander, driver gxui.Driver, window gxui.Window, them
 		button:     createIconButton(driver, theme, "folder.png"),
 		layout:     newSplitterLayout(window, theme),
 	}
+	tree.initWatcher()
 	tree.layout.SetOrientation(gxui.Vertical)
 	tree.SetProject(setting.DefaultProject)
 
 	return tree
+}
+
+func (p *ProjectTree) initWatcher() {
+	w, err := fsw.New()
+	if err != nil {
+		// TODO: report to the UI
+		log.Printf("WARNING: could not watch project tree: %s", err)
+		return
+	}
+	p.watcher = w
+	go p.watch()
 }
 
 func (p *ProjectTree) SetTOC(toc *TOC) {
@@ -110,14 +122,10 @@ func (p *ProjectTree) SetRoot(path string) {
 	p.tocCtl = nil
 
 	if p.watcher != nil {
-		p.watcher.Close()
+		if err := p.watcher.RemoveAll(); err != nil {
+			log.Printf("WARNING: failed to remove current watches from watcher: %s", err)
+		}
 	}
-	watcher, err := fsw.New()
-	if err != nil {
-		log.Printf("Error creating project tree watcher: %s", err)
-	}
-	p.watcher = watcher
-	p.startWatch(path)
 
 	p.driver.Call(func() {
 		p.dirs = newDirectory(p, path, p.watcher)
@@ -135,15 +143,6 @@ func (p *ProjectTree) SetRoot(path string) {
 		p.layout.Relayout()
 		p.layout.Redraw()
 	})
-}
-
-func (p *ProjectTree) startWatch(root string) {
-	if p.watcher == nil {
-		return
-	}
-
-	go p.watch()
-
 }
 
 // watch waits for events from p.watcher.  For each event, the tree will
@@ -205,18 +204,17 @@ func (p *ProjectTree) update(path string) {
 }
 
 func (p *ProjectTree) SetProject(project setting.Project) {
-	p.SetRoot(project.Path)
-
+	// Ensure that the project tree is the current pane before
+	// the UI goroutine does our relayout/redraw logic.
 	p.driver.Call(func() {
 		if p.layout.Attached() {
 			return
 		}
-		// For now, for some visual indication that the project has changed, we
-		// force open the project pane here.
 		p.button.Click(gxui.MouseEvent{
 			Button: gxui.MouseButtonLeft,
 		})
 	})
+	p.SetRoot(project.Path)
 }
 
 func (p *ProjectTree) Open(path string, pos token.Position) {

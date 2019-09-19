@@ -159,6 +159,18 @@ func (p *poller) Remove(name string) error {
 	return nil
 }
 
+func (p *poller) RemoveAll() error {
+	if atomic.LoadUint32(&p.closed) == 1 {
+		return errors.New("RemoveAll called on closed poller")
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for n := range p.last {
+		delete(p.last, n)
+	}
+	return nil
+}
+
 func (p *poller) Close() error {
 	p.ticker.Stop()
 	atomic.StoreUint32(&p.closed, 1)

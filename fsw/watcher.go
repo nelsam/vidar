@@ -27,6 +27,7 @@ type Event struct {
 type Watcher interface {
 	Add(name string) error
 	Remove(name string) error
+	RemoveAll() error
 	Close() error
 	Next() (Event, error)
 }
