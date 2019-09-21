@@ -8,12 +8,17 @@ package fsw
 
 import (
 	"io"
+	"log"
+	"sync"
 
 	"github.com/fsnotify/fsnotify"
 )
 
 type watcher struct {
 	*fsnotify.Watcher
+
+	tracking map[string]struct{}
+	mu       sync.Mutex
 }
 
 func New() (Watcher, error) {
@@ -21,7 +26,27 @@ func New() (Watcher, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &watcher{Watcher: fsw}, nil
+	return &watcher{Watcher: fsw, tracking: make(map[string]struct{})}, nil
+}
+
+func (w *watcher) Add(path string) error {
+	if err := w.Watcher.Add(path); err != nil {
+		return err
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.tracking[path] = struct{}{}
+	return nil
+}
+
+func (w *watcher) Remove(path string) error {
+	if err := w.Watcher.Remove(path); err != nil {
+		return err
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	delete(w.tracking, path)
+	return nil
 }
 
 func (w *watcher) Next() (Event, error) {
@@ -37,4 +62,17 @@ func (w *watcher) Next() (Event, error) {
 		}
 		return Event{}, err
 	}
+}
+
+func (w *watcher) RemoveAll() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	for p := range w.tracking {
+		if err := w.Watcher.Remove(p); err != nil {
+			log.Printf("WARNING: error removing tracking path %s: %s", p, err)
+			continue
+		}
+		delete(w.tracking, p)
+	}
+	return nil
 }
