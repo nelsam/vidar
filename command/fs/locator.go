@@ -40,6 +40,20 @@ var (
 	}
 )
 
+// Mod is a type to tell a Locator which types of files to locate.
+type Mod int
+
+const (
+	// Files tells a Locator to only locate regular files.
+	Files Mod = 1 << iota
+
+	// Dirs tells a Locator to only locate directories.
+	Dirs
+
+	// All tells a Locator to locate all file types.
+	All = Files | Dirs
+)
+
 // FileGetter is used to get the currently open file.
 //
 // TODO: replace this with hooks on opening a file.
@@ -67,18 +81,23 @@ type Locator struct {
 	file        *fileBox
 	completions []gxui.Label
 	files       []string
+	mod         Mod
 }
 
-func NewLocator(driver gxui.Driver, theme *basic.Theme) *Locator {
+// NewLocator initializes and returns a *Locator.
+func NewLocator(driver gxui.Driver, theme *basic.Theme, mod Mod) *Locator {
 	f := &Locator{}
-	f.Init(driver, theme)
+	f.Init(driver, theme, mod)
 	return f
 }
 
-func (f *Locator) Init(driver gxui.Driver, theme *basic.Theme) {
+// Init is provided for legacy reasons, as a way to initialize an uninitialized
+// *Locator value.  NewLocator should be used instead.
+func (f *Locator) Init(driver gxui.Driver, theme *basic.Theme, mod Mod) {
 	f.LinearLayout.Init(f, theme)
 	f.theme = theme
 	f.driver = driver
+	f.mod = mod
 
 	f.SetDirection(gxui.LeftToRight)
 	f.dir = newDirLabel(driver, theme)
@@ -228,10 +247,22 @@ func (f *Locator) loadDirContents() {
 		return
 	}
 	for _, finfo := range contents {
-		name := finfo.Name()
-		if finfo.IsDir() {
-			name += string(filepath.Separator)
+		if f.mod.match(finfo) {
+			name := finfo.Name()
+			if finfo.IsDir() {
+				name += string(filepath.Separator)
+			}
+			f.files = append(f.files, name)
 		}
-		f.files = append(f.files, name)
 	}
+}
+
+func (m Mod) match(finfo os.FileInfo) bool {
+	switch m {
+	case Files:
+		return !finfo.IsDir()
+	case Dirs:
+		return finfo.IsDir()
+	}
+	return true
 }

@@ -48,9 +48,9 @@ func NewAdd(driver gxui.Driver, theme *basic.Theme) *Add {
 func (p *Add) Init(driver gxui.Driver, theme *basic.Theme) {
 	p.Theme = theme
 	p.status = theme.CreateLabel()
-	p.path = fs.NewLocator(driver, theme)
+	p.path = fs.NewLocator(driver, theme, fs.Dirs)
 	p.name = theme.CreateTextBox()
-	p.gopath = fs.NewLocator(driver, theme)
+	p.gopath = fs.NewLocator(driver, theme, fs.Dirs)
 }
 
 func (p *Add) Name() string {
@@ -135,6 +135,12 @@ func (p *Add) Store(e interface{}) bind.Status {
 
 func (p *Add) Exec() error {
 	proj := p.Project()
+	if !p.isCorrectPath(proj.Path) {
+		return fmt.Errorf("You can't choose file %s as path for project", proj.Path)
+	}
+	if !p.isCorrectPath(proj.Gopath) {
+		return fmt.Errorf("You can't choose file %s as gopath for project", proj.Gopath)
+	}
 	for _, prevProject := range setting.Projects() {
 		if prevProject.Name == proj.Name {
 			// TODO: Let the user choose a new name
@@ -147,4 +153,12 @@ func (p *Add) Exec() error {
 	}
 	p.exec.Execute(p.open.For(Project(proj)))
 	return nil
+}
+
+func (p *Add) isCorrectPath(path string) bool {
+	finfo, err := os.Stat(path)
+	if err == nil {
+		return finfo.IsDir() //exist dir
+	}
+	return os.IsNotExist(err) //path not exist
 }

@@ -38,7 +38,7 @@ func NewFileOpener(driver gxui.Driver, theme *basic.Theme) *FileOpener {
 		driver: driver,
 		theme:  theme,
 	}
-	o.file = fs.NewLocator(driver, theme)
+	o.file = fs.NewLocator(driver, theme, fs.All)
 	return o
 }
 
