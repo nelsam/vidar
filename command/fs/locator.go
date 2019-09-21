@@ -40,11 +40,17 @@ var (
 	}
 )
 
+// Mod is a type to tell a Locator which types of files to locate.
 type Mod int
 
 const (
+	// Files tells a Locator to only locate regular files.
 	Files Mod = 1 << iota
+
+	// Dirs tells a Locator to only locate directories.
 	Dirs
+
+	// All tells a Locator to locate all file types.
 	All = Files | Dirs
 )
 
@@ -78,12 +84,15 @@ type Locator struct {
 	mod         Mod
 }
 
+// NewLocator initializes and returns a *Locator.
 func NewLocator(driver gxui.Driver, theme *basic.Theme, mod Mod) *Locator {
 	f := &Locator{}
 	f.Init(driver, theme, mod)
 	return f
 }
 
+// Init is provided for legacy reasons, as a way to initialize an uninitialized
+// *Locator value.  NewLocator should be used instead.
 func (f *Locator) Init(driver gxui.Driver, theme *basic.Theme, mod Mod) {
 	f.LinearLayout.Init(f, theme)
 	f.theme = theme
