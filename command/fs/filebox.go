@@ -66,6 +66,11 @@ func (f *fileBox) KeyPress(event gxui.KeyboardEvent) bool {
 			return true
 		}
 	case gxui.KeyTab:
+		defer func() {
+			l.lock.RUnlock()
+			defer l.lock.RLock()
+			l.updateCompletions()
+		}()
 		c := nonMetaCompletion(l.completions)
 		if c == "" {
 			return false
@@ -87,6 +92,11 @@ func (f *fileBox) KeyPress(event gxui.KeyboardEvent) bool {
 		go l.loadDirContents()
 		return true
 	case gxui.KeyEnter:
+		defer func() {
+			l.lock.RUnlock()
+			defer l.lock.RLock()
+			l.updateCompletions()
+		}()
 		if len(l.completions) == 0 {
 			return false
 		}
