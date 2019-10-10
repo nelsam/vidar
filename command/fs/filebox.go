@@ -38,6 +38,18 @@ func newFileBox(driver gxui.Driver, theme *basic.Theme, l *Locator) *fileBox {
 	return file
 }
 
+func nonMetaCompletion(comps []valueLabel) string {
+	for _, c := range comps {
+		switch c.Text() {
+		case metaCurrDir, metaNewFile:
+			continue
+		default:
+			return c.Text()
+		}
+	}
+	return ""
+}
+
 func (f *fileBox) KeyPress(event gxui.KeyboardEvent) bool {
 	l := f.locator
 	if event.Modifier != 0 {
@@ -53,11 +65,42 @@ func (f *fileBox) KeyPress(event gxui.KeyboardEvent) bool {
 			l.completions = nil
 			return true
 		}
+	case gxui.KeyTab:
+		defer func() {
+			l.lock.RUnlock()
+			defer l.lock.RLock()
+			l.updateCompletions()
+		}()
+		c := nonMetaCompletion(l.completions)
+		if c == "" {
+			return false
+		}
+		fullPath := filepath.Join(l.dir.Text(), c)
+		finfo, err := os.Stat(fullPath)
+		if os.IsNotExist(err) {
+			return false
+		}
+		if err != nil {
+			return false
+		}
+		if !finfo.IsDir() {
+			l.file.setFile(finfo.Name())
+			return false
+		}
+		l.dir.SetText(fullPath)
+		l.file.setFile("")
+		go l.loadDirContents()
+		return true
 	case gxui.KeyEnter:
+		defer func() {
+			l.lock.RUnlock()
+			defer l.lock.RLock()
+			l.updateCompletions()
+		}()
 		if len(l.completions) == 0 {
 			return false
 		}
-		fullPath := filepath.Join(l.dir.Text(), l.completions[0].Text())
+		fullPath := filepath.Join(l.dir.Text(), l.completions[0].Value())
 		finfo, err := os.Stat(fullPath)
 		if os.IsNotExist(err) {
 			return false
@@ -88,6 +131,11 @@ func (f *fileBox) KeyPress(event gxui.KeyboardEvent) bool {
 		l.addCompletions(l.completions)
 		return true
 	case gxui.KeyBackspace:
+		defer func() {
+			l.lock.RUnlock()
+			defer l.lock.RLock()
+			l.updateCompletions()
+		}()
 		if len(l.file.Text()) != 0 {
 			break
 		}
@@ -110,7 +158,7 @@ func (f *fileBox) KeyStroke(event gxui.KeyStrokeEvent) bool {
 		return f.TextBox.KeyStroke(event)
 	}
 	if len(f.locator.completions) > 0 {
-		fullPath = filepath.Join(f.locator.dir.Text(), f.locator.completions[0].Text())
+		fullPath = filepath.Join(f.locator.dir.Text(), f.locator.completions[0].Value())
 	}
 	f.locator.dir.SetText(fullPath)
 	f.setFile("")
@@ -149,6 +197,10 @@ type completionLabel struct {
 	// outside of the UI thread.  The next time Paint is
 	// called, SetText will be passed this value.
 	text string
+
+	// value should be used to store the actual completion
+	// value, if different from text.
+	value string
 }
 
 func newCompletionLabel(driver gxui.Driver, theme gxui.Theme, color gxui.Color) *completionLabel {
@@ -181,6 +233,13 @@ func (l *completionLabel) Paint(c gxui.Canvas) {
 	l.Label.Paint(c)
 	r := l.Size().Rect()
 	c.DrawRoundedRect(r, 3, 3, 3, 3, gxui.TransparentPen, gxui.CreateBrush(completionBG))
+}
+
+func (l *completionLabel) Value() string {
+	if l.value == "" {
+		return l.text
+	}
+	return l.value
 }
 
 // Elementer is used to find child elements of an element.

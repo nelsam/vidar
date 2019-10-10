@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/nelsam/gxui"
@@ -19,9 +20,19 @@ import (
 	"github.com/nelsam/vidar/setting"
 )
 
-const minInputChars = 10
+const (
+	minInputChars = 10
+	metaNewFile   = "<new file>"
+	metaCurrDir   = "<current dir>"
+)
 
 var (
+	metaColor = gxui.Color{
+		R: 0.4,
+		G: 0.8,
+		B: 0.3,
+		A: 1,
+	}
 	dirColor = gxui.Color{
 		R: 0.1,
 		G: 0.3,
@@ -68,6 +79,12 @@ type Projecter interface {
 	Project() setting.Project
 }
 
+type valueLabel interface {
+	gxui.Label
+
+	Value() string
+}
+
 // Locator is a type of UI element which prompts the user for a file path.  It has
 // completion features to help with locating existing files and folders.
 type Locator struct {
@@ -79,7 +96,7 @@ type Locator struct {
 	driver      gxui.Driver
 	dir         *dirLabel
 	file        *fileBox
-	completions []gxui.Label
+	completions []valueLabel
 	files       []string
 	mod         Mod
 }
@@ -189,10 +206,14 @@ func (f *Locator) updateCompletions() {
 
 	f.clearCompletions(f.completions)
 
-	f.completions = nil
+	f.completions = []valueLabel{metaLabel(f.driver, f.theme, f.file.Text())}
 	newCompletions := scoring.Sort(f.files, f.file.Text())
 
 	for _, comp := range newCompletions {
+		if strings.TrimSuffix(comp, string(filepath.Separator)) == f.file.Text() {
+			// the meta entry will be incorrect
+			f.completions = f.completions[1:]
+		}
 		color := f.theme.LabelStyle.FontColor
 		if len(comp) > 0 && comp[len(comp)-1] == filepath.Separator {
 			color = dirColor
@@ -205,9 +226,8 @@ func (f *Locator) updateCompletions() {
 	f.addCompletions(f.completions)
 }
 
-func (f *Locator) clearCompletions(completions []gxui.Label) {
-	cloned := make([]gxui.Label, 0, len(completions))
-	cloned = append(cloned, completions...)
+func (f *Locator) clearCompletions(completions []valueLabel) {
+	cloned := append([]valueLabel{}, completions...)
 	f.driver.Call(func() {
 		for _, l := range cloned {
 			f.RemoveChild(l)
@@ -215,9 +235,8 @@ func (f *Locator) clearCompletions(completions []gxui.Label) {
 	})
 }
 
-func (f *Locator) addCompletions(completions []gxui.Label) {
-	cloned := make([]gxui.Label, 0, len(completions))
-	cloned = append(cloned, completions...)
+func (f *Locator) addCompletions(completions []valueLabel) {
+	cloned := append([]valueLabel{}, completions...)
 	f.driver.Call(func() {
 		for _, l := range cloned {
 			f.AddChild(l)
@@ -265,4 +284,15 @@ func (m Mod) match(finfo os.FileInfo) bool {
 		return finfo.IsDir()
 	}
 	return true
+}
+
+func metaLabel(d gxui.Driver, t gxui.Theme, comp string) valueLabel {
+	l := newCompletionLabel(d, t, metaColor)
+	l.value = comp
+	if comp == "" {
+		l.text = metaCurrDir
+		return l
+	}
+	l.text = metaNewFile
+	return l
 }
