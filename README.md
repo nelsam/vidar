@@ -51,9 +51,9 @@ won't work with older versions, but I promise nothing.
 
 ## Configuration
 
-Vidar uses [xdg-go](https://github.com/casimir/xdg-go) to decide where to save config
+Vidar uses [xdg](github.com/OpenPeeDeeP/xdg) to decide where to save config
 files.  On linux systems, this will probably end up in `~/.config/vidar/`; for Windows
-and OS X, you'll likely need to check the xdg-go package to see what it uses.
+and OS X, you'll likely need to check the xdg package to see what it uses.
 
 Config files are written as `toml` by default, but can be parsed from `json` or `yaml`
 as well.  Currently, there are three config files:
