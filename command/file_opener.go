@@ -7,6 +7,7 @@ package command
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
@@ -94,6 +95,11 @@ func (f *FileOpener) Exec() error {
 	if path == "" {
 		return errors.New("command.FileOpener: No file path provided")
 	}
+
+	if finfo, err := os.Stat(path); err == nil && finfo.IsDir() {
+		return fmt.Errorf("command.FileOpener: You can't open directory %s as file", path)
+	}
+
 	f.execer.Execute(f.focuser.For(focus.Path(path)))
 	return nil
 }
