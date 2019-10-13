@@ -84,7 +84,7 @@ func NewProjectTree(cmdr Commander, driver gxui.Driver, window gxui.Window, them
 	}
 	tree.initWatcher()
 	tree.layout.SetOrientation(gxui.Vertical)
-	tree.SetProject(setting.DefaultProject)
+	tree.SetRoot(setting.DefaultProject.Path)
 
 	return tree
 }
