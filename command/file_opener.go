@@ -5,8 +5,8 @@
 package command
 
 import (
-	"errors"
 	"fmt"
+	"os"
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
@@ -24,7 +24,6 @@ type FileOpener struct {
 	status.General
 
 	driver gxui.Driver
-	theme  *basic.Theme
 
 	file  *fs.Locator
 	input <-chan gxui.Focusable
@@ -35,8 +34,8 @@ type FileOpener struct {
 
 func NewFileOpener(driver gxui.Driver, theme *basic.Theme) *FileOpener {
 	o := &FileOpener{
-		driver: driver,
-		theme:  theme,
+		General: status.General{Theme: theme},
+		driver:  driver,
 	}
 	o.file = fs.NewLocator(driver, theme, fs.All)
 	return o
@@ -92,8 +91,15 @@ func (f *FileOpener) Store(elem interface{}) bind.Status {
 func (f *FileOpener) Exec() error {
 	path := f.file.Path()
 	if path == "" {
-		return errors.New("command.FileOpener: No file path provided")
+		f.Err = "no file path provided"
+		return fmt.Errorf("command.FileOpener: %s", f.Err)
 	}
+
+	if finfo, err := os.Stat(path); err == nil && finfo.IsDir() {
+		f.Err = fmt.Sprintf("can't open directory %s as file", path)
+		return fmt.Errorf("command.FileOpener: %s", f.Err)
+	}
+
 	f.execer.Execute(f.focuser.For(focus.Path(path)))
 	return nil
 }
