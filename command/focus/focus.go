@@ -58,6 +58,14 @@ type FileChanger interface {
 	FileChanged(oldPath, newPath string)
 }
 
+// An EditorChanger is a type that needs to be called when the
+// current input.Editor changes.
+type EditorChanger interface {
+	// EditorChanged will be called when the currently focused
+	// input.Editor changes.
+	EditorChanged(input.Editor)
+}
+
 // A Binder is a type which can bind bindables
 type Binder interface {
 	Push(...bind.Bindable)
@@ -148,8 +156,9 @@ type Location struct {
 	opener  EditorOpener
 	openers []Opener
 
-	binders  []FileBinder
-	changers []FileChanger
+	binders    []FileBinder
+	changers   []FileChanger
+	edchangers []EditorChanger
 }
 
 // NewLocation returns a *Location bound to the passed in driver.
@@ -247,6 +256,9 @@ func (l *Location) Exec() error {
 		for _, c := range l.changers {
 			c.FileChanged(oldPath, path)
 		}
+		for _, c := range l.edchangers {
+			c.EditorChanged(e)
+		}
 	}
 	var b []bind.Bindable
 	for _, binder := range l.binders {
@@ -288,6 +300,8 @@ func (l *Location) Bind(h bind.Bindable) (bind.HookedMultiOp, error) {
 		newF.binders = append(newF.binders, src)
 	case FileChanger:
 		newF.changers = append(newF.changers, src)
+	case EditorChanger:
+		newF.edchangers = append(newF.edchangers, src)
 	default:
 		return nil, fmt.Errorf("expected hook to be FileBinder or FileChanger, was %T", h)
 	}

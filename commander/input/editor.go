@@ -19,6 +19,7 @@ type Editor interface {
 	Text() string
 	Runes() []rune
 	SetText(string)
+	LineStart(int) int
 	SyntaxLayers() []SyntaxLayer
 	SetSyntaxLayers([]SyntaxLayer)
 }
