@@ -38,7 +38,7 @@ type Applier interface {
 type suggestionList struct {
 	mixins.List
 	driver  gxui.Driver
-	adapter *suggestions.Adapter
+	adapter *suggestion.Adapter
 	font    gxui.Font
 	project setting.Project
 	editor  Editor
@@ -50,7 +50,7 @@ type suggestionList struct {
 func newSuggestionList(driver gxui.Driver, theme *basic.Theme, proj setting.Project, editor Editor, ctrl TextController, applier Applier, gocode *GoCode) *suggestionList {
 	s := &suggestionList{
 		driver:  driver,
-		adapter: &suggestions.Adapter{},
+		adapter: &suggestion.Adapter{},
 		font:    theme.DefaultMonospaceFont(),
 		project: proj,
 		editor:  editor,
@@ -102,8 +102,8 @@ func (s *suggestionList) show(ctx context.Context, pos int) int {
 		if ctxCancelled(ctx) {
 			return 0
 		}
-		suggestions := s.parseSuggestions(runes, start)
-		s.adapter.Set(start, suggestions...)
+		suggestion := s.parseSuggestions(runes, start)
+		s.adapter.Set(start, suggestion...)
 	}
 	if ctxCancelled(ctx) {
 		return 0
@@ -124,17 +124,17 @@ func (s *suggestionList) show(ctx context.Context, pos int) int {
 	return s.adapter.Len()
 }
 
-func (s *suggestionList) parseSuggestions(runes []rune, start int) []suggestions.Suggestion {
-	suggestions, err := suggestions.For(s.project.Environ(), s.editor.Filepath(), string(runes), start)
+func (s *suggestionList) parseSuggestions(runes []rune, start int) []suggestion.Suggestion {
+	suggestion, err := suggestion.For(s.project.Environ(), s.editor.Filepath(), string(runes), start)
 	if err != nil {
-		log.Printf("Failed to load suggestions: %s", err)
+		log.Printf("Failed to load suggestion: %s", err)
 		return nil
 	}
-	return suggestions
+	return suggestion
 }
 
 func (s *suggestionList) apply() {
-	suggestion := s.Selected().(suggestions.Suggestion)
+	suggestion := s.Selected().(suggestion.Suggestion)
 	start := s.adapter.Pos()
 	carets := s.ctrl.Carets()
 	if len(carets) != 1 {
@@ -144,7 +144,7 @@ func (s *suggestionList) apply() {
 	end := carets[0]
 	runes := s.ctrl.TextRunes()
 
-	if start < end {
+	if start <= end {
 		go s.applier.Apply(s.editor, input.Edit{
 			At:  start,
 			Old: runes[start:end],
