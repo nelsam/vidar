@@ -352,6 +352,10 @@ func (t *TOC) parseAstFile(filepath string, file *ast.File) *packageNode {
 				pkgNode.addFuncs(name)
 				continue
 			}
+			if len(src.Recv.List) == 0 {
+				log.Printf("Incorrect definition for %s function\n", text)
+				continue
+			}
 			recvTyp := src.Recv.List[0].Type
 			if starExpr, ok := recvTyp.(*ast.StarExpr); ok {
 				recvTyp = starExpr.X
