@@ -21,16 +21,21 @@ type SelectionEditor interface {
 	input.Editor
 	Controller() *gxui.TextBoxController
 	SelectSlice([]gxui.TextSelection)
+	ScrollToRune(int)
 }
 
 type Find struct {
-	driver  gxui.Driver
-	theme   *basic.Theme
-	editor  SelectionEditor
-	display gxui.Label
-	pattern *findBox
+	mixins.LinearLayout
 
-	next gxui.Focusable
+	driver     gxui.Driver
+	theme      *basic.Theme
+	editor     SelectionEditor
+	display    gxui.Label
+	pattern    *findBox
+	prevS      gxui.Button
+	nextS      gxui.Button
+	selections []int
+	selection  int
 }
 
 func NewFind(driver gxui.Driver, theme *basic.Theme) *Find {
@@ -40,8 +45,64 @@ func NewFind(driver gxui.Driver, theme *basic.Theme) *Find {
 }
 
 func (f *Find) Init(driver gxui.Driver, theme *basic.Theme) {
+	f.LinearLayout.Init(f, theme)
+	f.SetDirection(gxui.RightToLeft)
 	f.driver = driver
 	f.theme = theme
+}
+
+func (f *Find) KeyPress(event gxui.KeyboardEvent) bool {
+	return f.pattern.KeyPress(event)
+}
+
+func (f *Find) KeyDown(event gxui.KeyboardEvent) {
+	f.pattern.KeyDown(event)
+}
+
+func (f *Find) KeyUp(event gxui.KeyboardEvent) {
+	f.pattern.KeyUp(event)
+}
+
+func (f *Find) KeyStroke(event gxui.KeyStrokeEvent) bool {
+	return f.pattern.KeyStroke(event)
+}
+
+func (f *Find) KeyRepeat(event gxui.KeyboardEvent) {
+	f.pattern.KeyRepeat(event)
+}
+
+func (f *Find) Paint(c gxui.Canvas) {
+	f.LinearLayout.Paint(c)
+
+	if f.HasFocus() {
+		r := f.Size().Rect()
+		s := f.theme.FocusedStyle
+		c.DrawRoundedRect(r, 3, 3, 3, 3, s.Pen, s.Brush)
+	}
+}
+
+func (f *Find) IsFocusable() bool {
+	return f.pattern.IsFocusable()
+}
+
+func (f *Find) HasFocus() bool {
+	return f.pattern.HasFocus()
+}
+
+func (f *Find) GainedFocus() {
+	f.pattern.GainedFocus()
+}
+
+func (f *Find) LostFocus() {
+	f.pattern.LostFocus()
+}
+
+func (f *Find) OnGainedFocus(callback func()) gxui.EventSubscription {
+	return f.pattern.OnGainedFocus(callback)
+}
+
+func (f *Find) OnLostFocus(callback func()) gxui.EventSubscription {
+	return f.pattern.OnLostFocus(callback)
 }
 
 func (f *Find) Start(control gxui.Control) gxui.Control {
@@ -52,7 +113,27 @@ func (f *Find) Start(control gxui.Control) gxui.Control {
 	f.display = f.theme.CreateLabel()
 	f.display.SetText("Start typing to search")
 	f.pattern = newFindBox(f.driver, f.theme)
-	f.next = f.pattern
+
+	f.prevS = f.theme.CreateButton()
+	f.prevS.SetText("<")
+	f.prevS.OnClick(func(ev gxui.MouseEvent) {
+		f.selection = getNext(f.selection, len(f.selections), -1)
+		f.editor.ScrollToRune(f.selections[f.selection])
+	})
+
+	f.nextS = f.theme.CreateButton()
+	f.nextS.SetText(">")
+	f.nextS.OnClick(func(ev gxui.MouseEvent) {
+		f.selection = getNext(f.selection, len(f.selections), 1)
+		f.editor.ScrollToRune(f.selections[f.selection])
+	})
+
+	f.pattern = newFindBox(f.driver, f.theme)
+
+	f.AddChild(f.nextS)
+	f.AddChild(f.prevS)
+	f.AddChild(f.pattern)
+
 	f.pattern.OnTextChanged(func([]gxui.TextBoxEdit) {
 		f.editor.Controller().ClearSelections()
 		needle := f.pattern.Text()
@@ -60,6 +141,8 @@ func (f *Find) Start(control gxui.Control) gxui.Control {
 			f.display.SetText("Start typing to search")
 			return
 		}
+		f.selections = []int{}
+
 		haystack := f.editor.Text()
 		start := 0
 		var selections []gxui.TextSelection
@@ -71,9 +154,12 @@ func (f *Find) Start(control gxui.Control) gxui.Control {
 			pos += utf8.RuneCountInString(haystack[start : start+next])
 			selection := gxui.CreateTextSelection(pos, pos+count, false)
 			selections = append(selections, selection)
+			f.selections = append(f.selections, pos)
 			pos += count
 			start += (next + length)
+
 		}
+		f.selection = len(f.selections) - 1
 		f.editor.SelectSlice(selections)
 		f.display.SetText(fmt.Sprintf("%s: %d results found", needle, len(selections)))
 	})
@@ -96,9 +182,7 @@ func (f *Find) Defaults() []fmt.Stringer {
 }
 
 func (f *Find) Next() gxui.Focusable {
-	next := f.next
-	f.next = nil
-	return next
+	return f
 }
 
 type findBox struct {
@@ -134,4 +218,12 @@ func findEditor(elem interface{}) SelectionEditor {
 		}
 	}
 	return nil
+}
+
+func getNext(i, l, s int) int {
+	if s > 0 {
+		return (i + s) % l
+	} else {
+		return (i + l + s) % l
+	}
 }
