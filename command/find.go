@@ -52,6 +52,13 @@ func (f *Find) Init(driver gxui.Driver, theme *basic.Theme) {
 }
 
 func (f *Find) KeyPress(event gxui.KeyboardEvent) bool {
+	if event.Modifier == gxui.ModControl {
+		if event.Key == gxui.KeyN {
+			f.nextS.Click(gxui.MouseEvent{})
+		} else if event.Key == gxui.KeyP {
+			f.prevS.Click(gxui.MouseEvent{})
+		}
+	}
 	return f.pattern.KeyPress(event)
 }
 
