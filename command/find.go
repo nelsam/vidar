@@ -49,6 +49,34 @@ func (f *Find) Init(driver gxui.Driver, theme *basic.Theme) {
 	f.SetDirection(gxui.RightToLeft)
 	f.driver = driver
 	f.theme = theme
+
+	f.display = f.theme.CreateLabel()
+	f.display.SetText("Start typing to search")
+	f.pattern = newFindBox(f.driver, f.theme)
+
+	f.prevS = f.theme.CreateButton()
+	f.prevS.SetText("<")
+	f.prevS.OnClick(func(ev gxui.MouseEvent) {
+		if len(f.selections) != 0 {
+			f.selection = getNext(f.selection, len(f.selections), -1)
+			f.editor.ScrollToRune(f.selections[f.selection])
+		}
+	})
+
+	f.nextS = f.theme.CreateButton()
+	f.nextS.SetText(">")
+	f.nextS.OnClick(func(ev gxui.MouseEvent) {
+		if len(f.selections) != 0 {
+			f.selection = getNext(f.selection, len(f.selections), 1)
+			f.editor.ScrollToRune(f.selections[f.selection])
+		}
+	})
+
+	f.pattern = newFindBox(f.driver, f.theme)
+
+	f.AddChild(f.nextS)
+	f.AddChild(f.prevS)
+	f.AddChild(f.pattern)
 }
 
 func (f *Find) KeyPress(event gxui.KeyboardEvent) bool {
@@ -117,29 +145,6 @@ func (f *Find) Start(control gxui.Control) gxui.Control {
 	if f.editor == nil {
 		return nil
 	}
-	f.display = f.theme.CreateLabel()
-	f.display.SetText("Start typing to search")
-	f.pattern = newFindBox(f.driver, f.theme)
-
-	f.prevS = f.theme.CreateButton()
-	f.prevS.SetText("<")
-	f.prevS.OnClick(func(ev gxui.MouseEvent) {
-		f.selection = getNext(f.selection, len(f.selections), -1)
-		f.editor.ScrollToRune(f.selections[f.selection])
-	})
-
-	f.nextS = f.theme.CreateButton()
-	f.nextS.SetText(">")
-	f.nextS.OnClick(func(ev gxui.MouseEvent) {
-		f.selection = getNext(f.selection, len(f.selections), 1)
-		f.editor.ScrollToRune(f.selections[f.selection])
-	})
-
-	f.pattern = newFindBox(f.driver, f.theme)
-
-	f.AddChild(f.nextS)
-	f.AddChild(f.prevS)
-	f.AddChild(f.pattern)
 
 	f.pattern.OnTextChanged(func([]gxui.TextBoxEdit) {
 		f.editor.Controller().ClearSelections()
@@ -164,7 +169,6 @@ func (f *Find) Start(control gxui.Control) gxui.Control {
 			f.selections = append(f.selections, pos)
 			pos += count
 			start += (next + length)
-
 		}
 		f.selection = len(f.selections) - 1
 		f.editor.SelectSlice(selections)
