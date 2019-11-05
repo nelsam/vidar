@@ -52,7 +52,6 @@ func (f *Find) Init(driver gxui.Driver, theme *basic.Theme) {
 
 	f.display = f.theme.CreateLabel()
 	f.display.SetText("Start typing to search")
-	f.pattern = newFindBox(f.driver, f.theme)
 
 	f.prevS = f.theme.CreateButton()
 	f.prevS.SetText("<")
@@ -71,12 +70,8 @@ func (f *Find) Init(driver gxui.Driver, theme *basic.Theme) {
 			f.editor.ScrollToRune(f.selections[f.selection])
 		}
 	})
-
-	f.pattern = newFindBox(f.driver, f.theme)
-
 	f.AddChild(f.nextS)
 	f.AddChild(f.prevS)
-	f.AddChild(f.pattern)
 }
 
 func (f *Find) KeyPress(event gxui.KeyboardEvent) bool {
@@ -145,6 +140,8 @@ func (f *Find) Start(control gxui.Control) gxui.Control {
 	if f.editor == nil {
 		return nil
 	}
+	f.pattern = newFindBox(f.driver, f.theme)
+	f.AddChild(f.pattern)
 
 	f.pattern.OnTextChanged(func([]gxui.TextBoxEdit) {
 		f.editor.Controller().ClearSelections()
@@ -234,7 +231,6 @@ func findEditor(elem interface{}) SelectionEditor {
 func getNext(i, l, s int) int {
 	if s > 0 {
 		return (i + s) % l
-	} else {
-		return (i + l + s) % l
 	}
+	return (i + l + s) % l
 }

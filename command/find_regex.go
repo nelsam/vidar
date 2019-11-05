@@ -28,7 +28,8 @@ func (f *RegexFind) Start(control gxui.Control) gxui.Control {
 	if f.finder.editor == nil {
 		return nil
 	}
-
+	f.finder.pattern = newFindBox(f.finder.driver, f.finder.theme)
+	f.finder.AddChild(f.finder.pattern)
 	f.finder.pattern.OnTextChanged(func([]gxui.TextBoxEdit) {
 		f.finder.editor.Controller().ClearSelections()
 		needle := f.finder.pattern.Text()
