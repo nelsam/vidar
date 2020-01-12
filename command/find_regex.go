@@ -13,44 +13,40 @@ import (
 	"github.com/nelsam/gxui/themes/basic"
 )
 
-type RegexFind Find
-
-func NewRegexFind(driver gxui.Driver, theme *basic.Theme) *RegexFind {
-	finder := &RegexFind{}
-	finder.Init(driver, theme)
-	return finder
+type RegexFind struct {
+	finder *Find
 }
 
-func (f *RegexFind) Init(driver gxui.Driver, theme *basic.Theme) {
-	f.driver = driver
-	f.theme = theme
+func NewRegexFind(driver gxui.Driver, theme *basic.Theme) *RegexFind {
+	f := &RegexFind{}
+	f.finder = NewFind(driver, theme)
+	return f
 }
 
 func (f *RegexFind) Start(control gxui.Control) gxui.Control {
-	f.editor = findEditor(control)
-	if f.editor == nil {
+	f.finder.editor = findEditor(control)
+	if f.finder.editor == nil {
 		return nil
 	}
-	f.display = f.theme.CreateLabel()
-	f.display.SetText("Start typing to search")
-	f.pattern = newFindBox(f.driver, f.theme)
-	f.next = f.pattern
-	f.pattern.OnTextChanged(func([]gxui.TextBoxEdit) {
-		f.editor.Controller().ClearSelections()
-		needle := f.pattern.Text()
+	f.finder.pattern = newFindBox(f.finder.driver, f.finder.theme)
+	f.finder.AddChild(f.finder.pattern)
+	f.finder.pattern.OnTextChanged(func([]gxui.TextBoxEdit) {
+		f.finder.editor.Controller().ClearSelections()
+		needle := f.finder.pattern.Text()
 		if len(needle) == 0 {
-			f.display.SetText("Start typing to search")
+			f.finder.display.SetText("Start typing to search")
 			return
 		}
 		exp, err := regexp.Compile(needle)
 		if err != nil {
-			f.display.SetText("Incorrect regexp")
+			f.finder.display.SetText("Incorrect regexp")
 			return
 		}
-		haystack := f.editor.Text()
+		f.finder.selections = []int{}
+		haystack := f.finder.editor.Text()
 		arr := exp.FindAllStringIndex(haystack, -1)
 		if arr == nil {
-			f.display.SetText("Match not found")
+			f.finder.display.SetText("Match not found")
 			return
 		}
 
@@ -62,13 +58,14 @@ func (f *RegexFind) Start(control gxui.Control) gxui.Control {
 				end := start + utf8.RuneCountInString(haystack[indexes[i]:indexes[i+1]])
 				selection := gxui.CreateTextSelection(start, end, false)
 				selections = append(selections, selection)
-
+				f.finder.selections = append(f.finder.selections, start)
 			}
 		}
-		f.editor.SelectSlice(selections)
-		f.display.SetText(fmt.Sprintf("%s: %d results found", needle, len(selections)))
+		f.finder.selection = len(selections) - 1
+		f.finder.editor.SelectSlice(selections)
+		f.finder.display.SetText(fmt.Sprintf("%s: %d results found", needle, len(selections)))
 	})
-	return f.display
+	return f.finder.display
 }
 
 func (f *RegexFind) Name() string {
@@ -87,7 +84,5 @@ func (f *RegexFind) Defaults() []fmt.Stringer {
 }
 
 func (f *RegexFind) Next() gxui.Focusable {
-	next := f.next
-	f.next = nil
-	return next
+	return f.finder
 }
