@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/setting"
@@ -34,6 +35,7 @@ func NewFind(theme gxui.Theme) *Find {
 	p := &Find{}
 	p.Theme = theme
 	p.name = theme.CreateTextBox()
+	p.name.SetDesiredWidth(math.MaxSize.W)
 	return p
 }
 

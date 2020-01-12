@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/nelsam/gxui"
+	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/command/fs"
 	"github.com/nelsam/vidar/commander/bind"
@@ -50,6 +51,7 @@ func (p *Add) Init(driver gxui.Driver, theme *basic.Theme) {
 	p.status = theme.CreateLabel()
 	p.path = fs.NewLocator(driver, theme, fs.Dirs)
 	p.name = theme.CreateTextBox()
+	p.name.SetDesiredWidth(math.MaxSize.W)
 	p.gopath = fs.NewLocator(driver, theme, fs.Dirs)
 }
 
