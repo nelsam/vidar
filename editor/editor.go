@@ -265,6 +265,7 @@ func (e *CodeEditor) SetSyntaxLayers(layers []input.SyntaxLayer) {
 		highlight, found := e.syntaxTheme.Constructs[l.Construct]
 		if !found {
 			highlight = e.syntaxTheme.Rainbow.Next()
+			e.syntaxTheme.Constructs[l.Construct] = highlight
 		}
 		gLayer := gxui.CreateCodeSyntaxLayer()
 		gLayer.SetColor(gxui.Color(highlight.Foreground))

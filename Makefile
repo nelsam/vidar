@@ -38,8 +38,16 @@ build/gocode.so: $(call depsfiles,github.com/nelsam/vidar/plugin/gocode/main) | 
 build/license.so: $(call depsfiles,github.com/nelsam/vidar/plugin/license/main) | build
 	go build -buildmode plugin -o ./build/license.so github.com/nelsam/vidar/plugin/license/main
 
+# Build the vsyntax plugin.
+build/vsyntax.so: $(call depsfiles,github.com/nelsam/vidar/plugin/vsyntax/main) | build
+	go build -buildmode plugin -o ./build/vsyntax.so github.com/nelsam/vidar/plugin/vsyntax/main
+
+# Build the vfmt plugin.
+build/vfmt.so: $(call depsfiles,github.com/nelsam/vidar/plugin/vfmt/main) | build
+	go build -buildmode plugin -o ./build/vfmt.so github.com/nelsam/vidar/plugin/vfmt/main
+
 # Build all plugins included with vidar.
-plugins: build/gosyntax.so build/goimports.so build/comments.so build/godef.so build/license.so build/gocode.so
+plugins: build/gosyntax.so build/goimports.so build/comments.so build/godef.so build/license.so build/gocode.so build/vsyntax.so build/vfmt.so
 .PHONY: plugins
 
 # Install all plugins included with vidar to

@@ -10,35 +10,34 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
 	"github.com/nelsam/vidar/plugin/command"
-	"github.com/nelsam/vidar/plugin/license"
+	"github.com/nelsam/vidar/plugin/vfmt"
 )
 
-type LicenseHook struct {
+type VlangHook struct {
 	Theme gxui.Theme
 }
 
-func (h LicenseHook) Name() string {
-	return "license-lang-hook"
+func (h VlangHook) Name() string {
+	return "vlang-hook"
 }
 
-func (h LicenseHook) OpName() string {
+func (h VlangHook) OpName() string {
 	return "focus-location"
 }
 
-func (h LicenseHook) FileBindables(path string) []bind.Bindable {
-	switch {
-	case strings.HasSuffix(path, ".go"), strings.HasSuffix(path, ".v"):
-		return []bind.Bindable{
-			license.NewHeaderUpdate(h.Theme),
-		}
-	default:
+func (h VlangHook) FileBindables(path string) []bind.Bindable {
+	if !strings.HasSuffix(path, ".v") {
 		return nil
+	}
+	return []bind.Bindable{
+		vfmt.New(h.Theme),
+		vfmt.OnSave{},
 	}
 }
 
 // Bindables is the main entry point to the command.
 func Bindables(cmdr command.Commander, driver gxui.Driver, theme gxui.Theme) []bind.Bindable {
 	return []bind.Bindable{
-		LicenseHook{Theme: theme},
+		VlangHook{Theme: theme},
 	}
 }

@@ -49,7 +49,7 @@ func (u *HeaderUpdate) Name() string {
 }
 
 func (u *HeaderUpdate) Menu() string {
-	return "Golang"
+	return "License"
 }
 
 func (u *HeaderUpdate) Defaults() []fmt.Stringer {

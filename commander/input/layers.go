@@ -14,3 +14,12 @@ type SyntaxLayer struct {
 	Spans     []Span
 	Construct theme.LanguageConstruct
 }
+
+func (l SyntaxLayer) Contains(pos int) bool {
+	for _, s := range l.Spans {
+		if s.Start <= pos && s.End >= pos {
+			return true
+		}
+	}
+	return false
+}

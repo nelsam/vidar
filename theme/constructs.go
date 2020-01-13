@@ -32,5 +32,5 @@ const (
 	// For example, the opening/closing marks for functions may
 	// be ScopePair, while opening/closing marks for if statements
 	// at the top level of functions may be ScopePair+1.
-	ScopePair = 100
+	ScopePair LanguageConstruct = 100
 )
