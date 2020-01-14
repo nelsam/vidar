@@ -109,7 +109,7 @@ func (w Wrapped) skip(d []rune) int {
 	if w.Nested {
 		open := []rune(w.Open)
 		if len(d) >= len(open) && match(open, d[:len(open)]) {
-			return w.end(d[len(open):])
+			return len(open) + w.end(d[len(open):])
 		}
 	}
 	c := []rune(w.Close)
@@ -252,12 +252,12 @@ func (g Generic) Parse(d []rune) Map {
 			next := nextWord(d[j:])
 			c, ok = g.dynWord(lastWord, next)
 		}
+		lastWord = word
 		if ok {
 			curr.constructs = append(curr.constructs, input.SyntaxLayer{
 				Construct: c,
 				Spans:     []input.Span{{Start: wordStart, End: i}},
 			})
-			lastWord = word
 			continue
 		}
 	}
@@ -291,6 +291,9 @@ func isSeparator(r rune) bool {
 }
 
 func isNumeric(w []rune) bool {
+	if len(w) >= 2 && w[0] == '-' {
+		w = w[1:]
+	}
 	decimal := false
 	for _, r := range w {
 		if r == '.' && !decimal {
