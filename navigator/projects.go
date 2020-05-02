@@ -23,6 +23,7 @@ type Projects struct {
 	projects        gxui.List
 	projectsAdapter *gxui.DefaultAdapter
 
+	projectMap   map[string]setting.Project
 	projectFrame gxui.Control
 }
 
@@ -34,18 +35,25 @@ func NewProjectsPane(cmdr Commander, driver gxui.Driver, theme gxui.Theme, projF
 		button:          createIconButton(driver, theme, "projects.png"),
 		projects:        theme.CreateList(),
 		projectsAdapter: gxui.CreateDefaultAdapter(),
+		projectMap:      make(map[string]setting.Project),
 	}
-	pane.projectsAdapter.SetItems(setting.Projects())
+	var names []string
+	for _, p := range setting.Projects() {
+		names = append(names, p.Name)
+		pane.projectMap[p.Name] = p
+	}
+	pane.projectsAdapter.SetItems(names)
 	pane.projects.SetAdapter(pane.projectsAdapter)
 	pane.projects.OnSelectionChanged(func(selected gxui.AdapterItem) {
 		opener := pane.cmdr.Bindable("project-change").(ProjectChanger)
-		pane.cmdr.Execute(opener.For(project.Project(selected.(setting.Project))))
+		pane.cmdr.Execute(opener.For(project.Project(pane.projectMap[selected.(string)])))
 	})
 	return pane
 }
 
 func (p *Projects) Add(project setting.Project) {
-	projects := append(p.projectsAdapter.Items().([]setting.Project), project)
+	p.projectMap[project.Name] = project
+	projects := append(p.projectsAdapter.Items().([]string), project.Name)
 	p.projectsAdapter.SetItems(projects)
 }
 
@@ -58,5 +66,9 @@ func (p *Projects) Frame() gxui.Control {
 }
 
 func (p *Projects) Projects() []setting.Project {
-	return p.projectsAdapter.Items().([]setting.Project)
+	var projs []setting.Project
+	for _, proj := range p.projectMap {
+		projs = append(projs, proj)
+	}
+	return projs
 }

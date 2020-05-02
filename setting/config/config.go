@@ -247,6 +247,18 @@ func convert(v reflect.Value, typ reflect.Type) reflect.Value {
 			res = reflect.Append(res, convert(v.Index(i), elemType))
 		}
 		return res
+	case reflect.Map:
+		if v.Kind() != reflect.Map {
+			return v
+		}
+		res := reflect.MakeMap(typ)
+		keyType := typ.Key()
+		elemType := typ.Elem()
+		iter := v.MapRange()
+		for iter.Next() {
+			res.SetMapIndex(convert(iter.Key(), keyType), convert(iter.Value(), elemType))
+		}
+		return res
 	default:
 		if !v.Type().ConvertibleTo(typ) {
 			return v

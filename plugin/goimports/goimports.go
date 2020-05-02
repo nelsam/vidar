@@ -7,7 +7,6 @@ package goimports
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -41,7 +40,7 @@ func (o OnSave) OpName() string {
 }
 
 func (o OnSave) BeforeSave(proj setting.Project, path, text string) (newText string, err error) {
-	return goimports(proj.Gopath, path, text)
+	return goimports(path, text, proj.Environ())
 }
 
 type GoImports struct {
@@ -97,7 +96,7 @@ func (gi *GoImports) Store(target interface{}) bind.Status {
 func (gi *GoImports) Exec() error {
 	proj := gi.projecter.Project()
 	text := gi.editor.Text()
-	formatted, err := goimports(proj.Gopath, gi.editor.Filepath(), text)
+	formatted, err := goimports(gi.editor.Filepath(), text, proj.Environ())
 	if err != nil {
 		gi.Err = err.Error()
 		return err
@@ -110,16 +109,13 @@ func (gi *GoImports) Exec() error {
 	return nil
 }
 
-func goimports(gopath, path, text string) (newText string, err error) {
-	cmd := exec.Command("goimports", "-srcdir", filepath.Dir(path))
+func goimports(path, text string, env []string) (newText string, err error) {
+	cmd := exec.Command("goimports")
 	cmd.Stdin = bytes.NewBufferString(text)
 	errBuffer := &bytes.Buffer{}
 	cmd.Stderr = errBuffer
-	cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
-	if gopath != "" {
-		cmd.Env[0] += string(os.PathListSeparator) + filepath.Join(gopath, "bin")
-		cmd.Env = append(cmd.Env, "GOPATH="+gopath)
-	}
+	cmd.Env = env
+	cmd.Dir = filepath.Dir(path)
 	formatted, err := cmd.Output()
 	if err != nil {
 		msg := errBuffer.String()

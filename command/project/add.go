@@ -30,10 +30,11 @@ type Add struct {
 
 	status gxui.Label
 
-	path   *fs.Locator
-	name   gxui.TextBox
-	gopath *fs.Locator
-	input  <-chan gxui.Focusable
+	path          *fs.Locator
+	pathRequested bool
+	name          gxui.TextBox
+	nextEnv       gxui.TextBox
+	env           map[string]string
 
 	exec   Executor
 	open   *Open
@@ -52,7 +53,8 @@ func (p *Add) Init(driver gxui.Driver, theme *basic.Theme) {
 	p.path = fs.NewLocator(driver, theme, fs.Dirs)
 	p.name = theme.CreateTextBox()
 	p.name.SetDesiredWidth(math.MaxSize.W)
-	p.gopath = fs.NewLocator(driver, theme, fs.Dirs)
+	p.nextEnv = theme.CreateTextBox()
+	p.nextEnv.SetDesiredWidth(math.MaxSize.W)
 }
 
 func (p *Add) Name() string {
@@ -72,35 +74,65 @@ func (p *Add) Defaults() []fmt.Stringer {
 
 func (p *Add) Start(control gxui.Control) gxui.Control {
 	p.path.LoadDir(control)
+	p.pathRequested = false
 	p.name.SetText("")
-
-	input := make(chan gxui.Focusable, 3)
-	p.input = input
-	input <- p.path
-	input <- p.name
-	input <- p.gopath
-	close(input)
+	p.nextEnv.SetText("")
+	p.env = nil
 
 	return p.status
 }
 
-func (p *Add) Next() gxui.Focusable {
-	next := <-p.input
-	switch next {
-	case p.path:
-		p.status.SetText("Project Path:")
-	case p.name:
-		p.status.SetText(fmt.Sprintf("Name for %s:", p.path.Path()))
-	case p.gopath:
-		startPath := p.path.Path()
-		lastSrc := strings.LastIndex(startPath, srcDir)
-		if lastSrc != -1 {
-			startPath = startPath[:lastSrc] + string(filepath.Separator)
-		}
-		p.gopath.SetPath(startPath)
-		p.status.SetText(fmt.Sprintf("GOPATH for %s:", p.name.Text()))
+func (p *Add) envKeys() (keys []string) {
+	for k := range p.env {
+		keys = append(keys, k)
 	}
-	return next
+	return keys
+}
+
+func (p *Add) currEnvs() string {
+	envs := p.envKeys()
+	if len(envs) == 0 {
+		return ""
+	}
+	return fmt.Sprintf(" [%s]", strings.Join(envs, ", "))
+}
+
+func (p *Add) Next() gxui.Focusable {
+	if !p.pathRequested {
+		p.pathRequested = true
+		p.status.SetText("Project Path:")
+		return p.path
+	}
+
+	if p.name.Text() == "" {
+		p.status.SetText(fmt.Sprintf("Name for %s:", p.path.Path()))
+		return p.name
+	}
+
+	msg := "Environment variables (override environment with VAR==someValue, append with VAR=someValue):"
+	defer func() {
+		p.status.SetText(msg)
+	}()
+	if p.env == nil {
+		p.env = make(map[string]string)
+		return p.nextEnv
+	}
+
+	if p.nextEnv.Text() == "" {
+		return nil
+	}
+
+	idx := strings.IndexRune(p.nextEnv.Text(), '=')
+	if idx == -1 {
+		msg += fmt.Sprintf("%s ERR: could not parse %s", p.currEnvs(), p.nextEnv.Text())
+		return p.nextEnv
+	}
+	k := p.nextEnv.Text()[:idx]
+	v := p.nextEnv.Text()[idx+1:]
+	p.env[k] = v
+	p.nextEnv.SetText("")
+	msg += p.currEnvs()
+	return p.nextEnv
 }
 
 func (p *Add) Project() setting.Project {
@@ -108,9 +140,9 @@ func (p *Add) Project() setting.Project {
 		os.MkdirAll(p.path.Path(), os.ModePerm)
 	}
 	return setting.Project{
-		Name:   p.name.Text(),
-		Path:   p.path.Path(),
-		Gopath: p.gopath.Path(),
+		Name: p.name.Text(),
+		Path: p.path.Path(),
+		Env:  p.env,
 	}
 }
 
@@ -139,9 +171,6 @@ func (p *Add) Exec() error {
 	proj := p.Project()
 	if !p.isCorrectPath(proj.Path) {
 		return fmt.Errorf("You can't choose file %s as path for project", proj.Path)
-	}
-	if !p.isCorrectPath(proj.Gopath) {
-		return fmt.Errorf("You can't choose file %s as gopath for project", proj.Gopath)
 	}
 	for _, prevProject := range setting.Projects() {
 		if prevProject.Name == proj.Name {

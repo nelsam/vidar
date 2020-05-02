@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 )
 
@@ -40,13 +41,16 @@ func (p *GoCodeProvider) SuggestionsAt(runeIndex int) []Suggestion {
 	return suggestions
 }
 
-func For(environ []string, filepath, contents string, runeIndex int) ([]Suggestion, error) {
-	cmd := exec.Command("gocode", "-f", "json", "autocomplete", filepath, "c"+strconv.Itoa(runeIndex))
+func For(environ []string, path, contents string, runeIndex int) ([]Suggestion, error) {
+	cmd := exec.Command("gocode", "-f", "json", "autocomplete", path, "c"+strconv.Itoa(runeIndex))
 	cmd.Env = environ
 	cmd.Stdin = bytes.NewBufferString(contents)
+	cmd.Dir = filepath.Dir(path)
+	var errBuffer bytes.Buffer
+	cmd.Stderr = &errBuffer
 	outputJSON, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error: %w; stderr: %v", err, errBuffer.String())
 	}
 
 	var output []interface{}

@@ -6,6 +6,7 @@ package setting
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/OpenPeeDeeP/xdg"
 	"github.com/nelsam/gxui"
@@ -75,6 +77,8 @@ func init() {
 	}
 	projects.SetDefault("projects", []Project(nil))
 
+	updateDeprecatedGopath(projects)
+
 	settings, err = config.New(opener{}, settingsFilename, defaultConfigDir)
 	if os.IsNotExist(err) {
 		err = nil
@@ -85,15 +89,41 @@ func init() {
 	settings.SetDefault("fonts", []Font(nil))
 }
 
+func updateDeprecatedGopath(c *config.Config) error {
+	write := false
+	projList := projects.Get("projects").([]Project)
+	for i, p := range projList {
+		if p.Gopath == "" {
+			continue
+		}
+		if p.Env == nil {
+			p.Env = make(map[string]string)
+		}
+		p.Env["GOPATH"] = "=" + p.Gopath
+		p.Env["PATH"] = filepath.Join(p.Gopath, "bin")
+		p.Gopath = ""
+		projList[i] = p
+		write = true
+	}
+	if write {
+		return c.Write()
+	}
+	return nil
+}
+
 type Font struct {
 	Name string
 	Size int
 }
 
 type Project struct {
-	Name   string
-	Path   string
-	Gopath string
+	Name string
+	Path string
+	Env  map[string]string
+
+	// Gopath is deprecated.  It is now merged into Env.
+	// It's kept here for migration purposes.
+	Gopath string `toml:",omitempty" json:",omitempty" yaml:",omitempty`
 }
 
 func (p Project) LicenseHeader() string {
@@ -120,27 +150,92 @@ func (p Project) String() string {
 
 func (p Project) Environ() []string {
 	environ := os.Environ()
-	if p.Gopath == "" {
-		return environ
+	for k, v := range p.Env {
+		environ = addEnv(environ, k, v)
 	}
-	environ = addEnv(environ, "GOPATH", p.Gopath, true)
-	return addEnv(environ, "PATH", filepath.Join(p.Gopath, "bin"), false)
+	return environ
 }
 
-func addEnv(environ []string, key, value string, replace bool) []string {
+func addEnv(environ []string, key, value string) []string {
+	if value == "" {
+		return environ
+	}
 	envKey := key + "="
-	env := envKey + value
+	replace := value[0] == '='
+	if replace {
+		value = value[1:]
+	}
+	value = parseEnv(value)
 	for i, v := range environ {
 		if !strings.HasPrefix(v, envKey) {
 			continue
 		}
-		if !replace {
-			env = fmt.Sprintf("%s%c%s", v, os.PathSeparator, value)
+		if replace {
+			environ[i] = envKey + value
+			return environ
 		}
-		environ[i] = env
+		environ[i] = fmt.Sprintf("%s%c%s", v, os.PathListSeparator, value)
 		return environ
 	}
-	return append(environ, env)
+	return append(environ, envKey+value)
+}
+
+// parseEnv does some very simple parsing to
+// replace simple shell variable syntax with
+// environment variables.
+//
+// TODO: allow use of environment variables
+// set in the project's environment as well
+// as the OS environment.
+func parseEnv(orig string) string {
+	v := orig
+	if !strings.ContainsRune(v, '$') {
+		return v
+	}
+	var b strings.Builder
+	for ; len(v) > 0; v = v[1:] {
+		if v[0] == '$' {
+			name, newV, err := envVar(v)
+			if err != nil {
+				// TODO: handle these errors
+				// gracefully
+				return orig
+			}
+			v = newV
+			b.WriteString(os.Getenv(name))
+		}
+		b.WriteByte(v[0])
+	}
+	return b.String()
+}
+
+// envVar reads the next environment variable,
+// returning the variable name and the remaining
+// text.  Only simple values will work - things
+// like ${VAR:-someDefault} will not.
+//
+// Note: nested variables (i.e. using a variable's
+// value as the name of another variable) are not
+// supported.
+func envVar(v string) (name, remaining string, err error) {
+	if v[0] != '$' {
+		return "", "", errors.New("string doesn't start with $")
+	}
+	v = v[1:]
+	if v[0] == '{' {
+		end := strings.IndexRune(v, '}')
+		if end == -1 {
+			return "", "", errors.New("could not find closing } in ${ syntax")
+		}
+		return v[1:end], v[end+1:], nil
+	}
+	end := strings.IndexFunc(v, func(r rune) bool {
+		return !(unicode.IsDigit(r) || unicode.IsLetter(r))
+	})
+	if end == -1 {
+		end = len(v)
+	}
+	return v[:end], v[end:], nil
 }
 
 func Projects() (projs []Project) {

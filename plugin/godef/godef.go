@@ -10,7 +10,6 @@ package godef
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -109,16 +108,9 @@ func (g *Godef) Exec() error {
 	cmd.Stdin = bytes.NewBufferString(g.editor.Text())
 	errBuffer := &bytes.Buffer{}
 	cmd.Stderr = errBuffer
-	cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
-	if proj.Gopath != "" {
-		cmd.Env[0] += string(os.PathListSeparator) + filepath.Join(proj.Gopath, "bin")
-		cmd.Env = append(cmd.Env, "GOPATH="+proj.Gopath)
-	}
+	cmd.Env = proj.Environ()
+	cmd.Dir = filepath.Dir(g.editor.Filepath())
 	output, err := cmd.Output()
-	if err != nil {
-		g.Err = fmt.Sprintf("godef error: %s", string(output))
-		return err
-	}
 	path, line, col, err := parseGodef(output)
 	if err != nil {
 		g.Err = err.Error()
