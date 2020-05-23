@@ -8,13 +8,13 @@ import (
 	"context"
 	"sync"
 
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/syntax"
 )
 
 type Highlight struct {
 	ctx    context.Context
-	layers []input.SyntaxLayer
+	layers []text.SyntaxLayer
 	syntax *syntax.Syntax
 
 	mu sync.Mutex
@@ -32,7 +32,7 @@ func (h *Highlight) OpName() string {
 	return "input-handler"
 }
 
-func (h *Highlight) Applied(e input.Editor, edits []input.Edit) {
+func (h *Highlight) Applied(e text.Editor, edits []text.Edit) {
 	layers := e.SyntaxLayers()
 	for i, l := range layers {
 		layers[i] = h.moveLayer(l, edits)
@@ -40,14 +40,14 @@ func (h *Highlight) Applied(e input.Editor, edits []input.Edit) {
 	e.SetSyntaxLayers(layers)
 }
 
-func (h *Highlight) moveLayer(l input.SyntaxLayer, edits []input.Edit) input.SyntaxLayer {
+func (h *Highlight) moveLayer(l text.SyntaxLayer, edits []text.Edit) text.SyntaxLayer {
 	for i, s := range l.Spans {
 		l.Spans[i] = h.moveSpan(s, edits)
 	}
 	return l
 }
 
-func (h *Highlight) moveSpan(s input.Span, edits []input.Edit) input.Span {
+func (h *Highlight) moveSpan(s text.Span, edits []text.Edit) text.Span {
 	for _, e := range edits {
 		if e.At > s.End {
 			return s
@@ -71,11 +71,11 @@ func (h *Highlight) moveSpan(s input.Span, edits []input.Edit) input.Span {
 	return s
 }
 
-func (h *Highlight) Init(e input.Editor, text []rune) {
+func (h *Highlight) Init(e text.Editor, text []rune) {
 	h.TextChanged(context.Background(), e, nil)
 }
 
-func (h *Highlight) TextChanged(ctx context.Context, editor input.Editor, _ []input.Edit) {
+func (h *Highlight) TextChanged(ctx context.Context, editor text.Editor, _ []text.Edit) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	// TODO: only update layers that changed.
@@ -93,7 +93,7 @@ func (h *Highlight) TextChanged(ctx context.Context, editor input.Editor, _ []in
 	h.layers = h.syntax.Layers()
 }
 
-func (h *Highlight) Apply(e input.Editor) error {
+func (h *Highlight) Apply(e text.Editor) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	e.SetSyntaxLayers(h.layers)

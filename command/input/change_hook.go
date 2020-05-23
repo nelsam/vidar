@@ -11,7 +11,7 @@ import (
 	"unsafe"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 // ChangeHook is a hook that triggers events on text changing.
@@ -26,7 +26,7 @@ import (
 type ChangeHook interface {
 	// Init is called when a file is opened, to initialize the
 	// hook.  The full text of the editor will be passed in.
-	Init(input.Editor, []rune)
+	Init(text.Editor, []rune)
 
 	// TextChanged is called for every text edit.
 	//
@@ -35,17 +35,17 @@ type ChangeHook interface {
 	//
 	// Hooks that have to start over from scratch when new updates
 	// are made should implement ContextChangeHook, instead.
-	TextChanged(input.Editor, input.Edit)
+	TextChanged(text.Editor, text.Edit)
 
 	// Apply is called when there is a break in text changes, to
 	// apply the hook's event.  Unlike TextChanged, Apply is
 	// called in the main UI thread.
-	Apply(input.Editor) error
+	Apply(text.Editor) error
 }
 
 type editNode struct {
-	edit   input.Edit
-	editor input.Editor
+	edit   text.Edit
+	editor text.Editor
 	next   unsafe.Pointer
 }
 
@@ -91,7 +91,7 @@ func (r *hookReader) processEdits() error {
 	if nextPtr == nil {
 		return nil
 	}
-	editors := make(map[input.Editor]struct{})
+	editors := make(map[text.Editor]struct{})
 	for nextPtr != nil {
 		next := (*editNode)(nextPtr)
 		r.hook.TextChanged(next.editor, next.edit)
@@ -109,12 +109,12 @@ func (r *hookReader) processEdits() error {
 	return nil
 }
 
-func (r *hookReader) init(e input.Editor, text []rune) {
+func (r *hookReader) init(e text.Editor, text []rune) {
 	r.hook.Init(e, text)
 	r.hook.Apply(e)
 }
 
-func (r *hookReader) textChanged(e input.Editor, changes []input.Edit) error {
+func (r *hookReader) textChanged(e text.Editor, changes []text.Edit) error {
 	if len(changes) == 0 {
 		return nil
 	}

@@ -10,15 +10,15 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 type Applier interface {
-	Apply(input.Editor, ...input.Edit)
+	Apply(text.Editor, ...text.Edit)
 }
 
 type Editor interface {
-	input.Editor
+	text.Editor
 }
 
 type Selecter interface {
@@ -26,7 +26,7 @@ type Selecter interface {
 }
 
 type Toggle struct {
-	editor   input.Editor
+	editor   text.Editor
 	applier  Applier
 	selecter Selecter
 }
@@ -60,7 +60,7 @@ func (t *Toggle) Store(target interface{}) bind.Status {
 	switch src := target.(type) {
 	case Applier:
 		t.applier = src
-	case input.Editor:
+	case text.Editor:
 		t.editor = src
 	case Selecter:
 		t.selecter = src
@@ -74,14 +74,14 @@ func (t *Toggle) Store(target interface{}) bind.Status {
 func (t *Toggle) Exec() error {
 	selections := t.selecter.SelectionSlice()
 
-	var edits []input.Edit
+	var edits []text.Edit
 	for i := len(selections) - 1; i >= 0; i-- {
 		begin, end := selections[i].Start(), selections[i].End()
 		runes := t.editor.Runes()[begin:end]
 		str := string(runes)
 		re, replace := regexpReplace(str)
 		newstr := re.ReplaceAllString(str, replace)
-		edits = append(edits, input.Edit{
+		edits = append(edits, text.Edit{
 			At:  int(begin),
 			Old: runes,
 			New: []rune(newstr),

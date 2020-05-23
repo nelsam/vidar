@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package input
+package text
 
 // Editor is the local set of methods that the Editor type passed
 // to InputHandlers are guaranteed to have.  Other methods may be

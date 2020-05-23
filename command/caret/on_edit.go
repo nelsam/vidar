@@ -6,7 +6,7 @@ package caret
 
 import (
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 type Commander interface {
@@ -26,7 +26,7 @@ func (o *OnEdit) OpName() string {
 	return "input-handler"
 }
 
-func (o *OnEdit) Applied(e input.Editor, edits []input.Edit) {
+func (o *OnEdit) Applied(e text.Editor, edits []text.Edit) {
 	h := e.(CaretHandler)
 	carets := h.Carets()
 	for _, e := range edits {
@@ -36,7 +36,7 @@ func (o *OnEdit) Applied(e input.Editor, edits []input.Edit) {
 	o.Commander.Execute(m.To(carets...))
 }
 
-func (o *OnEdit) moveCarets(carets []int, e input.Edit) []int {
+func (o *OnEdit) moveCarets(carets []int, e text.Edit) []int {
 	delta := len(e.New) - len(e.Old)
 	if delta == 0 {
 		return carets

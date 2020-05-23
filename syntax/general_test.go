@@ -10,7 +10,7 @@ import (
 	"github.com/apoydence/onpar"
 	"github.com/apoydence/onpar/expect"
 	. "github.com/apoydence/onpar/matchers"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/syntax"
 	"github.com/nelsam/vidar/theme"
 )
@@ -27,7 +27,7 @@ func TestUnicode(t *testing.T) {
 		return þ
 	}`
 
-	o.BeforeEach(func(t *testing.T) (expect.Expectation, []input.SyntaxLayer) {
+	o.BeforeEach(func(t *testing.T) (expect.Expectation, []text.SyntaxLayer) {
 		expect := expect.New(t)
 
 		s := syntax.New()
@@ -38,14 +38,14 @@ func TestUnicode(t *testing.T) {
 		return expect, layers
 	})
 
-	o.Spec("it sets keyword spans to the correct index with unicode characters", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+	o.Spec("it sets keyword spans to the correct index with unicode characters", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 		keywords := findLayer(theme.Keyword, layers)
 		expect(keywords.Spans).To(HaveLen(4))
 		expect(keywords.Spans[2]).To(matchPosition{src: src, match: "var"})
 		expect(keywords.Spans[3]).To(matchPosition{src: src, match: "return"})
 	})
 
-	o.Spec("it sets string spans to the correct index with unicode characters", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+	o.Spec("it sets string spans to the correct index with unicode characters", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 		strings := findLayer(theme.String, layers)
 		expect(strings.Spans).To(HaveLen(1))
 		expect(strings.Spans[0]).To(matchPosition{src: src, match: `"Ωð"`})
@@ -62,7 +62,7 @@ func TestPackageDocs(t *testing.T) {
 // It is also a thing.
 package foo`
 
-	o.BeforeEach(func(t *testing.T) (expect.Expectation, []input.SyntaxLayer) {
+	o.BeforeEach(func(t *testing.T) (expect.Expectation, []text.SyntaxLayer) {
 		expect := expect.New(t)
 
 		s := syntax.New()
@@ -75,7 +75,7 @@ package foo`
 		return expect, layers
 	})
 
-	o.Spec("it highlights package docs", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+	o.Spec("it highlights package docs", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 		comments := findLayer(theme.Comment, layers)
 		expect(comments.Spans).To(HaveLen(1))
 		comment := "// Package foo does stuff.\n" +

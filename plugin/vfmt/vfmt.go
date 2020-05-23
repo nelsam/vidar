@@ -14,19 +14,15 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/setting"
 )
 
 const stdinPathPattern = "<standard input>:"
 
-type Projecter interface {
-	Project() setting.Project
-}
-
 type Applier interface {
-	Apply(input.Editor, ...input.Edit)
+	Apply(text.Editor, ...text.Edit)
 }
 
 type OnSave struct {
@@ -40,20 +36,25 @@ func (o OnSave) OpName() string {
 	return "save-current-file"
 }
 
-func (o OnSave) BeforeSave(proj setting.Project, path, text string) (newText string, err error) {
+func (o OnSave) BeforeSave(_ setting.Project, _, text string) (newText string, err error) {
 	return vfmt(text)
+}
+
+// LabelCreator is used to create labels to display to the user.
+type LabelCreator interface {
+	CreateLabel() gxui.Label
 }
 
 type Vfmt struct {
 	status.General
 
-	editor  input.Editor
+	editor  text.Editor
 	applier Applier
 }
 
-func New(theme gxui.Theme) *Vfmt {
+func New(c LabelCreator) *Vfmt {
 	g := &Vfmt{}
-	g.Theme = theme
+	g.Theme = c
 	return g
 }
 
@@ -79,7 +80,7 @@ func (f *Vfmt) Reset() {
 
 func (f *Vfmt) Store(target interface{}) bind.Status {
 	switch src := target.(type) {
-	case input.Editor:
+	case text.Editor:
 		f.editor = src
 	case Applier:
 		f.applier = src
@@ -91,15 +92,15 @@ func (f *Vfmt) Store(target interface{}) bind.Status {
 }
 
 func (f *Vfmt) Exec() error {
-	text := f.editor.Text()
-	formatted, err := vfmt(text)
+	current := f.editor.Text()
+	formatted, err := vfmt(current)
 	if err != nil {
 		f.Err = err.Error()
 		return err
 	}
-	f.applier.Apply(f.editor, input.Edit{
+	f.applier.Apply(f.editor, text.Edit{
 		At:  0,
-		Old: []rune(text),
+		Old: []rune(current),
 		New: []rune(formatted),
 	})
 	return nil

@@ -5,11 +5,11 @@
 package command
 
 import (
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/setting"
 )
 
 type ProjectFinder interface {
-	CurrentEditor() input.Editor
+	CurrentEditor() text.Editor
 	Project() setting.Project
 }

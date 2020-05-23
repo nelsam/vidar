@@ -12,17 +12,17 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/setting"
 )
 
 type Applier interface {
-	Apply(input.Editor, ...input.Edit)
+	Apply(text.Editor, ...text.Edit)
 }
 
 type SaveEditor interface {
-	input.Editor
+	text.Editor
 	FlushedChanges()
 	LastKnownMTime() time.Time
 }
@@ -52,7 +52,11 @@ type SaveCurrent struct {
 	after  []AfterSaver
 }
 
-func NewSave(theme gxui.Theme) *SaveCurrent {
+type LabelCreator interface {
+	CreateLabel() gxui.Label
+}
+
+func NewSave(theme LabelCreator) *SaveCurrent {
 	s := &SaveCurrent{}
 	s.Theme = theme
 	return s
@@ -125,15 +129,15 @@ func (s *SaveCurrent) Exec() error {
 		}
 	}
 
-	text := s.editor.Text()
-	formatted := text
+	current := s.editor.Text()
+	formatted := current
 	if !strings.HasSuffix(formatted, "\n") {
 		formatted += "\n"
 	}
 
 	proj := *s.proj
 	for _, b := range s.before {
-		newText, err := b.BeforeSave(proj, filepath, text)
+		newText, err := b.BeforeSave(proj, filepath, current)
 		if err != nil {
 			s.Warn += fmt.Sprintf("%s: %s  ", b.Name(), err)
 			continue
@@ -141,13 +145,13 @@ func (s *SaveCurrent) Exec() error {
 		formatted = newText
 	}
 
-	if formatted != text {
-		s.applier.Apply(s.editor, input.Edit{
+	if formatted != current {
+		s.applier.Apply(s.editor, text.Edit{
 			At:  0,
-			Old: []rune(text),
+			Old: []rune(current),
 			New: []rune(formatted),
 		})
-		text = formatted
+		current = formatted
 	}
 
 	f, err := os.Create(filepath)
@@ -158,13 +162,13 @@ func (s *SaveCurrent) Exec() error {
 	defer func() {
 		f.Close()
 		for _, a := range s.after {
-			if err := a.AfterSave(proj, filepath, text); err != nil {
+			if err := a.AfterSave(proj, filepath, current); err != nil {
 				s.Warn += fmt.Sprintf("%s: %s  ", a.Name(), err)
 			}
 		}
 	}()
 
-	if _, err := f.WriteString(text); err != nil {
+	if _, err := f.WriteString(current); err != nil {
 		s.Err = fmt.Sprintf("Could not write to file %s: %s", filepath, err)
 		return err
 	}

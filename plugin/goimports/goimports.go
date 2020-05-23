@@ -13,7 +13,7 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/setting"
 )
@@ -25,7 +25,7 @@ type Projecter interface {
 }
 
 type Applier interface {
-	Apply(input.Editor, ...input.Edit)
+	Apply(text.Editor, ...text.Edit)
 }
 
 type OnSave struct {
@@ -46,7 +46,7 @@ func (o OnSave) BeforeSave(proj setting.Project, path, text string) (newText str
 type GoImports struct {
 	status.General
 
-	editor    input.Editor
+	editor    text.Editor
 	projecter Projecter
 	applier   Applier
 }
@@ -80,7 +80,7 @@ func (gi *GoImports) Reset() {
 
 func (gi *GoImports) Store(target interface{}) bind.Status {
 	switch src := target.(type) {
-	case input.Editor:
+	case text.Editor:
 		gi.editor = src
 	case Projecter:
 		gi.projecter = src
@@ -95,15 +95,15 @@ func (gi *GoImports) Store(target interface{}) bind.Status {
 
 func (gi *GoImports) Exec() error {
 	proj := gi.projecter.Project()
-	text := gi.editor.Text()
-	formatted, err := goimports(gi.editor.Filepath(), text, proj.Environ())
+	current := gi.editor.Text()
+	formatted, err := goimports(gi.editor.Filepath(), current, proj.Environ())
 	if err != nil {
 		gi.Err = err.Error()
 		return err
 	}
-	gi.applier.Apply(gi.editor, input.Edit{
+	gi.applier.Apply(gi.editor, text.Edit{
 		At:  0,
-		Old: []rune(text),
+		Old: []rune(current),
 		New: []rune(formatted),
 	})
 	return nil

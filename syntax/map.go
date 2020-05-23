@@ -7,7 +7,7 @@ package syntax
 import (
 	"unicode"
 
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/theme"
 )
 
@@ -15,7 +15,7 @@ type scopeMap struct {
 	start, end int
 	typ        Scope
 	construct  theme.LanguageConstruct
-	constructs []input.SyntaxLayer
+	constructs []text.SyntaxLayer
 	nested     []*scopeMap
 	parent     *scopeMap
 }
@@ -37,9 +37,9 @@ func (m scopeMap) depth(pos int) int {
 	return 0
 }
 
-func (m scopeMap) layers() []input.SyntaxLayer {
-	scope := []input.SyntaxLayer{
-		{Construct: m.construct, Spans: []input.Span{
+func (m scopeMap) layers() []text.SyntaxLayer {
+	scope := []text.SyntaxLayer{
+		{Construct: m.construct, Spans: []text.Span{
 			{Start: m.start, End: m.start + len(m.typ.Open)},
 			{Start: m.end, End: m.end + len(m.typ.Close)},
 		}},
@@ -58,7 +58,7 @@ type Map struct {
 }
 
 // Layers returns all syntax layers from all nested scopes.
-func (m Map) Layers() []input.SyntaxLayer {
+func (m Map) Layers() []text.SyntaxLayer {
 	return m.file.layers()
 }
 
@@ -220,9 +220,9 @@ func (g Generic) Parse(d []rune) Map {
 		if w := g.matchWrapped(remaining); w != nil {
 			remaining = remaining[len(w.Open):]
 			length := len(w.Open) + w.end(remaining)
-			curr.constructs = append(curr.constructs, input.SyntaxLayer{
+			curr.constructs = append(curr.constructs, text.SyntaxLayer{
 				Construct: w.Construct,
-				Spans:     []input.Span{{Start: i, End: i + length}},
+				Spans:     []text.Span{{Start: i, End: i + length}},
 			})
 			i += length
 			continue
@@ -237,9 +237,9 @@ func (g Generic) Parse(d []rune) Map {
 		i += len(word)
 
 		if isNumeric(word) {
-			curr.constructs = append(curr.constructs, input.SyntaxLayer{
+			curr.constructs = append(curr.constructs, text.SyntaxLayer{
 				Construct: theme.Num,
-				Spans:     []input.Span{{Start: wordStart, End: i}},
+				Spans:     []text.Span{{Start: wordStart, End: i}},
 			})
 			lastWord = word
 			continue
@@ -254,9 +254,9 @@ func (g Generic) Parse(d []rune) Map {
 		}
 		lastWord = word
 		if ok {
-			curr.constructs = append(curr.constructs, input.SyntaxLayer{
+			curr.constructs = append(curr.constructs, text.SyntaxLayer{
 				Construct: c,
-				Spans:     []input.Span{{Start: wordStart, End: i}},
+				Spans:     []text.Span{{Start: wordStart, End: i}},
 			})
 			continue
 		}

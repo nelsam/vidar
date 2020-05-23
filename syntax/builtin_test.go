@@ -10,7 +10,7 @@ import (
 	"github.com/apoydence/onpar"
 	"github.com/apoydence/onpar/expect"
 	. "github.com/apoydence/onpar/matchers"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/syntax"
 	"github.com/nelsam/vidar/theme"
 )
@@ -46,7 +46,7 @@ func TestBuiltins(t *testing.T) {
 		panic("foo")
 	}`
 
-	o.BeforeEach(func(t *testing.T) (expect.Expectation, []input.SyntaxLayer) {
+	o.BeforeEach(func(t *testing.T) (expect.Expectation, []text.SyntaxLayer) {
 		expect := expect.New(t)
 
 		s := syntax.New()
@@ -58,7 +58,7 @@ func TestBuiltins(t *testing.T) {
 		return expect, layers
 	})
 
-	o.Spec("it highlights the expected builtins", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+	o.Spec("it highlights the expected builtins", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 		builtins := findLayer(theme.Builtin, layers)
 		expect(builtins.Spans[0]).To(matchPosition{src: src, match: "recover"})
 		expect(builtins.Spans[1]).To(matchPosition{src: src, match: "append"})
@@ -77,13 +77,13 @@ func TestBuiltins(t *testing.T) {
 		expect(builtins.Spans[14]).To(matchPosition{src: src, match: "panic"})
 	})
 
-	o.Spec("it highlights nil", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+	o.Spec("it highlights nil", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 		nils := findLayer(theme.Nil, layers)
 		expect(nils.Spans).To(HaveLen(1))
 		expect(nils.Spans[0]).To(matchPosition{src: src, match: "nil"})
 	})
 
-	o.Spec("it does not highlight builtins as idents", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+	o.Spec("it does not highlight builtins as idents", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 		idents := findLayer(theme.Ident, layers)
 		expect(idents.Spans).To(HaveLen(6))
 	})

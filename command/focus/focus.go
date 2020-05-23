@@ -10,15 +10,15 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/plugin/status"
 )
 
 // EditorOpener represents a type that can open a file, returning
 // an editor.
 type EditorOpener interface {
-	Open(string) (editor input.Editor, existed bool)
-	CurrentEditor() input.Editor
+	Open(string) (editor text.Editor, existed bool)
+	CurrentEditor() text.Editor
 }
 
 // Opener represents a type that can open a file, but doesn't

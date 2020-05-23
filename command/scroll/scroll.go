@@ -11,7 +11,7 @@ import (
 	"github.com/nelsam/gxui/math"
 
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 // Controller matches the type we need to control scrolling.
@@ -26,7 +26,7 @@ type Controller interface {
 // ScrolledHook is a hook that will trigger whenever the view has
 // scrolled.
 type ScrolledHook interface {
-	Scrolled(e input.Editor, focus int)
+	Scrolled(e text.Editor, focus int)
 }
 
 type Direction int
@@ -102,7 +102,7 @@ type Scroller struct {
 	dir      Direction
 	scrolled []ScrolledHook
 
-	editor input.Editor
+	editor text.Editor
 	ctrl   Controller
 }
 
@@ -140,8 +140,8 @@ func (s *Scroller) Reset() {
 // Store checks elem for the necessary methods and stores it if it's needed.
 func (s *Scroller) Store(elem interface{}) bind.Status {
 	// We can't do a type switch here because with gxui, at least,
-	// the Controller is also the input.Editor.
-	if e, ok := elem.(input.Editor); ok {
+	// the Controller is also the text.Editor.
+	if e, ok := elem.(text.Editor); ok {
 		s.editor = e
 	}
 	if c, ok := elem.(Controller); ok {

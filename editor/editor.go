@@ -19,7 +19,7 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/fsw"
 	"github.com/nelsam/vidar/theme"
 )
@@ -40,7 +40,7 @@ type CodeEditor struct {
 
 	selections      []gxui.TextSelection
 	scrollPositions math.Point
-	layers          []input.SyntaxLayer
+	layers          []text.SyntaxLayer
 
 	renamed  bool
 	onRename func(newPath string)
@@ -254,7 +254,7 @@ func (e *CodeEditor) Elements() []interface{} {
 	}
 }
 
-func (e *CodeEditor) SetSyntaxLayers(layers []input.SyntaxLayer) {
+func (e *CodeEditor) SetSyntaxLayers(layers []text.SyntaxLayer) {
 	defer e.syntaxTheme.Rainbow.Reset()
 	sort.Slice(layers, func(i, j int) bool {
 		return layers[i].Construct < layers[j].Construct
@@ -278,7 +278,7 @@ func (e *CodeEditor) SetSyntaxLayers(layers []input.SyntaxLayer) {
 	e.CodeEditor.SetSyntaxLayers(gLayers)
 }
 
-func (e *CodeEditor) SyntaxLayers() []input.SyntaxLayer {
+func (e *CodeEditor) SyntaxLayers() []text.SyntaxLayer {
 	return e.layers
 }
 

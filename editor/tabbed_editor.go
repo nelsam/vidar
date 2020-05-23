@@ -15,7 +15,7 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/command/focus"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/theme"
 )
 
@@ -26,7 +26,7 @@ type refocuser interface {
 type TabbedEditor struct {
 	mixins.PanelHolder
 
-	editors map[string]input.Editor
+	editors map[string]text.Editor
 
 	driver      gxui.Driver
 	cmdr        Commander
@@ -43,7 +43,7 @@ func NewTabbedEditor(driver gxui.Driver, cmdr Commander, theme *basic.Theme, syn
 }
 
 func (e *TabbedEditor) Init(outer mixins.PanelHolderOuter, driver gxui.Driver, cmdr Commander, theme *basic.Theme, syntaxTheme theme.Theme, font gxui.Font) {
-	e.editors = make(map[string]input.Editor)
+	e.editors = make(map[string]text.Editor)
 	e.driver = driver
 	e.cmdr = cmdr
 	e.theme = theme
@@ -58,7 +58,7 @@ func (e *TabbedEditor) Has(hiddenPrefix, path string) bool {
 	return ok
 }
 
-func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []string) (editor input.Editor, existed bool) {
+func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []string) (editor text.Editor, existed bool) {
 	name := relPath(hiddenPrefix, path)
 	if editor, ok := e.editors[name]; ok {
 		e.Select(e.PanelIndex(editor.(gxui.Control)))
@@ -91,7 +91,7 @@ func (e *TabbedEditor) Open(hiddenPrefix, path, headerText string, environ []str
 	return editor, false
 }
 
-func (e *TabbedEditor) Add(name string, editor input.Editor) {
+func (e *TabbedEditor) Add(name string, editor text.Editor) {
 	e.editors[name] = editor
 	ec := editor.(gxui.Control)
 	e.AddPanel(ec, name)
@@ -101,11 +101,11 @@ func (e *TabbedEditor) Add(name string, editor input.Editor) {
 
 func (e *TabbedEditor) AddPanelAt(c gxui.Control, n string, i int) {
 	e.PanelHolder.AddPanelAt(c, n, i)
-	e.editors[n] = c.(input.Editor)
+	e.editors[n] = c.(text.Editor)
 }
 
 func (e *TabbedEditor) RemovePanel(panel gxui.Control) {
-	toRemove := panel.(input.Editor)
+	toRemove := panel.(text.Editor)
 	for name, editor := range e.editors {
 		if editor == toRemove {
 			delete(e.editors, name)
@@ -161,7 +161,7 @@ func (e *TabbedEditor) purgeSelf() {
 	parent.(refocuser).ReFocus()
 }
 
-func (e *TabbedEditor) EditorAt(d Direction) input.Editor {
+func (e *TabbedEditor) EditorAt(d Direction) text.Editor {
 	panels := e.PanelCount()
 	if panels < 2 {
 		return e.CurrentEditor()
@@ -179,10 +179,10 @@ func (e *TabbedEditor) EditorAt(d Direction) input.Editor {
 			idx = panels - 1
 		}
 	}
-	return e.Panel(idx).(input.Editor)
+	return e.Panel(idx).(text.Editor)
 }
 
-func (e *TabbedEditor) CloseCurrentEditor() (name string, editor input.Editor) {
+func (e *TabbedEditor) CloseCurrentEditor() (name string, editor text.Editor) {
 	toRemove := e.CurrentEditor()
 	if toRemove == nil {
 		return "", nil
@@ -214,18 +214,18 @@ func (e *TabbedEditor) SaveAll() {
 	}
 }
 
-func (e *TabbedEditor) CurrentEditor() input.Editor {
+func (e *TabbedEditor) CurrentEditor() text.Editor {
 	if e.SelectedPanel() == nil {
 		return nil
 	}
-	return e.SelectedPanel().(input.Editor)
+	return e.SelectedPanel().(text.Editor)
 }
 
 func (e *TabbedEditor) CurrentFile() string {
 	if e.SelectedPanel() == nil {
 		return ""
 	}
-	return e.SelectedPanel().(input.Editor).Filepath()
+	return e.SelectedPanel().(text.Editor).Filepath()
 }
 
 func (e *TabbedEditor) Elements() []interface{} {

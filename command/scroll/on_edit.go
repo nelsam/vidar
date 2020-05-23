@@ -6,7 +6,7 @@ package scroll
 
 import (
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 type Commander interface {
@@ -26,7 +26,7 @@ func (o *OnEdit) OpName() string {
 	return "input-handler"
 }
 
-func (o *OnEdit) Applied(e input.Editor, edits []input.Edit) {
+func (o *OnEdit) Applied(e text.Editor, edits []text.Edit) {
 	// TODO: handling multiple editing
 	if len(edits) == 1 {
 		edit := edits[0]

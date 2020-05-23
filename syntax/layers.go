@@ -10,7 +10,7 @@ import (
 	"go/token"
 	"unicode/utf8"
 
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/theme"
 )
 
@@ -19,7 +19,7 @@ import (
 type Syntax struct {
 	scope       theme.LanguageConstruct
 	fileSet     *token.FileSet
-	layers      map[theme.LanguageConstruct]*input.SyntaxLayer
+	layers      map[theme.LanguageConstruct]*text.SyntaxLayer
 	runeOffsets []int
 }
 
@@ -46,7 +46,7 @@ func (s *Syntax) Parse(source string) error {
 
 	s.fileSet = token.NewFileSet()
 	s.scope = theme.ScopePair
-	s.layers = make(map[theme.LanguageConstruct]*input.SyntaxLayer)
+	s.layers = make(map[theme.LanguageConstruct]*text.SyntaxLayer)
 	f, err := parser.ParseFile(s.fileSet, "", source, parser.ParseComments)
 
 	// Parse everything we can before returning the error.
@@ -73,8 +73,8 @@ func (s *Syntax) Parse(source string) error {
 // gxui.CodeSyntaxLayer will have its foreground and background
 // constructs set, and all positions that should be highlighted that
 // construct will be stored.
-func (s *Syntax) Layers() []input.SyntaxLayer {
-	l := make([]input.SyntaxLayer, 0, len(s.layers))
+func (s *Syntax) Layers() []text.SyntaxLayer {
+	l := make([]text.SyntaxLayer, 0, len(s.layers))
 	for _, layer := range s.layers {
 		l = append(l, *layer)
 	}
@@ -94,7 +94,7 @@ func (s *Syntax) add(construct theme.LanguageConstruct, pos token.Pos, byteLengt
 	}
 	layer, ok := s.layers[construct]
 	if !ok {
-		layer = &input.SyntaxLayer{
+		layer = &text.SyntaxLayer{
 			Construct: construct,
 		}
 		s.layers[construct] = layer
@@ -105,7 +105,7 @@ func (s *Syntax) add(construct theme.LanguageConstruct, pos token.Pos, byteLengt
 	}
 	idx := s.runePos(bytePos)
 	end := s.runePos(bytePos + byteLength)
-	layer.Spans = append(layer.Spans, input.Span{Start: idx, End: end})
+	layer.Spans = append(layer.Spans, text.Span{Start: idx, End: end})
 }
 
 func (s *Syntax) runePos(bytePos int) int {

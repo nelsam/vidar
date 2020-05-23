@@ -13,13 +13,13 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/setting"
 	"github.com/nelsam/vidar/suggestion"
 )
 
 type Editor interface {
-	input.Editor
+	text.Editor
 	gxui.Parent
 
 	Carets() []int
@@ -32,7 +32,7 @@ type Editor interface {
 }
 
 type Applier interface {
-	Apply(input.Editor, ...input.Edit)
+	Apply(text.Editor, ...text.Edit)
 }
 
 type suggestionList struct {
@@ -145,7 +145,7 @@ func (s *suggestionList) apply() {
 	runes := s.ctrl.TextRunes()
 
 	if start <= end {
-		go s.applier.Apply(s.editor, input.Edit{
+		go s.applier.Apply(s.editor, text.Edit{
 			At:  start,
 			Old: runes[start:end],
 			New: []rune(suggestion.Name),

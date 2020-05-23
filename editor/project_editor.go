@@ -8,7 +8,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/setting"
 	"github.com/nelsam/vidar/theme"
 )
@@ -38,7 +38,7 @@ func NewProjectEditor(driver gxui.Driver, window gxui.Window, cmdr Commander, th
 	return p
 }
 
-func (p *ProjectEditor) Open(path string) (e input.Editor, existed bool) {
+func (p *ProjectEditor) Open(path string) (e text.Editor, existed bool) {
 	return p.SplitEditor.Open(p.project.Path, path, p.project.LicenseHeader(), p.project.Environ())
 }
 
@@ -97,7 +97,7 @@ func (e *MultiProjectEditor) Elements() []interface{} {
 	}
 }
 
-func (e *MultiProjectEditor) CurrentEditor() input.Editor {
+func (e *MultiProjectEditor) CurrentEditor() text.Editor {
 	return e.current.CurrentEditor()
 }
 
@@ -109,6 +109,6 @@ func (e *MultiProjectEditor) CurrentProject() setting.Project {
 	return e.current.Project()
 }
 
-func (e *MultiProjectEditor) Open(file string) (ed input.Editor, existed bool) {
+func (e *MultiProjectEditor) Open(file string) (ed text.Editor, existed bool) {
 	return e.current.Open(file)
 }

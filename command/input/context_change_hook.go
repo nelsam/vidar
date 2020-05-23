@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/nelsam/gxui"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 // ContextChangeHook is similar to a ChangeHook, but takes a
@@ -19,7 +19,7 @@ import (
 type ContextChangeHook interface {
 	// Init is called when a file is opened, to initialize the
 	// hook.  The full text of the editor will be passed in.
-	Init(input.Editor, []rune)
+	Init(text.Editor, []rune)
 
 	// TextChanged is called in a new goroutine whenever any text
 	// is changed in the editor.  Any changes to the UI should be
@@ -30,28 +30,28 @@ type ContextChangeHook interface {
 	// through, the context.Context will be cancelled and
 	// TextChanged will be called again with the new edits appended
 	// to those from the previous call.
-	TextChanged(context.Context, input.Editor, []input.Edit)
+	TextChanged(context.Context, text.Editor, []text.Edit)
 
 	// Apply is called when there is a break in text changes, to
 	// apply the hook's event.  Unlike TextChanged, Apply is
 	// called in the main UI thread.
-	Apply(input.Editor) error
+	Apply(text.Editor) error
 }
 
 type ctxHookReader struct {
 	driver gxui.Driver
 	cancel func()
-	edits  []input.Edit
+	edits  []text.Edit
 	mu     sync.Mutex
 	hook   ContextChangeHook
 }
 
-func (r *ctxHookReader) init(e input.Editor, text []rune) {
+func (r *ctxHookReader) init(e text.Editor, text []rune) {
 	r.hook.Init(e, text)
 	r.hook.Apply(e)
 }
 
-func (r *ctxHookReader) textChanged(e input.Editor, changes []input.Edit) error {
+func (r *ctxHookReader) textChanged(e text.Editor, changes []text.Edit) error {
 	if len(changes) == 0 {
 		return nil
 	}

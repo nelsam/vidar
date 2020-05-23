@@ -9,7 +9,7 @@ import (
 
 	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/setting"
 )
@@ -111,7 +111,7 @@ func (o *Open) Store(e interface{}) bind.Status {
 		return bind.Errored
 	}
 	switch src := e.(type) {
-	case input.Editor:
+	case text.Editor:
 		o.hadFile = true
 	case Binder:
 		o.binder = src

@@ -9,12 +9,12 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 type CurrentEditorCloser interface {
-	CloseCurrentEditor() (string, input.Editor)
-	CurrentEditor() input.Editor
+	CloseCurrentEditor() (string, text.Editor)
+	CurrentEditor() text.Editor
 }
 
 type BindPopper interface {

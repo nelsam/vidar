@@ -7,7 +7,7 @@ package focus_test
 
 import (
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 type mockOpener struct {
@@ -34,12 +34,12 @@ type mockEditorOpener struct {
 		Arg0 chan string
 	}
 	OpenOutput struct {
-		Editor  chan input.Editor
+		Editor  chan text.Editor
 		Existed chan bool
 	}
 	CurrentEditorCalled chan bool
 	CurrentEditorOutput struct {
-		Ret0 chan input.Editor
+		Ret0 chan text.Editor
 	}
 }
 
@@ -47,18 +47,18 @@ func newMockEditorOpener() *mockEditorOpener {
 	m := &mockEditorOpener{}
 	m.OpenCalled = make(chan bool, 100)
 	m.OpenInput.Arg0 = make(chan string, 100)
-	m.OpenOutput.Editor = make(chan input.Editor, 100)
+	m.OpenOutput.Editor = make(chan text.Editor, 100)
 	m.OpenOutput.Existed = make(chan bool, 100)
 	m.CurrentEditorCalled = make(chan bool, 100)
-	m.CurrentEditorOutput.Ret0 = make(chan input.Editor, 100)
+	m.CurrentEditorOutput.Ret0 = make(chan text.Editor, 100)
 	return m
 }
-func (m *mockEditorOpener) Open(arg0 string) (editor input.Editor, existed bool) {
+func (m *mockEditorOpener) Open(arg0 string) (editor text.Editor, existed bool) {
 	m.OpenCalled <- true
 	m.OpenInput.Arg0 <- arg0
 	return <-m.OpenOutput.Editor, <-m.OpenOutput.Existed
 }
-func (m *mockEditorOpener) CurrentEditor() input.Editor {
+func (m *mockEditorOpener) CurrentEditor() text.Editor {
 	m.CurrentEditorCalled <- true
 	return <-m.CurrentEditorOutput.Ret0
 }
@@ -205,11 +205,11 @@ type mockEditor struct {
 	}
 	SyntaxLayersCalled chan bool
 	SyntaxLayersOutput struct {
-		Ret0 chan []input.SyntaxLayer
+		Ret0 chan []text.SyntaxLayer
 	}
 	SetSyntaxLayersCalled chan bool
 	SetSyntaxLayersInput  struct {
-		Arg0 chan []input.SyntaxLayer
+		Arg0 chan []text.SyntaxLayer
 	}
 }
 
@@ -222,9 +222,9 @@ func newMockEditor() *mockEditor {
 	m.SetTextCalled = make(chan bool, 100)
 	m.SetTextInput.Arg0 = make(chan string, 100)
 	m.SyntaxLayersCalled = make(chan bool, 100)
-	m.SyntaxLayersOutput.Ret0 = make(chan []input.SyntaxLayer, 100)
+	m.SyntaxLayersOutput.Ret0 = make(chan []text.SyntaxLayer, 100)
 	m.SetSyntaxLayersCalled = make(chan bool, 100)
-	m.SetSyntaxLayersInput.Arg0 = make(chan []input.SyntaxLayer, 100)
+	m.SetSyntaxLayersInput.Arg0 = make(chan []text.SyntaxLayer, 100)
 	return m
 }
 func (m *mockEditor) Filepath() string {
@@ -239,11 +239,11 @@ func (m *mockEditor) SetText(arg0 string) {
 	m.SetTextCalled <- true
 	m.SetTextInput.Arg0 <- arg0
 }
-func (m *mockEditor) SyntaxLayers() []input.SyntaxLayer {
+func (m *mockEditor) SyntaxLayers() []text.SyntaxLayer {
 	m.SyntaxLayersCalled <- true
 	return <-m.SyntaxLayersOutput.Ret0
 }
-func (m *mockEditor) SetSyntaxLayers(arg0 []input.SyntaxLayer) {
+func (m *mockEditor) SetSyntaxLayers(arg0 []text.SyntaxLayer) {
 	m.SetSyntaxLayersCalled <- true
 	m.SetSyntaxLayersInput.Arg0 <- arg0
 }

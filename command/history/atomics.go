@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 // node is an entry in a linked list.
@@ -18,7 +18,7 @@ type node struct {
 
 	// the above should be kept first in the struct for byte alignment.
 
-	edit input.Edit
+	edit text.Edit
 }
 
 // next performs atomic incantations to load n.nextP, returning
@@ -62,7 +62,7 @@ type branch struct {
 
 	// the above should be kept first in the struct for byte alignment.
 
-	edit input.Edit
+	edit text.Edit
 }
 
 // prev performs atomic incantations to load b.prevP and return
@@ -97,7 +97,7 @@ func (b *branch) siblings() []*branch {
 }
 
 // push adds e to the next empty child branch of b.
-func (b *branch) push(e input.Edit) *branch {
+func (b *branch) push(e text.Edit) *branch {
 	next := &branch{edit: e, prevP: unsafe.Pointer(b)}
 	np := unsafe.Pointer(next)
 	done := atomic.CompareAndSwapPointer(&b.nextP, nil, np)
@@ -118,7 +118,7 @@ func (b *branch) push(e input.Edit) *branch {
 }
 
 // tree is a simple tree implementation to atomically store a branching
-// history of input.Edit values.
+// history of text.Edit values.
 type tree struct {
 	// trunkP *branch
 	trunkP unsafe.Pointer

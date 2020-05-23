@@ -12,7 +12,7 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/editor"
 )
 
@@ -22,8 +22,8 @@ type Binder interface {
 }
 
 type textChangeHook interface {
-	init(input.Editor, []rune)
-	textChanged(input.Editor, []input.Edit) error
+	init(text.Editor, []rune)
+	textChanged(text.Editor, []text.Edit) error
 }
 
 // Handler is vidar's default input handler.  It takes the runes typed
@@ -34,8 +34,8 @@ type textChangeHook interface {
 // commander.Handler.
 //
 // TODO: Remove the need for so much of the editor's methods.  Ideally, we should
-// be able to do what we need to do with just input.Editor.  This may require
-// expanding input.Editor some, but we shouldn't need editor.Controller for so
+// be able to do what we need to do with just text.Editor.  This may require
+// expanding text.Editor some, but we shouldn't need editor.Controller for so
 // much of what we're doing.  Basic editing should be handleable by the editor.
 type Handler struct {
 	driver gxui.Driver
@@ -55,11 +55,11 @@ func (e *Handler) Name() string {
 	return "input-handler"
 }
 
-func (e *Handler) New() input.Handler {
+func (e *Handler) New() text.Handler {
 	return New(e.driver, e.binder)
 }
 
-func (e *Handler) Bind(b bind.Bindable) (input.Handler, error) {
+func (e *Handler) Bind(b bind.Bindable) (text.Handler, error) {
 	newH := New(e.driver, e.binder)
 	newH.hooks = append(newH.hooks, e.hooks...)
 	newH.applied = append(newH.applied, e.applied...)
@@ -93,19 +93,19 @@ func (e *Handler) Bind(b bind.Bindable) (input.Handler, error) {
 	}
 
 	if !didBind {
-		return nil, fmt.Errorf("input.Handler: type %T did not implement any known hook type", b)
+		return nil, fmt.Errorf("text.Handler: type %T did not implement any known hook type", b)
 	}
 
 	return newH, nil
 }
 
-func (e *Handler) Init(newEditor input.Editor, contents []rune) {
+func (e *Handler) Init(newEditor text.Editor, contents []rune) {
 	for _, h := range e.hooks {
 		h.init(newEditor, contents)
 	}
 }
 
-func (h *Handler) Apply(e input.Editor, edits ...input.Edit) {
+func (h *Handler) Apply(e text.Editor, edits ...text.Edit) {
 	editor := e.(*editor.CodeEditor)
 	c := editor.Controller()
 	text := c.TextRunes()
@@ -145,7 +145,7 @@ func (h *Handler) Apply(e input.Editor, edits ...input.Edit) {
 	})
 }
 
-func (e *Handler) HandleEvent(focused input.Editor, ev gxui.KeyboardEvent) {
+func (e *Handler) HandleEvent(focused text.Editor, ev gxui.KeyboardEvent) {
 	if ev.Modifier&^gxui.ModShift != 0 {
 		// This Handler, at least for now, doesn't handle key bindings.
 		return
@@ -159,12 +159,12 @@ func (e *Handler) HandleEvent(focused input.Editor, ev gxui.KeyboardEvent) {
 				return
 			}
 		}
-		var edits []input.Edit
+		var edits []text.Edit
 		for _, s := range editor.Controller().SelectionSlice() {
 			if s.Start() < 0 {
 				continue
 			}
-			edits = append(edits, input.Edit{
+			edits = append(edits, text.Edit{
 				At:  s.Start(),
 				Old: ctrl.TextRunes()[s.Start():s.End()],
 				New: []rune{'\n'},
@@ -185,12 +185,12 @@ func (e *Handler) HandleEvent(focused input.Editor, ev gxui.KeyboardEvent) {
 			}
 		}
 	case gxui.KeyBackspace, gxui.KeyDelete:
-		var edits []input.Edit
+		var edits []text.Edit
 		for _, s := range editor.Controller().SelectionSlice() {
 			if s.Start() < 0 {
 				continue
 			}
-			edit := input.Edit{
+			edit := text.Edit{
 				At:  s.Start(),
 				Old: ctrl.TextRunes()[s.Start():s.End()],
 			}
@@ -209,15 +209,15 @@ func (e *Handler) HandleEvent(focused input.Editor, ev gxui.KeyboardEvent) {
 	}
 }
 
-func (e *Handler) HandleInput(focused input.Editor, ev gxui.KeyStrokeEvent) {
+func (e *Handler) HandleInput(focused text.Editor, ev gxui.KeyStrokeEvent) {
 	if ev.Modifier&^gxui.ModShift != 0 {
 		return
 	}
 	editor := focused.(*editor.CodeEditor)
 	ctrl := editor.Controller()
-	var edits []input.Edit
+	var edits []text.Edit
 	for _, s := range editor.Controller().SelectionSlice() {
-		edits = append(edits, input.Edit{
+		edits = append(edits, text.Edit{
 			At:  s.Start(),
 			Old: ctrl.TextRunes()[s.Start():s.End()],
 			New: []rune{ev.Character},
@@ -226,7 +226,7 @@ func (e *Handler) HandleInput(focused input.Editor, ev gxui.KeyStrokeEvent) {
 	e.Apply(focused, edits...)
 }
 
-func (e *Handler) textEdited(focused input.Editor, edits []input.Edit) {
+func (e *Handler) textEdited(focused text.Editor, edits []text.Edit) {
 	for _, a := range e.applied {
 		a.Applied(focused, edits)
 	}

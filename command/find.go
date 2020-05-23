@@ -14,11 +14,11 @@ import (
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 type SelectionEditor interface {
-	input.Editor
+	text.Editor
 	Controller() *gxui.TextBoxController
 	SelectSlice([]gxui.TextSelection)
 	ScrollToRune(int)

@@ -11,12 +11,12 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/plugin/status"
 )
 
 type Editor interface {
-	input.Editor
+	text.Editor
 	Controller() *gxui.TextBoxController
 }
 
@@ -112,11 +112,11 @@ func (c *Cut) Exec() error {
 }
 
 func (c *Cut) removeSelections() {
-	text := c.editor.Controller().TextRunes()
-	var edits []input.Edit
+	r := c.editor.Controller().TextRunes()
+	var edits []text.Edit
 	for _, s := range c.editor.Controller().SelectionSlice() {
-		old := text[s.Start():s.End()]
-		edits = append(edits, input.Edit{
+		old := r[s.Start():s.End()]
+		edits = append(edits, text.Edit{
 			At:  s.Start(),
 			Old: old,
 		})
@@ -178,8 +178,8 @@ func (p *Paste) Exec() error {
 }
 
 func (p *Paste) replaceSelections() {
-	text := p.editor.Controller().TextRunes()
-	var edits []input.Edit
+	r := p.editor.Controller().TextRunes()
+	var edits []text.Edit
 	contents, err := p.driver.GetClipboard()
 	if err != nil {
 		p.Err = fmt.Sprintf("Error reading clipboard: %s", err)
@@ -187,8 +187,8 @@ func (p *Paste) replaceSelections() {
 	}
 	replacement := []rune(contents)
 	for _, s := range p.editor.Controller().SelectionSlice() {
-		old := text[s.Start():s.End()]
-		edits = append(edits, input.Edit{
+		old := r[s.Start():s.End()]
+		edits = append(edits, text.Edit{
 			At:  s.Start(),
 			Old: old,
 			New: replacement,

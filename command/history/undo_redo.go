@@ -10,12 +10,12 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/plugin/status"
 )
 
 type Applier interface {
-	Apply(input.Editor, ...input.Edit)
+	Apply(text.Editor, ...text.Edit)
 }
 
 type OnOpen struct {
@@ -44,7 +44,7 @@ type Undo struct {
 
 	history *History
 	applier Applier
-	editor  input.Editor
+	editor  text.Editor
 }
 
 func (u *Undo) Name() string {
@@ -74,7 +74,7 @@ func (u *Undo) Store(target interface{}) bind.Status {
 		u.history = src
 	case Applier:
 		u.applier = src
-	case input.Editor:
+	case text.Editor:
 		u.editor = src
 	}
 	if u.applier != nil && u.editor != nil && u.history != nil {
@@ -98,7 +98,7 @@ type Redo struct {
 	status.General
 
 	history *History
-	editor  input.Editor
+	editor  text.Editor
 	applier Applier
 }
 
@@ -129,7 +129,7 @@ func (r *Redo) Store(target interface{}) bind.Status {
 		r.history = src
 	case Applier:
 		r.applier = src
-	case input.Editor:
+	case text.Editor:
 		r.editor = src
 	}
 	if r.applier != nil && r.editor != nil && r.history != nil {

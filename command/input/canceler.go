@@ -4,7 +4,7 @@
 
 package input
 
-import "github.com/nelsam/vidar/commander/input"
+import "github.com/nelsam/vidar/commander/text"
 
 // Canceler is a type that needs to know when it's being cancelled.
 // This could be anything from a long-running process that can't
@@ -14,5 +14,5 @@ import "github.com/nelsam/vidar/commander/input"
 type Canceler interface {
 	// Cancel is called when the hook should be cancelled.  It should
 	// return true if it should consume the cancel event.
-	Cancel(input.Editor) (cancelled bool)
+	Cancel(text.Editor) (cancelled bool)
 }

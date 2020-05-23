@@ -13,7 +13,7 @@ import (
 	"github.com/nelsam/gxui/math"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/command/caret"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/setting"
 )
 
@@ -108,7 +108,7 @@ func (g *GoCode) set(e Editor, l *suggestionList, pos int) {
 	go g.show(ctx, l, pos)
 }
 
-func (g *GoCode) Moving(ie input.Editor, d caret.Direction, m caret.Mod, carets []int) (caret.Direction, caret.Mod, []int) {
+func (g *GoCode) Moving(ie text.Editor, d caret.Direction, m caret.Mod, carets []int) (caret.Direction, caret.Mod, []int) {
 	e := ie.(Editor)
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -140,7 +140,7 @@ func (g *GoCode) Moving(ie input.Editor, d caret.Direction, m caret.Mod, carets 
 	return caret.NoDirection, caret.NoMod, nil
 }
 
-func (g *GoCode) Moved(ie input.Editor, carets []int) {
+func (g *GoCode) Moved(ie text.Editor, carets []int) {
 	e := ie.(Editor)
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -165,7 +165,7 @@ func (g *GoCode) Moved(ie input.Editor, carets []int) {
 	go g.show(ctx, l, pos)
 }
 
-func (g *GoCode) Cancel(ie input.Editor) bool {
+func (g *GoCode) Cancel(ie text.Editor) bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	return g.stop(ie.(Editor))
@@ -186,7 +186,7 @@ func (g *GoCode) stop(e Editor) bool {
 	return false
 }
 
-func (g *GoCode) Confirm(ie input.Editor) bool {
+func (g *GoCode) Confirm(ie text.Editor) bool {
 	e := ie.(Editor)
 	g.mu.Lock()
 	defer g.mu.Unlock()

@@ -11,7 +11,7 @@ import (
 	"github.com/apoydence/onpar"
 	"github.com/apoydence/onpar/expect"
 	. "github.com/apoydence/onpar/matchers"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/syntax"
 	"github.com/nelsam/vidar/theme"
 )
@@ -67,7 +67,7 @@ FOO:
 		}
 	}`
 
-	o.BeforeEach(func(t *testing.T) (expect.Expectation, []input.SyntaxLayer) {
+	o.BeforeEach(func(t *testing.T) (expect.Expectation, []text.SyntaxLayer) {
 		expect := expect.New(t)
 
 		s := syntax.New()
@@ -122,7 +122,7 @@ FOO:
 
 	for idx, match := range matchers {
 		name := fmt.Sprintf("%d%s %s", match.idx+1, numSuffix(match.idx+1), match.match)
-		o.Spec(name, func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec(name, func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			keywords := findLayer(theme.Keyword, layers)
 			expect(keywords.Spans[idx]).To(match)
 		})

@@ -8,7 +8,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/mixins"
 	"github.com/nelsam/gxui/themes/basic"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 type Navigator interface {
@@ -18,8 +18,8 @@ type Navigator interface {
 type MultiEditor interface {
 	gxui.Control
 	CurrentFile() string
-	CurrentEditor() input.Editor
-	Open(path string) (editor input.Editor, existed bool)
+	CurrentEditor() text.Editor
+	Open(path string) (editor text.Editor, existed bool)
 }
 
 type Controller struct {

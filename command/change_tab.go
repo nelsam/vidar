@@ -11,12 +11,12 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/editor"
 )
 
 type TabChooser interface {
-	EditorAt(editor.Direction) input.Editor
+	EditorAt(editor.Direction) text.Editor
 }
 
 type ChangeTab struct {

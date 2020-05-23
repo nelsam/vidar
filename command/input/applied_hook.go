@@ -4,7 +4,7 @@
 
 package input
 
-import "github.com/nelsam/vidar/commander/input"
+import "github.com/nelsam/vidar/commander/text"
 
 // An AppliedChangeHook is a hook that needs to be informed about
 // edits immediately after they are applied, before the call to
@@ -12,5 +12,5 @@ import "github.com/nelsam/vidar/commander/input"
 // synchronously in the Handler, so it should be as minimal as
 // possible.
 type AppliedChangeHook interface {
-	Applied(input.Editor, []input.Edit)
+	Applied(text.Editor, []text.Edit)
 }

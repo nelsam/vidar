@@ -16,7 +16,7 @@ import (
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/theme"
 )
 
@@ -56,12 +56,12 @@ type MultiEditor interface {
 	gxui.Control
 	outer.LayoutChildren
 	Has(hiddenPrefix, path string) bool
-	Open(hiddenPrefix, path, headerText string, environ []string) (editor input.Editor, existed bool)
+	Open(hiddenPrefix, path, headerText string, environ []string) (editor text.Editor, existed bool)
 	Editors() uint
-	CurrentEditor() input.Editor
+	CurrentEditor() text.Editor
 	CurrentFile() string
-	CloseCurrentEditor() (name string, editor input.Editor)
-	Add(name string, editor input.Editor)
+	CloseCurrentEditor() (name string, editor text.Editor)
+	Add(name string, editor text.Editor)
 	SaveAll()
 }
 
@@ -152,7 +152,7 @@ func (e *SplitEditor) Editors() (count uint) {
 	return count
 }
 
-func (e *SplitEditor) CloseCurrentEditor() (name string, editor input.Editor) {
+func (e *SplitEditor) CloseCurrentEditor() (name string, editor text.Editor) {
 	name, editor = e.current.CloseCurrentEditor()
 	if e.current.Editors() == 0 && len(e.Children()) > 1 {
 		e.RemoveChild(e.current)
@@ -178,7 +178,7 @@ func (e *SplitEditor) ReFocus() {
 	gxui.SetFocus(e.current.CurrentEditor().(gxui.Focusable))
 }
 
-func (e *SplitEditor) Add(name string, editor input.Editor) {
+func (e *SplitEditor) Add(name string, editor text.Editor) {
 	e.current.Add(name, editor)
 }
 
@@ -240,7 +240,7 @@ func (e *SplitEditor) Has(hiddenPrefix, path string) bool {
 	return false
 }
 
-func (e *SplitEditor) Open(hiddenPrefix, path, headerText string, environ []string) (editor input.Editor, existed bool) {
+func (e *SplitEditor) Open(hiddenPrefix, path, headerText string, environ []string) (editor text.Editor, existed bool) {
 	for _, child := range e.Children() {
 		if me, ok := child.Control.(MultiEditor); ok && me.Has(hiddenPrefix, path) {
 			e.current = me
@@ -250,7 +250,7 @@ func (e *SplitEditor) Open(hiddenPrefix, path, headerText string, environ []stri
 	return e.current.Open(hiddenPrefix, path, headerText, environ)
 }
 
-func (e *SplitEditor) CurrentEditor() input.Editor {
+func (e *SplitEditor) CurrentEditor() text.Editor {
 	return e.current.CurrentEditor()
 }
 
@@ -270,12 +270,12 @@ func (e *SplitEditor) ChildIndex(c gxui.Control) int {
 	return -1
 }
 
-func (e *SplitEditor) NextEditor(direction Direction) input.Editor {
+func (e *SplitEditor) NextEditor(direction Direction) text.Editor {
 	editor, _ := e.nextEditor(direction)
 	return editor
 }
 
-func (e *SplitEditor) nextEditor(direction Direction) (editor input.Editor, wrapped bool) {
+func (e *SplitEditor) nextEditor(direction Direction) (editor text.Editor, wrapped bool) {
 	switch direction {
 	case Up, Down:
 		if e.Orientation().Horizontal() {
@@ -348,7 +348,7 @@ func (e *SplitEditor) nextEditor(direction Direction) (editor input.Editor, wrap
 	return me.CurrentEditor(), wrapped
 }
 
-func (e *SplitEditor) first(d Direction) input.Editor {
+func (e *SplitEditor) first(d Direction) text.Editor {
 	switch d {
 	case Up, Down:
 		if e.Orientation().Horizontal() {

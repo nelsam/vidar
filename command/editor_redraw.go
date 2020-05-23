@@ -5,11 +5,11 @@
 package command
 
 import (
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 type RedrawableEditor interface {
-	input.Editor
+	text.Editor
 	Redraw()
 	DataChanged(recreateControls bool)
 }
@@ -24,7 +24,7 @@ func (EditorRedraw) OpName() string {
 	return "input-handler"
 }
 
-func (EditorRedraw) Applied(e input.Editor, edits []input.Edit) {
+func (EditorRedraw) Applied(e text.Editor, edits []text.Edit) {
 	r := e.(RedrawableEditor)
 	r.Redraw()
 	r.DataChanged(false)

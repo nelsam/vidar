@@ -16,7 +16,7 @@ import (
 	"github.com/nelsam/gxui/mixins/parts"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/controller"
 	"github.com/nelsam/vidar/setting"
 )
@@ -45,7 +45,7 @@ type Commander struct {
 	controller Controller
 	box        *commandBox
 
-	inputHandler input.Handler
+	inputHandler text.Handler
 
 	lock sync.RWMutex
 
@@ -88,7 +88,7 @@ func New(driver gxui.Driver, theme *basic.Theme, root gxui.Window, controller Co
 	return commander
 }
 
-func (c *Commander) InputHandler() input.Handler {
+func (c *Commander) InputHandler() text.Handler {
 	return c.inputHandler
 }
 
@@ -118,9 +118,9 @@ func (c *Commander) cloneTop() []bind.Bindable {
 	}
 	next := make([]bind.Bindable, 0, len(c.stack[len(c.stack)-1]))
 	for _, b := range c.stack[len(c.stack)-1] {
-		if h, ok := b.(input.Handler); ok {
+		if h, ok := b.(text.Handler); ok {
 			// TODO: decide if this is helpful.  Bind now returns a new
-			// input.Handler each time, so this is probably useless.
+			// text.Handler each time, so this is probably useless.
 			b = h.New()
 		}
 		next = append(next, b)
@@ -174,7 +174,7 @@ func (c *Commander) bindStack() {
 	}
 }
 
-func (c *Commander) editor(e controller.MultiEditor) input.Editor {
+func (c *Commander) editor(e controller.MultiEditor) text.Editor {
 	if e == nil {
 		return nil
 	}
@@ -183,7 +183,7 @@ func (c *Commander) editor(e controller.MultiEditor) input.Editor {
 
 func (c *Commander) mapBindings() {
 	var (
-		handler input.Handler
+		handler text.Handler
 		cmds    []bind.Command
 	)
 	// Loop through the slice to preserve order.
@@ -193,7 +193,7 @@ func (c *Commander) mapBindings() {
 		switch src := b.(type) {
 		case bind.Command:
 			cmds = append(cmds, src)
-		case input.Handler:
+		case text.Handler:
 			handler = src
 		}
 	}
@@ -391,7 +391,7 @@ func bindName(b, h bind.Bindable) (bind.Bindable, error) {
 		return op.Bind(h)
 	case bind.HookedMultiOp:
 		return op.Bind(h)
-	case input.Handler:
+	case text.Handler:
 		return op.Bind(h)
 	default:
 		return nil, fmt.Errorf("binding %s (requested by hook %s) is not a HookedOp and cannot bind hooks to itself. Skipping.", b.Name(), h.Name())

@@ -8,17 +8,17 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/theme"
 )
 
-func findLayer(c theme.LanguageConstruct, l []input.SyntaxLayer) input.SyntaxLayer {
+func findLayer(c theme.LanguageConstruct, l []text.SyntaxLayer) text.SyntaxLayer {
 	for _, layer := range l {
 		if layer.Construct == c {
 			return layer
 		}
 	}
-	return input.SyntaxLayer{}
+	return text.SyntaxLayer{}
 }
 
 func numSuffix(n int) string {
@@ -40,9 +40,9 @@ type matchPosition struct {
 }
 
 func (p matchPosition) Match(actual interface{}) (interface{}, error) {
-	span, ok := actual.(input.Span)
+	span, ok := actual.(text.Span)
 	if !ok {
-		return actual, errors.New("be of type input.Span")
+		return actual, errors.New("be of type text.Span")
 	}
 	// Switch to []rune, since we want to match positions based on rune index, not byte
 	runes, sep := []rune(p.src), []rune(p.match)

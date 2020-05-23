@@ -11,7 +11,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/command/focus"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/editor"
 )
 
@@ -21,7 +21,7 @@ type BindManager interface {
 }
 
 type EditorChooser interface {
-	NextEditor(editor.Direction) input.Editor
+	NextEditor(editor.Direction) text.Editor
 }
 
 type Locationer interface {

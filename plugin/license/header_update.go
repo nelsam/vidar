@@ -10,7 +10,7 @@ import (
 
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/plugin/status"
 	"github.com/nelsam/vidar/setting"
 )
@@ -20,7 +20,7 @@ type Projecter interface {
 }
 
 type Applier interface {
-	Apply(input.Editor, ...input.Edit)
+	Apply(text.Editor, ...text.Edit)
 }
 
 type Controller interface {
@@ -32,7 +32,7 @@ type Controller interface {
 type HeaderUpdate struct {
 	status.General
 
-	editor    input.Editor
+	editor    text.Editor
 	applier   Applier
 	projecter Projecter
 	ctrl      Controller
@@ -65,7 +65,7 @@ func (u *HeaderUpdate) Store(target interface{}) bind.Status {
 		u.projecter = src
 	case Applier:
 		u.applier = src
-	case input.Editor:
+	case text.Editor:
 		u.editor = src
 	case Controller:
 		u.ctrl = src
@@ -92,7 +92,7 @@ func (u *HeaderUpdate) Exec() error {
 	return nil
 }
 
-func (u *HeaderUpdate) LicenseEdit() *input.Edit {
+func (u *HeaderUpdate) LicenseEdit() *text.Edit {
 	licenseHeader := strings.TrimSpace(u.projecter.Project().LicenseHeader())
 	if licenseHeader != "" {
 		licenseHeader += "\n\n"
@@ -120,7 +120,7 @@ func (u *HeaderUpdate) LicenseEdit() *input.Edit {
 		u.Info = "license is already set correctly"
 		return nil
 	}
-	return &input.Edit{
+	return &text.Edit{
 		At:  0,
 		Old: []rune(commentText),
 		New: []rune(licenseHeader),

@@ -10,7 +10,7 @@ import (
 	"github.com/apoydence/onpar"
 	"github.com/apoydence/onpar/expect"
 	. "github.com/apoydence/onpar/matchers"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/syntax"
 	"github.com/nelsam/vidar/theme"
 )
@@ -34,7 +34,7 @@ func TestParens(t *testing.T) {
 		}
 		`
 
-		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []input.SyntaxLayer) {
+		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []text.SyntaxLayer) {
 			s := syntax.New()
 			err := s.Parse(src)
 			expect(err).To(BeNil())
@@ -42,7 +42,7 @@ func TestParens(t *testing.T) {
 			return expect, s.Layers()
 		})
 
-		o.Spec("it highlights the outer-most scope pairs with one color", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it highlights the outer-most scope pairs with one color", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			outerScope := findLayer(theme.ScopePair, layers)
 			expect(outerScope.Spans).To(HaveLen(6))
 
@@ -54,7 +54,7 @@ func TestParens(t *testing.T) {
 			expect(outerScope.Spans[5]).To(matchPosition{src: src, match: "}"})
 		})
 
-		o.Spec("it highlights the nested scope pairs with a different color", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it highlights the nested scope pairs with a different color", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			secondParens := findLayer(theme.ScopePair+1, layers)
 			expect(secondParens.Spans).To(HaveLen(2))
 			expect(secondParens.Spans[0]).To(matchPosition{src: src, match: "(", idx: 2})
@@ -71,7 +71,7 @@ func TestParens(t *testing.T) {
 			v := [...]string{"foo"}
 		}`
 
-		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []input.SyntaxLayer) {
+		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []text.SyntaxLayer) {
 			s := syntax.New()
 			err := s.Parse(src)
 			expect(err).To(BeNil())
@@ -79,7 +79,7 @@ func TestParens(t *testing.T) {
 			return expect, s.Layers()
 		})
 
-		o.Spec("it highlights array brackets and braces in a nested scope", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it highlights array brackets and braces in a nested scope", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			arrParens := findLayer(theme.ScopePair+1, layers)
 			expect(arrParens.Spans).To(HaveLen(6))
 			expect(arrParens.Spans[0]).To(matchPosition{src: src, match: "["})
@@ -90,7 +90,7 @@ func TestParens(t *testing.T) {
 			expect(arrParens.Spans[5]).To(matchPosition{src: src, match: "}"})
 		})
 
-		o.Spec("it highlights array types", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it highlights array types", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			typs := findLayer(theme.Type, layers)
 			expect(typs.Spans).To(HaveLen(2))
 			expect(typs.Spans[0]).To(matchPosition{src: src, match: "string"})
@@ -110,7 +110,7 @@ func TestParens(t *testing.T) {
 			z := x[:1]
 		}`
 
-		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []input.SyntaxLayer) {
+		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []text.SyntaxLayer) {
 			s := syntax.New()
 			err := s.Parse(src)
 			expect(err).To(BeNil())
@@ -118,7 +118,7 @@ func TestParens(t *testing.T) {
 			return expect, s.Layers()
 		})
 
-		o.Spec("it highlights brackets and braces for slices within a nested scope", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it highlights brackets and braces for slices within a nested scope", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			arrParens := findLayer(theme.ScopePair+1, layers)
 			expect(arrParens.Spans).To(HaveLen(12))
 

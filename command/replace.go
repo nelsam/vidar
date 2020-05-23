@@ -12,7 +12,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 type Replace struct {
@@ -24,7 +24,7 @@ type Replace struct {
 	status    gxui.Label
 	editor    SelectionEditor
 	applier   Applier
-	edits     []input.Edit
+	edits     []text.Edit
 	is_select bool
 
 	input <-chan gxui.Focusable
@@ -89,13 +89,13 @@ func (f *Replace) Start(control gxui.Control) gxui.Control {
 	f.replace.OnKeyPress(func(ev gxui.KeyboardEvent) {
 		switch ev.Key {
 		case gxui.KeyEnter:
-			f.edits = []input.Edit{}
+			f.edits = []text.Edit{}
 			selections := f.editor.Controller().SelectionSlice()
 
 			for i := len(selections) - 1; i >= 0; i-- {
 				begin, end := selections[i].Start(), selections[i].End()
 				str := []rune(f.editor.Text())[begin:end]
-				f.edits = append(f.edits, input.Edit{
+				f.edits = append(f.edits, text.Edit{
 					At:  int(begin),
 					Old: str,
 					New: []rune(f.replace.Text()),

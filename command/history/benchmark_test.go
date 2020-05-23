@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/nelsam/vidar/command/history"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 func init() {
@@ -23,7 +23,7 @@ func BenchmarkHistoryFresh(b *testing.B) {
 	hist := findHistory(b, all)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		hist.TextChanged(nil, input.Edit{At: 210, Old: []rune(""), New: []rune("v")})
+		hist.TextChanged(nil, text.Edit{At: 210, Old: []rune(""), New: []rune("v")})
 		if i%16 == 0 {
 			hist.TextChanged(nil, hist.Rewind())
 			if i%64 == 0 {
@@ -39,7 +39,7 @@ func BenchmarkHistoryBranches(b *testing.B) {
 	hist := findHistory(b, all)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		hist.TextChanged(nil, input.Edit{At: 210, Old: []rune(""), New: []rune("v")})
+		hist.TextChanged(nil, text.Edit{At: 210, Old: []rune(""), New: []rune("v")})
 		hist.TextChanged(nil, hist.Rewind())
 	}
 }
@@ -48,7 +48,7 @@ func BenchmarkHistoryFF(b *testing.B) {
 	b.StopTimer()
 	all := history.Bindables(nil, nil, nil)
 	hist := findHistory(b, all)
-	hist.TextChanged(nil, input.Edit{At: 210, Old: []rune(""), New: []rune("v")})
+	hist.TextChanged(nil, text.Edit{At: 210, Old: []rune(""), New: []rune("v")})
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		hist.TextChanged(nil, hist.Rewind())
@@ -63,7 +63,7 @@ func BenchmarkHistoryLongRunning(b *testing.B) {
 	all := history.Bindables(nil, nil, nil)
 	hist := findHistory(b, all)
 	for i := 0; i < 100000; i++ {
-		hist.TextChanged(nil, input.Edit{At: 210, Old: []rune("a quick brown fox"), New: []rune("a silent, deadly wolf")})
+		hist.TextChanged(nil, text.Edit{At: 210, Old: []rune("a quick brown fox"), New: []rune("a silent, deadly wolf")})
 		if rand.Intn(100) == 0 {
 			undos := rand.Intn(50)
 			for i := 0; i < undos; i++ {
@@ -80,7 +80,7 @@ func BenchmarkHistoryLongRunning(b *testing.B) {
 	}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		hist.TextChanged(nil, input.Edit{At: 210, Old: []rune(""), New: []rune("v")})
+		hist.TextChanged(nil, text.Edit{At: 210, Old: []rune(""), New: []rune("v")})
 		if i%16 == 0 {
 			hist.TextChanged(nil, hist.Rewind())
 			if i%64 == 0 {

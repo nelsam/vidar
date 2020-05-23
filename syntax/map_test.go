@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/syntax"
 	"github.com/nelsam/vidar/theme"
 	"github.com/poy/onpar"
@@ -54,7 +54,7 @@ func TestGeneric(t *testing.T) {
 	})
 
 	o.Group("syntax layers", func() {
-		o.BeforeEach(func(expect expect.Expectation, g syntax.Generic) (expect.Expectation, []input.SyntaxLayer, string) {
+		o.BeforeEach(func(expect expect.Expectation, g syntax.Generic) (expect.Expectation, []text.SyntaxLayer, string) {
 			source := `
 				// some docs
 				foo := 'some string\' with escapes'
@@ -73,38 +73,38 @@ func TestGeneric(t *testing.T) {
 			return expect, m.Layers(), source
 		})
 
-		o.Spec("it recognizes single-line comments", func(expect expect.Expectation, layers []input.SyntaxLayer, source string) {
+		o.Spec("it recognizes single-line comments", func(expect expect.Expectation, layers []text.SyntaxLayer, source string) {
 			expect(layers).To(haveLayer(theme.Comment, source, "// some docs\n"))
 		})
 
-		o.Spec("it recognizes nested comment blocks", func(expect expect.Expectation, layers []input.SyntaxLayer, source string) {
+		o.Spec("it recognizes nested comment blocks", func(expect expect.Expectation, layers []text.SyntaxLayer, source string) {
 			expect(layers).To(haveLayer(theme.Comment, source, "/* and comment blocks /* can nest */ without closing early */"))
 		})
 
-		o.Spec("it recognizes strings and skips escaped quotes", func(expect expect.Expectation, layers []input.SyntaxLayer, source string) {
+		o.Spec("it recognizes strings and skips escaped quotes", func(expect expect.Expectation, layers []text.SyntaxLayer, source string) {
 			expect(layers).To(haveLayer(theme.String, source, `'some string\' with escapes'`))
 		})
 
-		o.Spec("it recognizes positive and negative numbers", func(expect expect.Expectation, layers []input.SyntaxLayer, source string) {
+		o.Spec("it recognizes positive and negative numbers", func(expect expect.Expectation, layers []text.SyntaxLayer, source string) {
 			expect(layers).To(haveLayer(theme.Num, source, "12.3"))
 			expect(layers).To(haveLayer(theme.Num, source, "-5"))
 		})
 
-		o.Spec("it does not highlight semantic versions", func(expect expect.Expectation, layers []input.SyntaxLayer, source string) {
+		o.Spec("it does not highlight semantic versions", func(expect expect.Expectation, layers []text.SyntaxLayer, source string) {
 			expect(layers).To(not(haveLayer(theme.Num, source, "1.2.3")))
 		})
 
-		o.Spec("it recognizes static words", func(expect expect.Expectation, layers []input.SyntaxLayer, source string) {
+		o.Spec("it recognizes static words", func(expect expect.Expectation, layers []text.SyntaxLayer, source string) {
 			expect(layers).To(haveLayer(theme.Keyword, source, "package"))
 			expect(layers).To(haveLayer(theme.Builtin, source, "make"))
 		})
 
-		o.Spec("it recognizes dynamic words surrounded by static words", func(expect expect.Expectation, layers []input.SyntaxLayer, source string) {
+		o.Spec("it recognizes dynamic words surrounded by static words", func(expect expect.Expectation, layers []text.SyntaxLayer, source string) {
 			expect(layers).To(haveLayer(theme.Func, source, "somefunc"))
 			expect(layers).To(haveLayer(theme.Num, source, "somevariable"))
 		})
 
-		o.Spec("it handles rainbow colors for scope pairs", func(expect expect.Expectation, layers []input.SyntaxLayer, source string) {
+		o.Spec("it handles rainbow colors for scope pairs", func(expect expect.Expectation, layers []text.SyntaxLayer, source string) {
 			expect(layers).To(haveLayer(theme.ScopePair, source, "{"))
 			expect(layers).To(haveLayer(theme.ScopePair+1, source, "{", nth(2)))
 			expect(layers).To(haveLayer(theme.ScopePair+1, source, "}"))
@@ -142,9 +142,9 @@ func (m haveLayerMatcher) Match(actual interface{}) (interface{}, error) {
 	start := indexN(m.source, m.expected, m.skip)
 	end := start + len(m.expected)
 	switch l := actual.(type) {
-	case input.SyntaxLayer:
+	case text.SyntaxLayer:
 		return actual, m.matchLayer(l, start, end)
-	case []input.SyntaxLayer:
+	case []text.SyntaxLayer:
 		for _, layer := range l {
 			if err := m.matchLayer(layer, start, end); err == nil {
 				return actual, nil
@@ -152,11 +152,11 @@ func (m haveLayerMatcher) Match(actual interface{}) (interface{}, error) {
 		}
 		return actual, fmt.Errorf("expected to find a span from %d to %d in a layer with construct %#v in %#v", start, end, m.construct, l)
 	default:
-		return actual, fmt.Errorf("expected actual to be of type input.SyntaxLayer or []input.SyntaxLayer; was %T", actual)
+		return actual, fmt.Errorf("expected actual to be of type text.SyntaxLayer or []input.SyntaxLayer; was %T", actual)
 	}
 }
 
-func (m haveLayerMatcher) matchLayer(l input.SyntaxLayer, start, end int) error {
+func (m haveLayerMatcher) matchLayer(l text.SyntaxLayer, start, end int) error {
 	if l.Construct != m.construct {
 		return fmt.Errorf("expected construct %#v to equal %#v", l.Construct, m.construct)
 	}

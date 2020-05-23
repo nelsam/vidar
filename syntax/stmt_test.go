@@ -7,7 +7,7 @@ package syntax_test
 import (
 	"testing"
 
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/syntax"
 	"github.com/nelsam/vidar/theme"
 
@@ -33,7 +33,7 @@ func TestStmt(t *testing.T) {
 			y = "foo"
 		}`
 
-		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []input.SyntaxLayer) {
+		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []text.SyntaxLayer) {
 			s := syntax.New()
 			err := s.Parse(src)
 			expect(err).To(BeNil())
@@ -44,13 +44,13 @@ func TestStmt(t *testing.T) {
 			return expect, layers
 		})
 
-		o.Spec("it has a number layer for 0.1", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it has a number layer for 0.1", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			nums := findLayer(theme.Num, layers)
 			expect(nums.Spans).To(HaveLen(1))
 			expect(nums.Spans[0]).To(matchPosition{src: src, match: "0.1"})
 		})
 
-		o.Spec(`it has a string layer for "foo"`, func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec(`it has a string layer for "foo"`, func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			strings := findLayer(theme.String, layers)
 			expect(strings.Spans).To(HaveLen(1))
 			expect(strings.Spans[0]).To(matchPosition{src: src, match: `"foo"`})
@@ -71,7 +71,7 @@ func TestStmt(t *testing.T) {
 			}
 		}`
 
-		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []input.SyntaxLayer) {
+		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []text.SyntaxLayer) {
 			s := syntax.New()
 			err := s.Parse(src)
 			expect(err).To(BeNil())
@@ -81,7 +81,7 @@ func TestStmt(t *testing.T) {
 			return expect, layers
 		})
 
-		o.Spec("it has keyword spans for the cases", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it has keyword spans for the cases", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			keywords := findLayer(theme.Keyword, layers)
 			expect(keywords.Spans).To(HaveLen(6))
 			expect(keywords.Spans[3]).To(matchPosition{src: src, match: "case"})
@@ -89,20 +89,20 @@ func TestStmt(t *testing.T) {
 			expect(keywords.Spans[5]).To(matchPosition{src: src, match: "default"})
 		})
 
-		o.Spec("it has string spans for the string cases", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it has string spans for the string cases", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			strings := findLayer(theme.String, layers)
 			expect(strings.Spans).To(HaveLen(2))
 			expect(strings.Spans[0]).To(matchPosition{src: src, match: `"bar"`})
 			expect(strings.Spans[1]).To(matchPosition{src: src, match: `"bacon"`})
 		})
 
-		o.Spec("it has num spans for the numeric cases", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it has num spans for the numeric cases", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			nums := findLayer(theme.Num, layers)
 			expect(nums.Spans).To(HaveLen(1))
 			expect(nums.Spans[0]).To(matchPosition{src: src, match: "1"})
 		})
 
-		o.Spec("it has builtin spans for the builtin functions", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it has builtin spans for the builtin functions", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			builtins := findLayer(theme.Builtin, layers)
 			expect(builtins.Spans).To(HaveLen(1))
 			expect(builtins.Spans[0]).To(matchPosition{src: src, match: "println"})

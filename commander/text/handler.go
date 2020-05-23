@@ -2,7 +2,7 @@
 // domain.  For more information, see <http://unlicense.org> or the
 // accompanying UNLICENSE file.
 
-package input
+package text
 
 import (
 	"github.com/nelsam/gxui"

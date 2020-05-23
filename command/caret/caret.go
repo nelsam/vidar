@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 )
 
 type Controller interface {
@@ -41,12 +41,12 @@ type CaretHandler interface {
 // actually move, the MovingHook can return a different direction
 // and/or slice of carets.
 type MovingHook interface {
-	Moving(e input.Editor, d Direction, m Mod, carets []int) (newD Direction, newM Mod, newCarets []int)
+	Moving(e text.Editor, d Direction, m Mod, carets []int) (newD Direction, newM Mod, newCarets []int)
 }
 
 // MovedHook is a hook that needs to trigger after the carets have moved.
 type MovedHook interface {
-	Moved(e input.Editor, carets []int)
+	Moved(e text.Editor, carets []int)
 }
 
 type Direction int
@@ -84,7 +84,7 @@ type Mover struct {
 	moving    []MovingHook
 	moved     []MovedHook
 
-	editor input.Editor
+	editor text.Editor
 	ctrl   Controller
 }
 
@@ -143,7 +143,7 @@ func (m *Mover) Reset() {
 
 func (m *Mover) Store(elem interface{}) bind.Status {
 	switch src := elem.(type) {
-	case input.Editor:
+	case text.Editor:
 		m.editor = src
 	case Controller:
 		m.ctrl = src

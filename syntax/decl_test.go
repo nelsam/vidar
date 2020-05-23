@@ -11,7 +11,7 @@ import (
 	"github.com/apoydence/onpar"
 	"github.com/apoydence/onpar/expect"
 	. "github.com/apoydence/onpar/matchers"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/syntax"
 	"github.com/nelsam/vidar/theme"
 )
@@ -33,7 +33,7 @@ func TestDecl(t *testing.T) {
 			var Foo string
 			`
 
-			o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []input.SyntaxLayer) {
+			o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []text.SyntaxLayer) {
 				s := syntax.New()
 				err := s.Parse(src)
 				expect(err).To(BeNil())
@@ -43,19 +43,19 @@ func TestDecl(t *testing.T) {
 				return expect, layers
 			})
 
-			o.Spec("it highlights keywords", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+			o.Spec("it highlights keywords", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 				keywords := findLayer(theme.Keyword, layers)
 				expect(keywords.Spans).To(HaveLen(2))
 				expect(keywords.Spans[1]).To(matchPosition{src: src, match: "var"})
 			})
 
-			o.Spec("it highlights comments", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+			o.Spec("it highlights comments", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 				comments := findLayer(theme.Comment, layers)
 				expect(comments.Spans).To(HaveLen(1))
 				expect(comments.Spans[0]).To(matchPosition{src: src, match: "// Foo is a thing"})
 			})
 
-			o.Spec("it highlights types", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+			o.Spec("it highlights types", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 				typs := findLayer(theme.Type, layers)
 				expect(typs.Spans).To(HaveLen(1))
 				expect(typs.Spans[0]).To(matchPosition{src: src, match: "string"})
@@ -73,7 +73,7 @@ func TestDecl(t *testing.T) {
 			)
 			`
 
-			o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []input.SyntaxLayer) {
+			o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []text.SyntaxLayer) {
 				s := syntax.New()
 				err := s.Parse(src)
 				expect(err).To(BeNil())
@@ -84,20 +84,20 @@ func TestDecl(t *testing.T) {
 				return expect, layers
 			})
 
-			o.Spec("it highlights keywords", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+			o.Spec("it highlights keywords", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 				keywords := findLayer(theme.Keyword, layers)
 				expect(keywords.Spans).To(HaveLen(2))
 				expect(keywords.Spans[1]).To(matchPosition{src: src, match: "var"})
 			})
 
-			o.Spec("it highlights parenthesis", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+			o.Spec("it highlights parenthesis", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 				parens := findLayer(theme.ScopePair, layers)
 				expect(parens.Spans).To(HaveLen(2))
 				expect(parens.Spans[0]).To(matchPosition{src: src, match: "("})
 				expect(parens.Spans[1]).To(matchPosition{src: src, match: ")"})
 			})
 
-			o.Spec("it highlights types", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+			o.Spec("it highlights types", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 				typs := findLayer(theme.Type, layers)
 				expect(typs.Spans).To(HaveLen(2))
 				expect(typs.Spans[0]).To(matchPosition{src: src, match: "string"})
@@ -116,7 +116,7 @@ func TestDecl(t *testing.T) {
 		}
 		`
 
-		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []input.SyntaxLayer) {
+		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []text.SyntaxLayer) {
 			s := syntax.New()
 			err := s.Parse(src)
 			expect(err).To(BeNil())
@@ -127,14 +127,14 @@ func TestDecl(t *testing.T) {
 			return expect, layers
 		})
 
-		o.Spec("it highlights function and return keywords", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it highlights function and return keywords", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			keywords := findLayer(theme.Keyword, layers)
 			expect(keywords.Spans).To(HaveLen(3))
 			expect(keywords.Spans[1]).To(matchPosition{src: src, match: "func"})
 			expect(keywords.Spans[2]).To(matchPosition{src: src, match: "return"})
 		})
 
-		o.Spec("it highlights function parenthesis and braces", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it highlights function parenthesis and braces", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			parens := findLayer(theme.ScopePair, layers)
 			expect(parens.Spans).To(HaveLen(4))
 			expect(parens.Spans[0]).To(matchPosition{src: src, match: "("})
@@ -143,14 +143,14 @@ func TestDecl(t *testing.T) {
 			expect(parens.Spans[3]).To(matchPosition{src: src, match: "}"})
 		})
 
-		o.Spec("it highlights parameter and return types", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it highlights parameter and return types", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			typs := findLayer(theme.Type, layers)
 			expect(typs.Spans).To(HaveLen(2))
 			expect(typs.Spans[0]).To(matchPosition{src: src, match: "string"})
 			expect(typs.Spans[1]).To(matchPosition{src: src, match: "int"})
 		})
 
-		o.Spec("it highlights expressions in the return statement", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it highlights expressions in the return statement", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			ints := findLayer(theme.Num, layers)
 			expect(ints.Spans).To(HaveLen(1))
 			expect(ints.Spans[0]).To(matchPosition{src: src, match: "0"})
@@ -163,7 +163,7 @@ func TestDecl(t *testing.T) {
 		
 		10`
 
-		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []input.SyntaxLayer) {
+		o.BeforeEach(func(expect expect.Expectation) (expect.Expectation, []text.SyntaxLayer) {
 			s := syntax.New()
 			err := s.Parse(src)
 			expect(err).To(Not(BeNil()))
@@ -174,7 +174,7 @@ func TestDecl(t *testing.T) {
 			return expect, layers
 		})
 
-		o.Spec("it highlights bad syntax", func(expect expect.Expectation, layers []input.SyntaxLayer) {
+		o.Spec("it highlights bad syntax", func(expect expect.Expectation, layers []text.SyntaxLayer) {
 			bad := findLayer(theme.Bad, layers)
 			expect(bad.Spans).To(HaveLen(1))
 			expectedStart := strings.Index(src, "10")

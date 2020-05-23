@@ -33,13 +33,18 @@ var (
 	}
 )
 
+// LabelCreator is used by the status package to create labels.
+type LabelCreator interface {
+	CreateLabel() gxui.Label
+}
+
 // General is a type used to keep track of a general status.
 // It implements commander.Statuser so that other types can
 // simply embed it and rely on its functionality.
 //
 // Types that embed this *must* set its Theme field.
 type General struct {
-	Theme gxui.Theme
+	Theme LabelCreator
 
 	Err  string
 	Warn string

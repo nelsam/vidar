@@ -10,7 +10,7 @@ import (
 	"github.com/nelsam/gxui"
 	"github.com/nelsam/gxui/themes/basic"
 	"github.com/nelsam/vidar/commander/bind"
-	"github.com/nelsam/vidar/commander/input"
+	"github.com/nelsam/vidar/commander/text"
 	"github.com/nelsam/vidar/plugin/command"
 )
 
@@ -48,7 +48,7 @@ func (h *History) OpNames() []string {
 }
 
 // Init implements input.ChangeHook
-func (h *History) Init(input.Editor, []rune) {}
+func (h *History) Init(text.Editor, []rune) {}
 
 // resetCurrent resets h.current.trunk to a previous history (if one
 // exists for path) or a new empty branch.
@@ -63,7 +63,7 @@ func (h *History) resetCurrent(path string) {
 // addSkip takes an edit that has been returned by h (from either
 // Rewind or FastForward) and adds it to h.skipP, so that h will
 // ignore e when it is triggered by TextChanged.
-func (h *History) addSkip(e input.Edit) {
+func (h *History) addSkip(e text.Edit) {
 	n := &node{edit: e}
 	added := h.skip.casNext(nil, n)
 	if !added {
@@ -75,7 +75,7 @@ func (h *History) addSkip(e input.Edit) {
 
 // shouldSkip reports whether e is an edit that was created by h and
 // should be skipped.
-func (h *History) shouldSkip(e input.Edit) bool {
+func (h *History) shouldSkip(e text.Edit) bool {
 	skip := h.skip.next()
 	if skip == nil {
 		return false
@@ -87,7 +87,7 @@ func (h *History) shouldSkip(e input.Edit) bool {
 
 // TextChanged hooks into the input handler to trigger off of changes
 // in the editor so that h can track the history of those changes.
-func (h *History) TextChanged(_ input.Editor, e input.Edit) {
+func (h *History) TextChanged(_ text.Editor, e text.Edit) {
 	if h.shouldSkip(e) {
 		h.skip.setNext(h.skip.next().next())
 		return
@@ -96,17 +96,17 @@ func (h *History) TextChanged(_ input.Editor, e input.Edit) {
 }
 
 // Rewind tells h to rewind its current state and return the
-// input.Edit that needs to be applied in order to rewind the
+// text.Edit that needs to be applied in order to rewind the
 // text to its previous state.
-func (h *History) Rewind() input.Edit {
+func (h *History) Rewind() text.Edit {
 	curr := h.current.trunk()
 	prev := curr.prev()
 	if prev == nil {
-		return input.Edit{At: -1}
+		return text.Edit{At: -1}
 	}
 	e := curr.edit
 	h.current.setTrunk(prev)
-	undo := input.Edit{
+	undo := text.Edit{
 		At:  e.At,
 		Old: e.New,
 		New: e.Old,
@@ -128,10 +128,10 @@ func (h *History) Branches() uint {
 // FastForward moves h's state forward in the history, based
 // on branch.  To fast forward the most recent undo, run
 // h.FastForward(h.Branches() - 1).
-func (h *History) FastForward(branch uint) input.Edit {
+func (h *History) FastForward(branch uint) text.Edit {
 	ff := h.current.trunk().next(branch)
 	if ff == nil {
-		return input.Edit{At: -1}
+		return text.Edit{At: -1}
 	}
 	h.current.setTrunk(ff)
 	h.addSkip(ff.edit)
@@ -140,7 +140,7 @@ func (h *History) FastForward(branch uint) input.Edit {
 
 // Apply is unused on history - recording the changes is all
 // that is needed.
-func (h *History) Apply(input.Editor) error { return nil }
+func (h *History) Apply(text.Editor) error { return nil }
 
 // FileChanged updates the current history when the focused
 // file is changed.

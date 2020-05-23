@@ -4,7 +4,7 @@
 
 package input
 
-import "github.com/nelsam/vidar/commander/input"
+import "github.com/nelsam/vidar/commander/text"
 
 // Confirmer is a type that needs to know when a user is confirming
 // an action.  It is typically a type that adds itself to the UI
@@ -15,5 +15,5 @@ type Confirmer interface {
 	// Confirm will be called when a confirmation key is pressed.
 	// It should return true if it should consume the confirmation
 	// event.
-	Confirm(input.Editor) (confirmed bool)
+	Confirm(text.Editor) (confirmed bool)
 }
