@@ -8,6 +8,8 @@ Vidar is the Norse god of silence, patience, and revenge.  Sounds perfect for an
 
 <img src="asset/logo.svg" width="512" />
 
+https://github.com/nelsam/vidar
+
 ## Screenshot
 
 ![screenshot](docs/screenshot.jpg)
