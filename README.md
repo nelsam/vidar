@@ -1,6 +1,5 @@
 # vidar
 
-[![Build Status](https://travis-ci.org/nelsam/vidar.svg?branch=master)](https://travis-ci.org/nelsam/vidar)
 [![Join the chat at https://gitter.im/nelsam/vidar](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nelsam/vidar?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nelsam/vidar)](https://goreportcard.com/report/github.com/nelsam/vidar)
 
@@ -8,7 +7,7 @@ Vidar is the Norse god of silence, patience, and revenge.  Sounds perfect for an
 
 <img src="asset/logo.svg" width="512" />
 
-https://github.com/nelsam/vidar
+The code repository and development has moved from github to https://git.sr.ht/~nelsam/vidar.
 
 ## Screenshot
 
